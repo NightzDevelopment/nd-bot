@@ -15,15 +15,15 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'General',
         value:
-          '**Prefix:** `nd!help` · `nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en` · `nd!ping` · `nd!links` · `nd!search` · `nd!product` · `nd!roll` · `nd!choose`\n' +
-          '**Slash:** `/help` · `/faq` · `/ask` · `/clear` · `/translate` · `/ping` · `/links` · `/search` · `/product` · `/roll` · `/choose`',
+          '**Prefix:** `nd!help` · `nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en` · `nd!ping` · `nd!status` · `nd!links` · `nd!search` · `nd!product` · `nd!roll` · `nd!choose`\n' +
+          '**Slash:** `/help` · `/faq` · `/ask` · `/clear` · `/translate` · `/ping` · `/status` · `/links` · `/search` · `/product` · `/roll` · `/choose`',
         inline: false,
       },
       {
         name: 'Moderation (staff)',
         value:
-          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>`\n' +
-          '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model`',
+          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode`\n' +
+          '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode`',
         inline: false,
       },
       {
@@ -36,16 +36,14 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'Community',
         value:
-          '**Prefix:** `nd!poll` (reaction poll) · `nd!polls` / `nd!polls list` · `nd!polls create …` · `nd!polls end …` · `nd!announce` · `nd!reminder` · `nd!rolereact` · `nd!giveaway` · `nd!giveaway-end` · `nd!giveaway-list` · `nd!suggest` · `nd!approve` · `nd!deny` · `nd!suggestions` · `nd!schedule` · `nd!schedule-list` · `nd!schedule-cancel`\n' +
-          '**Slash:** `/polls list` · `/polls create` · `/polls end` (native Discord polls in your configured Polls channel)',
+          '**Prefix:** `nd!poll` (reaction poll, emoji votes) · **native polls:** `nd!polls` / `nd!polls list` · `nd!polls create` · `nd!polls end` · `nd!polls pin` · `nd!polls stats` · `nd!announce` · `nd!reminder` · `nd!rolereact` · `nd!giveaway` · `nd!giveaway-end` · `nd!giveaway-list` · `nd!suggest` · `nd!approve` · `nd!deny` · `nd!suggestions` · `nd!schedule` · `nd!schedule-list` · `nd!schedule-cancel`\n' +
+          '**Slash:** `/polls` (list · create · end · pin · unpin · stats) — native Discord polls in your configured Polls channel',
         inline: false,
       },
       {
-        name: 'Voice and TTS',
+        name: 'Temp voice channels',
         value:
-          '**Prefix:** `nd!join` / `nd!vc` · `nd!leave` / `nd!dc` · `nd!say` / `nd!speak` / `nd!tts`\n' +
-          '**Temp voice (owner):** `nd!vc-limit` · `nd!vc-name` · `nd!vc-lock` · `nd!vc-unlock`\n' +
-          '**Slash:** `/join` · `/leave` · `/say`',
+          '**Prefix (channel owner):** `nd!vc-limit` · `nd!vc-name` · `nd!vc-lock` · `nd!vc-unlock` — temporary voice channels from the lobby (no bot TTS/STT).',
         inline: false,
       },
       {

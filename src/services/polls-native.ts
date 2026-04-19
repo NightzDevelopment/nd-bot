@@ -13,8 +13,11 @@ import {
 } from 'discord.js'
 import { pollReminderChannelIds } from '../config.ts'
 import { ndEmbed } from '../utils/embed.ts'
+import { listPinnedPollIds } from './poll-pins.ts'
 
 export const POLLS_FETCH_LIMIT = 100
+/** Extra pages of history beyond the first POLLS_FETCH_LIMIT (each page same limit). */
+const POLL_LIST_EXTRA_PAGES = 2
 export const POLLS_QUESTION_MAX = 300
 export const POLLS_ANSWER_MAX = 55
 
@@ -40,15 +43,55 @@ async function ensureFullPoll(message: Message): Promise<Message> {
 async function collectActivePolls(
   channel: GuildTextBasedChannel,
 ): Promise<Message[]> {
-  const fetched = await channel.messages.fetch({ limit: POLLS_FETCH_LIMIT })
   const out: Message[] = []
-  for (const m of fetched.values()) {
-    if (!m.poll) continue
-    const full = await ensureFullPoll(m).catch(() => null)
-    if (!full?.poll) continue
-    if (isActivePoll(full.poll)) out.push(full)
+  const seen = new Set<string>()
+  let before: string | undefined
+  for (let page = 0; page < 1 + POLL_LIST_EXTRA_PAGES; page++) {
+    const fetched = await channel.messages
+      .fetch({ limit: POLLS_FETCH_LIMIT, before })
+      .catch(() => null)
+    if (!fetched || fetched.size === 0) break
+    before = fetched.lastKey()
+    for (const m of fetched.values()) {
+      if (seen.has(m.id)) continue
+      if (!m.poll) continue
+      const full = await ensureFullPoll(m).catch(() => null)
+      if (!full?.poll) continue
+      if (isActivePoll(full.poll)) {
+        seen.add(m.id)
+        out.push(full)
+      }
+    }
   }
   return out
+}
+
+async function linesForPinnedPolls(guild: Guild): Promise<string[]> {
+  const ids = await listPinnedPollIds(guild.id)
+  const lines: string[] = []
+  for (const mid of ids) {
+    let found: Message | null = null
+    let chLabel = ''
+    for (const cid of pollReminderChannelIds) {
+      const raw = await guild.channels.fetch(cid).catch(() => null)
+      if (!raw?.isTextBased()) continue
+      const ch = raw as GuildTextBasedChannel
+      const m = await ch.messages.fetch(mid).catch(() => null)
+      if (m?.poll && isActivePoll(m.poll)) {
+        found = m
+        chLabel = ch.toString()
+        break
+      }
+    }
+    if (!found?.poll) continue
+    const q = found.poll.question.text?.trim() || 'Poll'
+    const shortQ = q.length > 100 ? `${q.slice(0, 97)}…` : q
+    const exp = found.poll.expiresTimestamp
+    const when =
+      exp != null ? ` · ends <t:${Math.floor(exp / 1000)}:R>` : ''
+    lines.push(`📌 **${shortQ}**${when}\n  ${found.url} · ${chLabel}`)
+  }
+  return lines
 }
 
 /** Empty string = no polls; null = not configured */
@@ -57,13 +100,18 @@ export async function buildActivePollsEmbed(
 ): Promise<'not_configured' | { empty: true } | { embed: EmbedBuilder }> {
   if (pollReminderChannelIds.size === 0) return 'not_configured'
 
-  const rows: string[] = []
+  const pinIds = await listPinnedPollIds(guild.id).catch(() => [])
+  const pinned = await linesForPinnedPolls(guild).catch(() => [])
+  const rows: string[] = [...pinned]
+  const listedIds = new Set<string>(pinIds)
   for (const id of pollReminderChannelIds) {
     const raw = await guild.channels.fetch(id).catch(() => null)
     if (!raw?.isTextBased()) continue
     const ch = raw as GuildTextBasedChannel
     const active = await collectActivePolls(ch).catch(() => [])
     for (const m of active) {
+      if (listedIds.has(m.id)) continue
+      listedIds.add(m.id)
       const q = m.poll?.question.text?.trim() || 'Poll'
       const shortQ = q.length > 120 ? `${q.slice(0, 117)}…` : q
       const url = m.url
@@ -76,7 +124,12 @@ export async function buildActivePollsEmbed(
 
   if (rows.length === 0) return { empty: true }
 
-  const body = rows.join('\n\n').slice(0, 3800)
+  const note =
+    `\n\n_Scanned up to ${(1 + POLL_LIST_EXTRA_PAGES) * POLLS_FETCH_LIMIT} messages per polls channel; 📌 = staff bookmark._`.slice(
+      0,
+      500,
+    )
+  const body = (rows.join('\n\n') + note).slice(0, 3800)
   return {
     embed: ndEmbed().setTitle('Active polls').setDescription(body),
   }
@@ -152,6 +205,20 @@ export function botCanPostPolls(
   const perms = target.permissionsFor(me)
   if (!perms?.has(['SendMessages', 'EmbedLinks'])) {
     return `Missing **Send Messages** (and **Embed Links**) in ${target}.`
+  }
+  return null
+}
+
+export async function findPollMessageInPollChannels(
+  guild: Guild,
+  messageId: string,
+): Promise<Message | null> {
+  for (const cid of pollReminderChannelIds) {
+    const raw = await guild.channels.fetch(cid).catch(() => null)
+    if (!raw?.isTextBased()) continue
+    const ch = raw as GuildTextBasedChannel
+    const m = await ch.messages.fetch(messageId).catch(() => null)
+    if (m?.poll) return m
   }
   return null
 }

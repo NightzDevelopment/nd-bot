@@ -13,10 +13,12 @@ import {
   botCanPostPolls,
   buildActivePollsEmbed,
   endPollInPollChannels,
+  findPollMessageInPollChannels,
   pollsChannelsConfigured,
   resolvePollsTargetChannel,
   sendNativePoll,
 } from './polls-native.ts'
+import { addPollPin, removePollPin } from './poll-pins.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 
 async function memberForAuthor(msg: Message): Promise<GuildMember | null> {
@@ -61,9 +63,7 @@ export async function handlePollsSlash(
     if ('empty' in r && r.empty) {
       await interaction.editReply({
         content:
-          'No active native polls found in the configured polls channel(s) (last ' +
-          POLLS_FETCH_LIMIT +
-          ' messages per channel).',
+          'No active native polls found in the configured polls channel(s) (deep scan: several message pages per channel + staff bookmarks).',
       })
       return
     }
@@ -163,6 +163,57 @@ export async function handlePollsSlash(
     await interaction.editReply(
       `Could not end poll: ${result.detail ?? 'unknown error'}`,
     )
+    return
+  }
+
+  if (sub === 'pin' || sub === 'unpin') {
+    const messageId = interaction.options.getString('message_id', true).trim()
+    if (!/^\d{17,20}$/.test(messageId)) {
+      await interaction.reply({ content: 'Invalid message ID.', ephemeral: true })
+      return
+    }
+    const found = await findPollMessageInPollChannels(interaction.guild, messageId)
+    if (!found?.poll) {
+      await interaction.reply({
+        content: 'Poll not found in configured polls channel(s).',
+        ephemeral: true,
+      })
+      return
+    }
+    if (sub === 'pin') {
+      await addPollPin(interaction.guild.id, messageId)
+      await interaction.reply({
+        content: `Bookmarked poll ${found.url} (shown in \`/polls list\`).`,
+        ephemeral: true,
+      })
+    } else {
+      await removePollPin(interaction.guild.id, messageId)
+      await interaction.reply({ content: 'Removed bookmark.', ephemeral: true })
+    }
+    return
+  }
+
+  if (sub === 'stats') {
+    const messageId = interaction.options.getString('message_id', true).trim()
+    if (!/^\d{17,20}$/.test(messageId)) {
+      await interaction.reply({ content: 'Invalid message ID.', ephemeral: true })
+      return
+    }
+    await interaction.deferReply({ ephemeral: true })
+    const found = await findPollMessageInPollChannels(interaction.guild, messageId)
+    if (!found?.poll) {
+      await interaction.editReply('Poll not found in configured polls channel(s).')
+      return
+    }
+    const p = found.poll
+    const q = p.question.text?.trim() || 'Poll'
+    const lines: string[] = [`**${q.slice(0, 500)}**`]
+    for (const ans of p.answers.values()) {
+      const n = 'voteCount' in ans && typeof ans.voteCount === 'number' ? ans.voteCount : 0
+      const label = ans.text?.trim() ?? `Answer ${ans.id}`
+      lines.push(`• ${label}: **${n}**`)
+    }
+    await interaction.editReply(lines.join('\n').slice(0, 1900))
   }
 }
 
@@ -193,7 +244,7 @@ export async function handlePollsPrefix(msg: Message, args: string): Promise<boo
     }
     if ('empty' in r && r.empty) {
       await msg.reply(
-        `No active native polls found in the configured polls channel(s) (last ${POLLS_FETCH_LIMIT} messages per channel).`,
+        'No active native polls found (deep scan + bookmarks). Use `/polls create` or `nd!polls create` to add one.',
       )
       return true
     }
@@ -229,6 +280,41 @@ export async function handlePollsPrefix(msg: Message, args: string): Promise<boo
       return true
     }
     await msg.reply(`Could not end poll: ${result.detail ?? 'unknown error'}`)
+    return true
+  }
+
+  if (first === 'pin' || first === 'unpin' || first === 'stats') {
+    const id = trimmed.split(/\s+/)[1]
+    if (!id || !/^\d{17,20}$/.test(id)) {
+      await msg.reply(
+        'Usage: `nd!polls pin <message_id>` · `nd!polls unpin <message_id>` · `nd!polls stats <message_id>`',
+      )
+      return true
+    }
+    const found = await findPollMessageInPollChannels(msg.guild, id)
+    if (!found?.poll) {
+      await msg.reply('Poll not found in configured polls channel(s).')
+      return true
+    }
+    if (first === 'stats') {
+      const p = found.poll
+      const q = p.question.text?.trim() || 'Poll'
+      const lines: string[] = [`**${q.slice(0, 500)}**`]
+      for (const ans of p.answers.values()) {
+        const n = 'voteCount' in ans && typeof ans.voteCount === 'number' ? ans.voteCount : 0
+        const label = ans.text?.trim() ?? `Answer ${ans.id}`
+        lines.push(`• ${label}: **${n}**`)
+      }
+      await msg.reply(lines.join('\n').slice(0, 1900))
+      return true
+    }
+    if (first === 'pin') {
+      await addPollPin(msg.guild.id, id)
+      await msg.reply(`Bookmarked poll ${found.url}`)
+      return true
+    }
+    await removePollPin(msg.guild.id, id)
+    await msg.reply('Removed bookmark.')
     return true
   }
 
@@ -312,9 +398,9 @@ export async function handlePollsPrefix(msg: Message, args: string): Promise<boo
 
   await msg.reply(
     'Usage:\n' +
-      '• `nd!polls` or `nd!polls list` — active native polls\n' +
-      '• `nd!polls create [48h] [--multi] [#channel] question | opt1 | opt2` (mods)\n' +
-      '• `nd!polls end <message_id>` (mods)',
+      '• `nd!polls` / `nd!polls list` — active native polls\n' +
+      '• `nd!polls create …` · `nd!polls end <id>` · `nd!polls pin|unpin|stats <id>` (mods)\n' +
+      '• Reaction polls: `nd!poll` (separate from native polls)',
   )
   return true
 }

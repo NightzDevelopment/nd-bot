@@ -26,9 +26,11 @@ import {
 } from 'discord.js'
 import {
   TICKET_CLOSED_CATEGORY_ID,
+  STAFF_LOG_CHANNEL_ID,
   TICKET_OPEN_CATEGORY_ID,
   TICKET_PANEL_CHANNEL_ID,
   modRoleIds,
+  ticketFirstReplySlaMs,
   parseTicketReasons,
   ticketAutoCloseGraceHours,
   ticketAutoCloseHours,
@@ -1473,8 +1475,10 @@ export async function markTicketStaffEngagedFromModMessage(
     }
   }
   if (!isGuildMod(member)) return
-  if (ticket.staffEngaged) return
-  await updateTicketPartial(msg.channel.id, { staffEngaged: true })
+  const patch: Partial<TicketRecord> = {}
+  if (!ticket.staffEngaged) patch.staffEngaged = true
+  if (!ticket.firstStaffReplyAt) patch.firstStaffReplyAt = Date.now()
+  if (Object.keys(patch).length) await updateTicketPartial(msg.channel.id, patch)
 }
 
 /**
@@ -1536,6 +1540,34 @@ export function startTicketAutoCloseLoop(client: Client): void {
   }
 
   setInterval(() => void tick(), 30 * 60 * 1000).unref()
+  void tick()
+}
+
+/** Warn staff log if a ticket has no staff reply after TICKET_FIRST_REPLY_SLA_MS. */
+export function startTicketSlaWatchLoop(client: Client): void {
+  if (!ticketSystemEnabled || ticketFirstReplySlaMs <= 0 || !STAFF_LOG_CHANNEL_ID) return
+
+  const tick = async (): Promise<void> => {
+    const open = await listAllOpenTickets()
+    const now = Date.now()
+    const sla = ticketFirstReplySlaMs
+    for (const t of open) {
+      if (t.firstStaffReplyAt || t.slaBreachedAt) continue
+      if (now - t.openedAt < sla) continue
+      const logCh = (await client.channels
+        .fetch(STAFF_LOG_CHANNEL_ID!)
+        .catch(() => null)) as TextChannel | null
+      if (!logCh?.isTextBased()) continue
+      await logCh
+        .send({
+          content: `**Ticket SLA:** no staff reply yet for <#${t.channelId}> (${t.userTag}) · opened <t:${Math.floor(t.openedAt / 1000)}:R>.`,
+        })
+        .catch(() => {})
+      await updateTicketPartial(t.channelId, { slaBreachedAt: now })
+    }
+  }
+
+  setInterval(() => void tick(), 5 * 60 * 1000).unref()
   void tick()
 }
 

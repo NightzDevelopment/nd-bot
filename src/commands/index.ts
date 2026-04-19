@@ -3,6 +3,7 @@ import {
   Events,
   type Client,
   type Interaction,
+  type TextChannel,
 } from 'discord.js'
 import { tryHandleTicketButton } from '../services/ticket-handoff.ts'
 import {
@@ -10,13 +11,6 @@ import {
   formatTicketStatsLine,
   tryHandleTicketSystem,
 } from '../services/ticket-system.ts'
-import {
-  isInVoice,
-  joinChannel,
-  leaveVoice,
-  speakText,
-} from '../services/voice-tts.ts'
-import { voiceTtsEnabled } from '../config.ts'
 import {
   MODEL_ID,
   SYSTEM_PROMPT_DM,
@@ -33,7 +27,11 @@ import {
   reportCooldownMs,
   reportMaxBodyLength,
   safetyExtraMarkdown,
+  scamCheckExtraTrustedHosts,
 } from '../config.ts'
+import { buildHealthSummary } from '../services/health.ts'
+import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.ts'
+import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 import { formatModAutomodStatus } from '../utils/automod-status-text.ts'
 import { rollDiceSpec } from '../utils/dice.ts'
 import { formatSupportLinksMarkdown } from '../utils/support-links.ts'
@@ -427,6 +425,18 @@ export function registerInteractionHandler(client: Client): void {
           await interaction.reply({ embeds: [refusalEmbed()], ephemeral: true })
           return
         }
+        const hostMatch = text.match(/https?:\/\/([^/\s]+)/i)
+        if (hostMatch) {
+          const host = hostMatch[1]!.toLowerCase().split(':')[0]!
+          if (scamCheckExtraTrustedHosts.has(host)) {
+            await interaction.reply({
+              content:
+                'That hostname is on **SCAM_CHECK_EXTRA_TRUSTED_HOSTS** for this bot (treated as a known-good domain for checks).',
+              ephemeral: true,
+            })
+            return
+          }
+        }
         await interaction.deferReply({ ephemeral: true })
         const mini = getModel('You only output short risk assessments.')
         const prompt = `Is this message likely a scam or safe? Reply in 2-4 sentences. Not legal advice. Message:\n\n${text}`
@@ -541,68 +551,125 @@ export function registerInteractionHandler(client: Client): void {
         return
       }
 
-      if (commandName === 'join') {
-        if (!voiceTtsEnabled) {
-          await interaction.reply({ content: 'Voice TTS is not enabled.', ephemeral: true })
-          return
-        }
-        if (!interaction.guild) {
-          await interaction.reply({ content: 'Use in a server.', ephemeral: true })
-          return
-        }
-        const member = await interaction.guild.members.fetch(interaction.user.id)
-        const vc = member.voice.channel
-        if (!vc) {
-          await interaction.reply({
-            content: 'Join a voice channel first.',
-            ephemeral: true,
-          })
-          return
-        }
+      if (commandName === 'status') {
         await interaction.deferReply({ ephemeral: true })
-        try {
-          await joinChannel(vc, interaction.client)
-          await interaction.editReply(`Joined ${vc.name}.`)
-        } catch (e) {
-          const err = e instanceof Error ? e.message : String(e)
-          await interaction.editReply(err.slice(0, 500))
-        }
+        await interaction.editReply(
+          (await buildHealthSummary(interaction.client)).slice(0, 1900),
+        )
         return
       }
 
-      if (commandName === 'leave') {
+      if (commandName === 'macro') {
         if (!interaction.guild) {
           await interaction.reply({ content: 'Use in a server.', ephemeral: true })
           return
         }
-        if (!isInVoice(interaction.guild.id)) {
-          await interaction.reply({ content: 'Not in a voice channel.', ephemeral: true })
+        const mem = await interaction.guild.members.fetch(interaction.user.id)
+        if (!isGuildMod(mem)) {
+          await interaction.reply({ content: 'Moderator only.', ephemeral: true })
           return
         }
-        leaveVoice(interaction.guild.id)
-        await interaction.reply({ content: 'Left voice channel.', ephemeral: true })
-        return
-      }
-
-      if (commandName === 'say') {
-        if (!voiceTtsEnabled) {
-          await interaction.reply({ content: 'Voice TTS is not enabled.', ephemeral: true })
-          return
-        }
-        if (!interaction.guild || !isInVoice(interaction.guild.id)) {
+        const sub = options.getSubcommand(true)
+        if (sub === 'list') {
+          const keys = await listMacroKeys()
           await interaction.reply({
-            content: 'Bot is not in a voice channel. Use `/join` first.',
+            content: keys.length
+              ? `**Macros:** ${keys.map((k) => `\`${k}\``).join(', ')}`
+              : 'No macros yet. Use `/macro set`.',
             ephemeral: true,
           })
           return
         }
-        const text = options.getString('text', true).trim()
-        if (!text) {
-          await interaction.reply({ content: 'Nothing to say.', ephemeral: true })
+        if (sub === 'run') {
+          const name = options.getString('name', true).trim().toLowerCase()
+          const body = await getMacroBody(name)
+          if (!body) {
+            await interaction.reply({ content: 'Unknown macro.', ephemeral: true })
+            return
+          }
+          if (!interaction.channel?.isTextBased()) {
+            await interaction.reply({ content: 'Use in a text channel.', ephemeral: true })
+            return
+          }
+          await interaction.deferReply({ ephemeral: true })
+          await (interaction.channel as TextChannel).send(body.slice(0, 2000))
+          await interaction.editReply('Posted.')
           return
         }
-        await interaction.reply({ content: `Speaking: ${text.slice(0, 100)}...`, ephemeral: true })
-        void speakText(interaction.guild.id, text)
+        if (sub === 'set') {
+          const name = options.getString('name', true).trim().toLowerCase()
+          const text = options.getString('text', true)
+          await setMacro(name, text)
+          await interaction.reply({ content: `Saved macro \`${name}\`.`, ephemeral: true })
+        }
+        return
+      }
+
+      if (commandName === 'case') {
+        if (!interaction.guild) {
+          await interaction.reply({ content: 'Use in a server.', ephemeral: true })
+          return
+        }
+        const mem = await interaction.guild.members.fetch(interaction.user.id)
+        if (!isGuildMod(mem)) {
+          await interaction.reply({ content: 'Moderator only.', ephemeral: true })
+          return
+        }
+        const sub = options.getSubcommand(true)
+        if (sub === 'list') {
+          const list = await listCasesForGuild(interaction.guild.id, 15)
+          if (list.length === 0) {
+            await interaction.reply({ content: 'No cases logged.', ephemeral: true })
+            return
+          }
+          const lines = list.map(
+            (c) =>
+              `**#${c.id}** · <@${c.targetId}> · ${c.action} · _${c.reason.slice(0, 80)}_`,
+          )
+          await interaction.reply({ content: lines.join('\n').slice(0, 1900), ephemeral: true })
+          return
+        }
+        if (sub === 'add') {
+          const u = options.getUser('user', true)
+          const action = options.getString('action', true)
+          const reason = options.getString('reason', true)
+          const c = await addCase({
+            guildId: interaction.guild.id,
+            targetId: u.id,
+            targetTag: u.tag,
+            moderatorId: interaction.user.id,
+            moderatorTag: interaction.user.tag,
+            action,
+            reason,
+            at: Date.now(),
+          })
+          await interaction.reply({ content: `Logged case **#${c.id}**.`, ephemeral: true })
+        }
+        return
+      }
+
+      if (commandName === 'slowmode') {
+        if (!interaction.guild) {
+          await interaction.reply({ content: 'Use in a server.', ephemeral: true })
+          return
+        }
+        const mem = await interaction.guild.members.fetch(interaction.user.id)
+        if (!isGuildMod(mem)) {
+          await interaction.reply({ content: 'Moderator only.', ephemeral: true })
+          return
+        }
+        const seconds = options.getInteger('seconds', true)
+        const chOpt = options.getChannel('channel')
+        const ch = (chOpt?.isTextBased() ? chOpt : interaction.channel) as TextChannel | null
+        if (!ch?.isTextBased()) {
+          await interaction.reply({ content: 'Invalid channel.', ephemeral: true })
+          return
+        }
+        await ch.setRateLimitPerUser(seconds)
+        await interaction.reply({
+          content: `Slowmode set to **${seconds}s** in ${ch}.`,
+          ephemeral: true,
+        })
         return
       }
 

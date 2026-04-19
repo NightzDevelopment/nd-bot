@@ -23,6 +23,7 @@ import {
   reportCooldownMs,
   reportMaxBodyLength,
   safetyExtraMarkdown,
+  scamCheckExtraTrustedHosts,
   translateCooldownMs,
   translateHourlyMax,
 } from '../config.ts'
@@ -61,13 +62,6 @@ import { takeReportSlot } from '../utils/report-cooldown.ts'
 import { reportUserReport } from '../services/logging.ts'
 import { listOpenTickets } from '../services/ticket-store.ts'
 import {
-  isInVoice,
-  joinChannel,
-  leaveVoice,
-  speakText,
-} from '../services/voice-tts.ts'
-import { voiceTtsEnabled } from '../config.ts'
-import {
   formatOpenTicketsList,
   formatTicketStatsLine,
   ticketAddUser,
@@ -78,6 +72,9 @@ import {
   setAiProviderMode,
   type AiProviderMode,
 } from '../services/ai-provider.ts'
+import { buildHealthSummary } from '../services/health.ts'
+import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.ts'
+import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 
 const PREFIX = 'nd!'
 
@@ -350,62 +347,6 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return
   }
 
-  if (cmd === 'join' || cmd === 'vc') {
-    if (!voiceTtsEnabled) {
-      await msg.reply('Voice TTS is not enabled.')
-      return
-    }
-    if (!msg.guild) {
-      await msg.reply('Use in a server.')
-      return
-    }
-    const vc = msg.member?.voice.channel
-    if (!vc) {
-      await msg.reply('Join a voice channel first.')
-      return
-    }
-    try {
-      await joinChannel(vc, msg.client)
-      await msg.reply(`Joined ${vc.name}.`)
-    } catch (e) {
-      const err = e instanceof Error ? e.message : String(e)
-      await msg.reply(err.slice(0, 500))
-    }
-    return
-  }
-
-  if (cmd === 'leave' || cmd === 'disconnect' || cmd === 'dc') {
-    if (!msg.guild) {
-      await msg.reply('Use in a server.')
-      return
-    }
-    if (!isInVoice(msg.guild.id)) {
-      await msg.reply('Not in a voice channel.')
-      return
-    }
-    leaveVoice(msg.guild.id)
-    await msg.reply('Left voice channel.')
-    return
-  }
-
-  if (cmd === 'say' || cmd === 'speak' || cmd === 'tts') {
-    if (!voiceTtsEnabled) {
-      await msg.reply('Voice TTS is not enabled.')
-      return
-    }
-    if (!msg.guild || !isInVoice(msg.guild.id)) {
-      await msg.reply('Bot is not in a voice channel. Use `nd!join` first.')
-      return
-    }
-    if (!args) {
-      await msg.reply('Usage: `nd!say <text to speak>`')
-      return
-    }
-    void speakText(msg.guild.id, args)
-    await msg.react('\u{1F50A}').catch(() => {})
-    return
-  }
-
   if (cmd === 'ping') {
     const t0 = Date.now()
     const m = await msg.reply('Pong…')
@@ -413,6 +354,135 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     await m.edit(
       `Pong. ~${ms}ms · gateway ${msg.client.ws.ping}ms`,
     )
+    return
+  }
+
+  if (cmd === 'status') {
+    await msg.reply((await buildHealthSummary(msg.client)).slice(0, 1900))
+    return
+  }
+
+  if (cmd === 'macro') {
+    const member = await guildMemberForModCheck(msg)
+    if (!msg.guild || !member || !isGuildMod(member)) {
+      await msg.reply('Moderator only.')
+      return
+    }
+    const sub = args.trim().split(/\s+/)[0]?.toLowerCase() ?? ''
+    const rest = args.replace(/^\S+\s*/, '').trim()
+    if (sub === 'list' || !sub) {
+      const keys = await listMacroKeys()
+      await msg.reply(
+        keys.length ? `**Macros:** ${keys.map((k) => `\`${k}\``).join(', ')}` : 'No macros yet. `nd!macro set <key> <text>`',
+      )
+      return
+    }
+    if (sub === 'run') {
+      const name = rest.split(/\s+/)[0]?.toLowerCase()
+      if (!name) {
+        await msg.reply('Usage: `nd!macro run <key>`')
+        return
+      }
+      const body = await getMacroBody(name)
+      if (!body) {
+        await msg.reply('Unknown macro.')
+        return
+      }
+      await msg.channel.send(body.slice(0, 2000))
+      return
+    }
+    if (sub === 'set') {
+      const m = rest.match(/^(\S+)\s+([\s\S]+)/)
+      if (!m) {
+        await msg.reply('Usage: `nd!macro set <key> <text>`')
+        return
+      }
+      await setMacro(m[1]!, m[2]!.trim())
+      await msg.reply(`Saved macro \`${m[1]!.toLowerCase()}\`.`)
+      return
+    }
+    await msg.reply('Usage: `nd!macro list` · `nd!macro run <key>` · `nd!macro set <key> <text>`')
+    return
+  }
+
+  if (cmd === 'case' || cmd === 'cases') {
+    const member = await guildMemberForModCheck(msg)
+    if (!msg.guild || !member || !isGuildMod(member)) {
+      await msg.reply('Moderator only.')
+      return
+    }
+    const sub = args.trim().split(/\s+/)[0]?.toLowerCase() ?? ''
+    const rest = args.replace(/^\S+\s*/, '').trim()
+    if (sub === 'list' || sub === 'ls' || !sub) {
+      const list = await listCasesForGuild(msg.guild.id, 12)
+      if (list.length === 0) {
+        await msg.reply('No cases logged yet.')
+        return
+      }
+      const lines = list.map(
+        (c) =>
+          `**#${c.id}** · <@${c.targetId}> · ${c.action} · _${c.reason.slice(0, 80)}_ · <t:${Math.floor(c.at / 1000)}:R>`,
+      )
+      await msg.reply(lines.join('\n').slice(0, 1900))
+      return
+    }
+    if (sub === 'add') {
+      const user = msg.mentions.users.first()
+      const tail = rest.replace(/<@!?\d+>\s*/, '').trim()
+      const parts = tail.split(/\s+/)
+      const action = parts[0]
+      const reason = parts.slice(1).join(' ').trim() || 'No reason'
+      if (!user || !action) {
+        await msg.reply('Usage: `nd!case add @user <action> <reason>`')
+        return
+      }
+      const c = await addCase({
+        guildId: msg.guild.id,
+        targetId: user.id,
+        targetTag: user.tag,
+        moderatorId: msg.author.id,
+        moderatorTag: msg.author.tag,
+        action,
+        reason,
+        at: Date.now(),
+      })
+      await msg.reply(`Logged case **#${c.id}**.`)
+      return
+    }
+    await msg.reply('Usage: `nd!case list` · `nd!case add @user action reason`')
+    return
+  }
+
+  if (cmd === 'slowmode') {
+    const member = await guildMemberForModCheck(msg)
+    if (!msg.guild || !member || !isGuildMod(member)) {
+      await msg.reply('Moderator only.')
+      return
+    }
+    const chM = args.match(/^<#(\d+)>\s+(\d+)$/)
+    const plain = args.trim().match(/^(\d+)$/)
+    let seconds = 0
+    let ch = msg.channel
+    if (chM) {
+      const raw = await msg.guild.channels.fetch(chM[1]!).catch(() => null)
+      if (raw?.isTextBased()) ch = raw as typeof ch
+      seconds = parseInt(chM[2]!, 10)
+    } else if (plain) {
+      seconds = parseInt(plain[1]!, 10)
+    } else {
+      await msg.reply('Usage: `nd!slowmode <seconds>` or `nd!slowmode #channel <seconds>` (0–21600)')
+      return
+    }
+    if (!Number.isFinite(seconds) || seconds < 0 || seconds > 21600) {
+      await msg.reply('Seconds must be 0–21600.')
+      return
+    }
+    if (!('setRateLimitPerUser' in ch) || !ch.isTextBased()) {
+      await msg.reply('Invalid channel.')
+      return
+    }
+    await (ch as TextChannel).setRateLimitPerUser(seconds)
+    await msg.reply(`Slowmode set to **${seconds}s** in ${ch}.`)
     return
   }
 
@@ -663,6 +733,16 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     if (containsProfanity(args, msg)) {
       await msg.reply({ embeds: [refusalEmbed()] })
       return
+    }
+    const hostMatch = args.match(/https?:\/\/([^/\s]+)/i)
+    if (hostMatch) {
+      const host = hostMatch[1]!.toLowerCase().split(':')[0]!
+      if (scamCheckExtraTrustedHosts.has(host)) {
+        await msg.reply(
+          'That hostname is on **SCAM_CHECK_EXTRA_TRUSTED_HOSTS** for this bot.',
+        )
+        return
+      }
     }
     if ('sendTyping' in msg.channel) await msg.channel.sendTyping()
     const mini = getModel('You only output short risk assessments.')

@@ -1,12 +1,4 @@
-import {
-  ChannelType,
-  type Client,
-  type Guild,
-  type GuildMember,
-  type Message,
-  type TextChannel,
-  type User,
-} from 'discord.js'
+import { ChannelType, type Client, type Message } from 'discord.js'
 import {
   CONVERSATION_HISTORY_LIMIT,
   SYSTEM_PROMPT_DM,
@@ -14,10 +6,10 @@ import {
   aiAutomodIncludeChannelSnippet,
   allowedDmUsers,
   enableDmSupport,
+  channelPromptExtraByChannelId,
   guildAiTicketCategoryIds,
   guildChannelIds,
   staffDraftSourceChannelIds,
-  voiceAiTextChannelIds,
 } from '../config.ts'
 import { chunkText } from '../utils/chunk.ts'
 import { refusalEmbed } from '../utils/embed.ts'
@@ -30,8 +22,6 @@ import {
 } from '../services/gemini.ts'
 import { getHistory, pushTurn, type Turn } from '../services/memory.ts'
 import { containsProfanity } from '../services/profanity.ts'
-import { isInVoice, speakText } from '../services/voice-tts.ts'
-import { voiceTtsEnabled } from '../config.ts'
 import {
   reportProfanity,
   logDmExchange,
@@ -128,9 +118,6 @@ export function shouldHandleMessage(msg: Message): boolean {
 async function shouldRespondGuildAi(msg: Message): Promise<boolean> {
   const botId = msg.client.user?.id
   if (!botId) return false
-  if (voiceAiTextChannelIds.size > 0 && voiceAiTextChannelIds.has(msg.channel.id)) {
-    return true
-  }
   if (msg.mentions.users.has(botId)) return true
   if (msg.reference?.messageId) {
     try {
@@ -182,133 +169,6 @@ function keywordContextFromHistory(turns: Turn[], latestUserText: string, maxPri
   const userLines = turns.filter((t) => t.role === 'user').map((t) => t.content)
   const recent = userLines.slice(-maxPriorUser)
   return [...recent, latestUserText].join('\n')
-}
-
-const voiceAiProcessing = new Set<string>()
-
-/** Voice STT: run the same guild AI + TTS pipeline from a transcript (no Discord Message). */
-export async function handleGuildAiFromVoiceTranscript(options: {
-  guild: Guild
-  channel: TextChannel
-  user: User
-  member: GuildMember | null
-  transcript: string
-}): Promise<void> {
-  const { guild, channel, user, member, transcript } = options
-  const rawText = transcript.trim()
-  if (!rawText || rawText.length < 2) return
-
-  const procKey = `${guild.id}:${user.id}`
-  if (voiceAiProcessing.has(procKey)) return
-  voiceAiProcessing.add(procKey)
-  try {
-    if (lockdownGuilds.has(guild.id) && member && !isGuildMod(member)) {
-      return
-    }
-
-    if (containsProfanity(rawText)) {
-      console.warn('[voice-stt] blocked profanity from', user.tag)
-      return
-    }
-
-    const displayName = member?.displayName ?? user.username
-    const chLabel = channel.name ?? 'channel'
-    const displayPrompt = `[#${chLabel} from ${displayName} via voice]: ${rawText}`
-
-    let ticketTriage = ''
-    try {
-      const ticket = await getTicketByChannel(channel.id)
-      if (
-        ticket?.status === 'open' &&
-        !ticket.staffEngaged &&
-        user.id === ticket.userId
-      ) {
-        ticketTriage =
-          '\n\n[Support ticket triage: Staff has not claimed or taken this ticket yet. Ask short follow-up questions to gather framework (ESX/QBCore/standalone), errors, resource name, and reproduction steps. Do not promise a human response time. No emojis.]'
-      }
-    } catch {
-      /* ignore */
-    }
-    const fullPrompt = displayPrompt + ticketTriage
-
-    const userMemoryContent = rawText
-    const model = modelGuild
-    const channelId = channel.id
-    const prior = getHistory(channelId)
-    const keywordBlob = keywordContextFromHistory(prior, userMemoryContent)
-
-    const comingSoonProbe = rawText
-    if (comingSoonProbe && isComingSoonTopic(comingSoonProbe)) {
-      touchActiveWindow(user.id, channel.id)
-      const reply = randomComingSoonReply(channelId)
-      await sleep(typingDelay(reply))
-      await channel.send({
-        content: `**${displayName}** (voice): ${rawText}\n\n${reply}`.slice(0, 2000),
-      })
-      pushTurn(channelId, { role: 'user', content: userMemoryContent }, CONVERSATION_HISTORY_LIMIT)
-      pushTurn(channelId, { role: 'model', content: reply }, CONVERSATION_HISTORY_LIMIT)
-      void recordSupportExchange(channel.id, userMemoryContent, reply)
-      if (voiceTtsEnabled && isInVoice(guild.id)) {
-        void speakText(guild.id, reply)
-      }
-      return
-    }
-
-    const augmented = await buildAugmentedUserContentAsync(
-      fullPrompt,
-      keywordBlob,
-      'User message (voice)',
-    )
-
-    touchActiveWindow(user.id, channel.id)
-
-    try {
-      await channel.sendTyping()
-
-      const typingTimer = setInterval(() => {
-        void channel.sendTyping()
-      }, TYPING_INTERVAL_MS)
-
-      let reply: string
-      try {
-        reply = await chatReply(model, prior, augmented)
-      } finally {
-        clearInterval(typingTimer)
-      }
-
-      await sleep(typingDelay(reply))
-
-      const header = `**${displayName}** (voice): ${rawText}`
-      await channel.send({ content: header.slice(0, 2000) })
-
-      const parts = chunkText(reply)
-      for (let i = 0; i < parts.length; i++) {
-        const chunk = parts[i]!
-        await sleep(i === 0 ? 0 : Math.min(2000, chunk.length * MS_PER_CHAR))
-        await channel.send({ content: chunk })
-      }
-
-      pushTurn(channelId, { role: 'user', content: userMemoryContent }, CONVERSATION_HISTORY_LIMIT)
-      pushTurn(channelId, { role: 'model', content: reply }, CONVERSATION_HISTORY_LIMIT)
-
-      if (voiceTtsEnabled && isInVoice(guild.id)) {
-        void speakText(guild.id, reply)
-      }
-
-      void recordSupportExchange(channel.id, userMemoryContent, reply)
-      clearComingSoonReplyLast(channelId)
-    } catch (e) {
-      const err = e instanceof Error ? e.message : String(e)
-      console.error('[voice-stt] AI error:', err)
-      try {
-        await channel.send(await getPublicAiErrorMessage())
-      } catch {
-        /* ignore */
-      }
-    }
-  } finally {
-    voiceAiProcessing.delete(procKey)
-  }
 }
 
 const processing = new Set<string>()
@@ -470,11 +330,17 @@ export function registerMessageHandler(client: Client): void {
       return
     }
 
-    const augmented = await buildAugmentedUserContentAsync(
+    let augmented = await buildAugmentedUserContentAsync(
       displayPrompt,
       keywordBlob,
       'User message',
     )
+    if (msg.guild) {
+      const chExtra = channelPromptExtraByChannelId()[msg.channel.id]
+      if (chExtra) {
+        augmented = `${chExtra}\n\n${augmented}`
+      }
+    }
 
     if (ch.type !== ChannelType.DM) {
       touchActiveWindow(msg.author.id, msg.channel.id)
@@ -520,15 +386,6 @@ export function registerMessageHandler(client: Client): void {
         { role: 'model', content: reply },
         CONVERSATION_HISTORY_LIMIT,
       )
-
-      if (
-        voiceTtsEnabled &&
-        msg.guild &&
-        isInVoice(msg.guild.id) &&
-        ch.type !== ChannelType.DM
-      ) {
-        void speakText(msg.guild.id, reply)
-      }
 
       if (ch.type === ChannelType.DM) void logDmExchange(msg, reply)
       if (msg.guild && staffDraftSourceChannelIds.has(msg.channel.id)) {

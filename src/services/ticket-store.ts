@@ -19,6 +19,10 @@ export type TicketRecord = {
   claimedBy?: string
   claimedByTag?: string
   openedAt: number
+  /** First time a moderator posted in the ticket (for SLA). */
+  firstStaffReplyAt?: number
+  /** Set when SLA breach was posted to staff log. */
+  slaBreachedAt?: number
   closedAt?: number
   closedBy?: string
   closedByTag?: string

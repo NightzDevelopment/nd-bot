@@ -649,55 +649,46 @@ export const TEMPVC_DEFAULT_LIMIT = parseInt(process.env.TEMPVC_DEFAULT_LIMIT ??
 /** Suggestions */
 export const SUGGESTION_CHANNEL_ID = process.env.SUGGESTION_CHANNEL_ID?.trim() || undefined
 
-/** Voice TTS: bot joins VC and speaks AI replies via Google Cloud TTS. */
-export const voiceTtsEnabled = !isEnvOff(process.env.VOICE_TTS_ENABLED ?? '0')
-/** Auto-join this VC on bot startup (optional). */
-export const voiceAutoJoinChannelId =
-  process.env.VOICE_AUTO_JOIN_CHANNEL_ID?.trim() || undefined
-/** Google Cloud TTS language (BCP-47). Default en-US. */
-export const voiceTtsLanguage =
-  process.env.GOOGLE_TTS_LANGUAGE?.trim() || 'en-US'
-/** Google Cloud TTS voice name (optional; if blank, Google picks a default for the language). */
-export const voiceTtsVoiceName =
-  process.env.GOOGLE_TTS_VOICE_NAME?.trim() || undefined
-/** Speaking speed (0.25 to 4.0, default 1.0). */
-export const voiceTtsSpeakingRate = Math.min(
-  4.0,
-  Math.max(0.25, parseFloat(process.env.GOOGLE_TTS_SPEAKING_RATE ?? '1.0') || 1.0),
-)
-/** Pitch adjustment (-20.0 to 20.0, default 0). */
-export const voiceTtsPitch = Math.min(
-  20,
-  Math.max(-20, parseFloat(process.env.GOOGLE_TTS_PITCH ?? '0') || 0),
-)
-/** Max chars sent to TTS per utterance (default 4000; longer text is truncated). */
-export const voiceTtsMaxChars = Math.min(
-  5000,
-  Math.max(200, parseInt(process.env.VOICE_TTS_MAX_CHARS ?? '4000', 10) || 4000),
-)
-/** Auto-disconnect from empty VC after this many seconds (0 = never). */
-export const voiceAutoLeaveSeconds = Math.max(
-  0,
-  parseInt(process.env.VOICE_AUTO_LEAVE_SECONDS ?? '300', 10) || 300,
-)
-
-/** Guild text channels where AI replies without @mention (e.g. #ai-support next to AI Support VC). */
-export const voiceAiTextChannelIds = parseIdSet(process.env.VOICE_AI_TEXT_CHANNEL_IDS)
-/** Transcribe voice in VC and run the same AI + TTS flow (requires Google Speech-to-Text + reply text channel). */
-export const voiceSttEnabled = !isEnvOff(process.env.VOICE_STT_ENABLED ?? '0')
-/** Min ms between STT processing per user in a guild (default 5000). */
-export const voiceSttCooldownMs = Math.max(
-  2000,
-  parseInt(process.env.VOICE_STT_COOLDOWN_MS ?? '5000', 10) || 5000,
-)
-
-/** Where to post AI replies for voice transcripts; defaults to first ID in VOICE_AI_TEXT_CHANNEL_IDS. */
-export function getVoiceSttReplyChannelId(): string | undefined {
-  const explicit = process.env.VOICE_STT_REPLY_TEXT_CHANNEL_ID?.trim()
-  if (explicit) return explicit
-  const raw = process.env.VOICE_AI_TEXT_CHANNEL_IDS?.split(',') ?? []
-  return raw.map((s) => s.trim()).find(Boolean)
+/**
+ * Extra system prompt per channel ID (JSON object: `"channelId": "extra markdown lines"`).
+ * Appended to guild AI instruction for that channel only.
+ */
+export function channelPromptExtraByChannelId(): Record<string, string> {
+  const raw = process.env.CHANNEL_PROMPT_EXTRAS_JSON?.trim()
+  if (!raw) return {}
+  try {
+    const o = JSON.parse(raw) as unknown
+    if (!o || typeof o !== 'object') return {}
+    const out: Record<string, string> = {}
+    for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+      if (typeof v === 'string' && v.trim()) out[k.trim()] = v.trim()
+    }
+    return out
+  } catch {
+    return {}
+  }
 }
+
+/** Comma-separated extra hosts trusted in `/scam_check` heuristics (merged with URL_RISK_TRUSTED_HOSTS idea). */
+export const scamCheckExtraTrustedHosts = parseHostList(
+  process.env.SCAM_CHECK_EXTRA_TRUSTED_HOSTS,
+)
+
+function parseHostList(raw: string | undefined): Set<string> {
+  const s = new Set<string>()
+  if (!raw?.trim()) return s
+  for (const part of raw.split(',')) {
+    const h = part.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0]
+    if (h) s.add(h)
+  }
+  return s
+}
+
+/** Alert staff log if no first staff reply within this many ms after ticket open (0 = off). */
+export const ticketFirstReplySlaMs = Math.max(
+  0,
+  parseInt(process.env.TICKET_FIRST_REPLY_SLA_MS ?? '0', 10) || 0,
+)
 
 /** Data directory for JSON stores */
 export const DATA_DIR = process.env.DATA_DIR?.trim() || './data'

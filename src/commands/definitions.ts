@@ -203,17 +203,91 @@ export const slashCommands = [
         .addStringOption((o) =>
           o.setName('message_id').setDescription('Poll message ID (right-click message → Copy ID)').setRequired(true),
         ),
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName('pin')
+        .setDescription('Bookmark a poll message ID for staff (mods)')
+        .addStringOption((o) =>
+          o.setName('message_id').setDescription('Poll message ID').setRequired(true),
+        ),
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName('unpin')
+        .setDescription('Remove a bookmarked poll ID (mods)')
+        .addStringOption((o) =>
+          o.setName('message_id').setDescription('Poll message ID').setRequired(true),
+        ),
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName('stats')
+        .setDescription('Staff: show vote counts for a poll message')
+        .addStringOption((o) =>
+          o.setName('message_id').setDescription('Poll message ID').setRequired(true),
+        ),
     ),
   new SlashCommandBuilder()
-    .setName('join')
-    .setDescription('Bot joins your current voice channel (TTS)'),
+    .setName('status')
+    .setDescription('Bot health, gateway ping, and AI provider status'),
   new SlashCommandBuilder()
-    .setName('leave')
-    .setDescription('Bot leaves the voice channel'),
+    .setName('macro')
+    .setDescription('Staff: saved text snippets')
+    .addSubcommand((sc) => sc.setName('list').setDescription('List macro keys'))
+    .addSubcommand((sc) =>
+      sc
+        .setName('run')
+        .setDescription('Post a macro in this channel')
+        .addStringOption((o) =>
+          o.setName('name').setDescription('Macro key').setRequired(true),
+        ),
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName('set')
+        .setDescription('Create or update a macro')
+        .addStringOption((o) =>
+          o.setName('name').setDescription('Macro key').setRequired(true),
+        )
+        .addStringOption((o) =>
+          o.setName('text').setDescription('Full text').setRequired(true),
+        ),
+    ),
   new SlashCommandBuilder()
-    .setName('say')
-    .setDescription('Speak text in voice channel via TTS')
-    .addStringOption((o) =>
-      o.setName('text').setDescription('Text to speak').setRequired(true),
+    .setName('case')
+    .setDescription('Staff: moderation case log')
+    .addSubcommand((sc) => sc.setName('list').setDescription('Recent cases in this server'))
+    .addSubcommand((sc) =>
+      sc
+        .setName('add')
+        .setDescription('Log a case')
+        .addUserOption((o) =>
+          o.setName('user').setDescription('Target user').setRequired(true),
+        )
+        .addStringOption((o) =>
+          o.setName('action').setDescription('e.g. warn, timeout').setRequired(true),
+        )
+        .addStringOption((o) =>
+          o.setName('reason').setDescription('Reason').setRequired(true),
+        ),
+    ),
+  new SlashCommandBuilder()
+    .setName('slowmode')
+    .setDescription('Staff: set channel slowmode (seconds)')
+    .addIntegerOption((o) =>
+      o
+        .setName('seconds')
+        .setDescription('0–21600')
+        .setRequired(true)
+        .setMinValue(0)
+        .setMaxValue(21600),
+    )
+    .addChannelOption((o) =>
+      o
+        .setName('channel')
+        .setDescription('Channel (default: current)')
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+        .setRequired(false),
     ),
 ]
