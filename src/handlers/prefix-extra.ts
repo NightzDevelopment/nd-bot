@@ -11,6 +11,8 @@ import {
   TEMPVC_LOBBY_ID,
 } from '../config.ts'
 import { ndEmbed } from '../utils/embed.ts'
+import { buildServerInfoEmbed } from '../utils/server-info.ts'
+import { buildUserInfoEmbed } from '../utils/user-info.ts'
 import { parseDuration, parseScheduleDelay } from '../utils/time.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { addReactionRole } from '../services/roles-config.ts'
@@ -33,6 +35,7 @@ import {
   removeSchedule,
   updateSchedule,
 } from '../services/scheduler-store.ts'
+import { handlePollsPrefix } from '../services/polls-slash.ts'
 
 /** Discord reaction emojis as Unicode escapes (no emoji literals in source). */
 const E_PARTY = '\u{1F389}'
@@ -67,17 +70,13 @@ export async function handleExtraPrefix(
   cmd: string,
   args: string,
 ): Promise<boolean> {
+  if (cmd === 'polls') {
+    return handlePollsPrefix(msg, args)
+  }
+
   if (cmd === 'serverinfo') {
     if (!msg.guild) return true
-    const g = msg.guild
-    const embed = ndEmbed()
-      .setTitle(g.name)
-      .setThumbnail(g.iconURL({ size: 256 }))
-      .addFields(
-        { name: 'Members', value: String(g.memberCount), inline: true },
-        { name: 'Created', value: `<t:${Math.floor(g.createdTimestamp / 1000)}:R>`, inline: true },
-        { name: 'Boost', value: String(g.premiumTier), inline: true },
-      )
+    const embed = await buildServerInfoEmbed(msg.guild)
     await msg.reply({ embeds: [embed] })
     return true
   }
@@ -92,26 +91,11 @@ export async function handleExtraPrefix(
       await msg.reply('User not found.')
       return true
     }
-    const member = msg.guild?.members.cache.get(user.id)
-    const embed = ndEmbed()
-      .setTitle(user.tag)
-      .setThumbnail(user.displayAvatarURL({ size: 256 }))
-      .addFields(
-        { name: 'ID', value: user.id, inline: true },
-        {
-          name: 'Joined',
-          value: member
-            ? `<t:${Math.floor(member.joinedTimestamp! / 1000)}:R>`
-            : 'N/A',
-          inline: true,
-        },
-        {
-          name: 'Roles',
-          value: member?.roles.cache.size
-            ? member.roles.cache.map((r) => r.toString()).join(' ').slice(0, 900)
-            : 'None',
-        },
-      )
+    let member = msg.guild?.members.cache.get(user.id) ?? null
+    if (msg.guild) {
+      member = await msg.guild.members.fetch(user.id).catch(() => member)
+    }
+    const embed = await buildUserInfoEmbed(user, member)
     await msg.reply({ embeds: [embed] })
     return true
   }

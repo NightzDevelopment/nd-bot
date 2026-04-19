@@ -20,6 +20,8 @@ import {
   type Interaction,
   type Message,
   type ModalSubmitInteraction,
+  type MessageActionRowComponentBuilder,
+  type StringSelectMenuInteraction,
   type TextChannel,
 } from 'discord.js'
 import {
@@ -36,8 +38,15 @@ import {
   ticketNamingPrefix,
   ticketSystemEnabled,
   ticketTranscriptEnabled,
+  ticketTranscriptHtmlEnabled,
+  ticketTranscriptMaxMessages,
+  parseTicketWorkflowStatuses,
 } from '../config.ts'
-import { ndEmbed } from '../utils/embed.ts'
+import {
+  ndTicketEmbedOpen,
+  ndTicketEmbedStaff,
+  TICKET_FOOTER_SUPPORT,
+} from '../utils/embed.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import {
   deleteTicketRecord,
@@ -51,6 +60,12 @@ import {
   updateTicketPartial,
   type TicketRecord,
 } from './ticket-store.ts'
+import {
+  buildTranscriptHtml,
+  buildTranscriptTxt,
+  countUniqueAuthors,
+  fetchTicketMessages,
+} from './ticket-transcript.ts'
 
 export const TICKET_PREFIX = 'ndticket'
 
@@ -81,6 +96,143 @@ function padId(n: number): string {
   return String(n).padStart(4, '0')
 }
 
+function defaultWorkflowStatus(): string {
+  const s = parseTicketWorkflowStatuses()
+  return s[0] ?? 'Open'
+}
+
+/** Prefer "Claimed" from the workflow list when staff hits Claim. */
+function pickClaimedWorkflowStatus(): string {
+  const s = parseTicketWorkflowStatuses()
+  if (s.includes('Claimed')) return 'Claimed'
+  if (s.includes('In progress')) return 'In progress'
+  return s[1] ?? s[0] ?? 'Open'
+}
+
+function buildClaimCloseRow(
+  channelId: string,
+  ticket: TicketRecord,
+): ActionRowBuilder<ButtonBuilder> {
+  const claimed = Boolean(ticket.claimedBy)
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`${TICKET_PREFIX}:claim:${channelId}`)
+      .setLabel(claimed ? 'Claimed' : 'Claim')
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(claimed),
+    new ButtonBuilder()
+      .setCustomId(`${TICKET_PREFIX}:close:${channelId}`)
+      .setLabel('Close Ticket')
+      .setStyle(ButtonStyle.Danger),
+  )
+}
+
+function buildWorkflowStatusRow(
+  channelId: string,
+  ticket: TicketRecord,
+): ActionRowBuilder<StringSelectMenuBuilder> {
+  const statuses = parseTicketWorkflowStatuses()
+  const cur = ticket.workflowStatus ?? defaultWorkflowStatus()
+  const opts = statuses.map((label) =>
+    new StringSelectMenuOptionBuilder()
+      .setLabel(label.slice(0, 100))
+      .setValue(label.slice(0, 100))
+      .setDefault(label === cur),
+  )
+  const menu = new StringSelectMenuBuilder()
+    .setCustomId(`${TICKET_PREFIX}:workflow:${channelId}`)
+    .setPlaceholder('Set ticket status (staff)')
+    .setMinValues(1)
+    .setMaxValues(1)
+    .addOptions(opts.length > 0 ? opts : [new StringSelectMenuOptionBuilder().setLabel('Open').setValue('Open')])
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)
+}
+
+function buildTicketWelcomeComponents(
+  channelId: string,
+  ticket: TicketRecord,
+): ActionRowBuilder<MessageActionRowComponentBuilder>[] {
+  return [
+    buildClaimCloseRow(channelId, ticket) as ActionRowBuilder<MessageActionRowComponentBuilder>,
+    buildWorkflowStatusRow(channelId, ticket) as ActionRowBuilder<MessageActionRowComponentBuilder>,
+  ]
+}
+
+/** Refresh welcome embed + buttons/status menu from DB (after claim, status change, reopen). */
+async function syncWelcomeMessageFromTicket(
+  ch: TextChannel,
+  ticket: TicketRecord,
+): Promise<void> {
+  if (!ticket.welcomeMessageId) return
+  try {
+    const msg = await ch.messages.fetch(ticket.welcomeMessageId)
+    if (!msg.embeds[0]) return
+    const eb = EmbedBuilder.from(msg.embeds[0])
+    const fields = [...(eb.data.fields ?? [])]
+    const statusVal = ticket.workflowStatus ?? defaultWorkflowStatus()
+    const statusIdx = fields.findIndex((f) => f.name === 'Status')
+    if (statusIdx >= 0) {
+      fields[statusIdx] = {
+        name: 'Status',
+        value: statusVal,
+        inline: fields[statusIdx]!.inline ?? true,
+      }
+    }
+    const claimIdx = fields.findIndex((f) => f.name === 'Claimed by')
+    if (ticket.claimedBy && ticket.claimedByTag) {
+      const cv = `<@${ticket.claimedBy}> · \`${ticket.claimedBy}\``
+      if (claimIdx >= 0) {
+        fields[claimIdx] = {
+          name: 'Claimed by',
+          value: cv,
+          inline: true,
+        }
+      } else {
+        fields.push({ name: 'Claimed by', value: cv, inline: true })
+      }
+    } else if (claimIdx >= 0) {
+      fields.splice(claimIdx, 1)
+    }
+    eb.setFields(fields)
+    await msg.edit({
+      embeds: [eb],
+      components: buildTicketWelcomeComponents(ch.id, ticket),
+    })
+  } catch (e) {
+    console.warn('[tickets] sync welcome failed:', e)
+  }
+}
+
+async function postTicketWorkflowStaffLog(
+  client: Client,
+  ticket: TicketRecord,
+  channel: TextChannel,
+  newStatus: string,
+  actorTag: string,
+): Promise<void> {
+  const logId = ticketLogChannelId
+  if (!logId) return
+  try {
+    const logCh = await client.channels.fetch(logId)
+    if (!logCh?.isTextBased() || logCh.isDMBased()) return
+    const jump = `https://discord.com/channels/${ticket.guildId}/${channel.id}/${ticket.welcomeMessageId ?? channel.id}`
+    await logCh.send({
+      embeds: [
+        ndTicketEmbedStaff()
+          .setTitle('Support · Ticket status updated')
+          .setDescription(`[Open ticket channel](${jump})`)
+          .addFields(
+            { name: 'Ticket ID', value: `\`#${padId(ticket.id)}\``, inline: true },
+            { name: 'New status', value: newStatus.slice(0, 1024), inline: true },
+            { name: 'Updated by', value: actorTag.slice(0, 256), inline: true },
+          ),
+      ],
+    })
+  } catch (e) {
+    console.warn('[tickets] workflow log failed:', e)
+  }
+}
+
 function sanitizeTopicName(raw: string): string {
   return raw
     .toLowerCase()
@@ -92,44 +244,42 @@ function sanitizeTopicName(raw: string): string {
 
 export function buildTicketPanelEmbed(guild: Guild): EmbedBuilder {
   const icon = guild.iconURL({ size: 128 })
-  return ndEmbed()
-    .setAuthor({ name: 'Nightz Development', iconURL: icon ?? undefined })
-    .setTitle('Support Center')
+  return ndTicketEmbedOpen()
+    .setAuthor({ name: 'Nightz Network · Live Support', iconURL: icon ?? undefined })
+    .setTitle('Support center')
     .setThumbnail(icon ?? null)
     .setDescription(
       [
-        'Need help with a product, your account, or have a question?',
-        'You are in the right place.',
+        'Need help with a **product**, your **account**, or have a **question**? You are in the right place.',
         '',
-        'Select a reason below, then hit **Open Ticket**. A private channel',
-        'will be created where our team (and our AI assistant) can help you out.',
+        'Choose a **category**, then tap **Open Ticket**. We will create a **private channel** only you and staff can see.',
       ].join('\n'),
     )
     .addFields(
       {
         name: 'How it works',
         value: [
-          '1. Pick a category from the dropdown',
-          '2. Click Open Ticket',
-          '3. Describe your issue in the new channel',
-          '4. A staff member or our AI will respond',
+          '1. Select the category that best matches your issue',
+          '2. Tap **Open Ticket**',
+          '3. Describe the problem in the new channel (errors, screenshots, framework)',
+          '4. Staff or our assistant will reply when available',
         ].join('\n'),
         inline: false,
       },
       {
-        name: 'Quick links',
+        name: 'Links',
         value: [
-          'Store: https://store.nightz.dev/',
-          'Discord: https://discord.gg/KaKCBUkD8M',
+          '**Store:** https://store.nightz.dev/',
+          '**Community:** https://discord.gg/KaKCBUkD8M',
         ].join('\n'),
         inline: false,
       },
       {
-        name: 'Please note',
+        name: 'Guidelines',
         value: [
-          '- One topic per ticket. Open a second ticket for a separate issue.',
-          '- Include error messages, screenshots, and your framework (ESX/QBCore) if relevant.',
-          '- Do not ping staff. We will get to your ticket as soon as possible.',
+          '· **One issue per ticket** — open another ticket for a separate topic',
+          '· Include **artifact**, **framework** (ESX / QBCore), and **steps to reproduce** when relevant',
+          '· **Do not ping** staff; tickets are handled in queue order',
         ].join('\n'),
         inline: false,
       },
@@ -147,7 +297,7 @@ function buildReasonSelect(): ActionRowBuilder<StringSelectMenuBuilder> {
   )
   const menu = new StringSelectMenuBuilder()
     .setCustomId(`${TICKET_PREFIX}:reason`)
-    .setPlaceholder('What do you need help with?')
+    .setPlaceholder('Choose a category…')
     .addOptions(opts)
   return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(menu)
 }
@@ -291,21 +441,31 @@ export async function createTicketChannel(
   })) as TextChannel
 
   const openedAt = Date.now()
-  const welcomeEmbed = ndEmbed()
+  const initialWorkflow = defaultWorkflowStatus()
+  const welcomeEmbed = ndTicketEmbedOpen()
+    .setAuthor({
+      name: `${guild.name} · Live Support`,
+      iconURL: guild.iconURL({ size: 128 }) ?? undefined,
+    })
     .setTitle(`Support Ticket #${padId(numericId)}`)
     .setDescription(
       [
-        'Welcome to your support ticket. A staff member will be with you shortly.',
-        'Our AI assistant may respond first to help gather information.',
+        'This is your **private** support channel. Only you, **Nightz staff**, and the **bot** can see it.',
+        '',
+        'A team member will assist you when possible. Our **assistant** may reply first to collect details (errors, framework, steps).',
       ].join('\n'),
     )
     .addFields(
       {
         name: 'User',
-        value: `${member} (\`${member.id}\`)`,
+        value: `${member} · \`${member.id}\``,
         inline: true,
       },
-      { name: 'Reason', value: reason.slice(0, 1024), inline: true },
+      {
+        name: 'Category',
+        value: reason.slice(0, 1024),
+        inline: true,
+      },
       {
         name: 'Opened',
         value: `<t:${Math.floor(openedAt / 1000)}:F>`,
@@ -313,15 +473,25 @@ export async function createTicketChannel(
       },
       {
         name: 'Ticket ID',
-        value: `#${padId(numericId)}`,
+        value: `\`#${padId(numericId)}\``,
         inline: true,
       },
       {
         name: 'Status',
-        value: 'Open',
+        value: initialWorkflow,
         inline: true,
       },
     )
+
+  if (ticketTranscriptEnabled) {
+    welcomeEmbed.addFields({
+      name: 'After we close',
+      value: ticketTranscriptHtmlEnabled
+        ? 'Closing this ticket attaches a **.txt** log and a styled **.html** transcript to this channel.'
+        : 'Closing this ticket attaches a **.txt** transcript to this channel.',
+      inline: false,
+    })
+  }
 
   if (opts?.contextSnippet) {
     welcomeEmbed.addFields({
@@ -338,44 +508,34 @@ export async function createTicketChannel(
     })
   }
 
-  const claimBtn = new ButtonBuilder()
-    .setCustomId(`${TICKET_PREFIX}:claim:${channel.id}`)
-    .setLabel('Claim')
-    .setStyle(ButtonStyle.Success)
-
-  const closeBtn = new ButtonBuilder()
-    .setCustomId(`${TICKET_PREFIX}:close:${channel.id}`)
-    .setLabel('Close Ticket')
-    .setStyle(ButtonStyle.Danger)
-
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    claimBtn,
-    closeBtn,
-  )
-
-  const welcomeMsg = await channel.send({
-    content: `${member}`,
-    embeds: [welcomeEmbed],
-    components: [row],
-  })
-
-  await channel.send({
-    content:
-      'Please describe your issue in detail. Include error messages, screenshots, your framework (ESX/QBCore), and artifact version if relevant.',
-  })
-
-  const rec: TicketRecord = {
+  const tempRec: TicketRecord = {
     id: numericId,
     channelId: channel.id,
     guildId: guild.id,
     userId: member.id,
     userTag: member.user.tag,
     reason,
+    workflowStatus: initialWorkflow,
     openedAt,
     status: 'open',
+    staffEngaged: false,
+  }
+
+  const welcomeMsg = await channel.send({
+    content: `${member}`,
+    embeds: [welcomeEmbed],
+    components: buildTicketWelcomeComponents(channel.id, tempRec),
+  })
+
+  await channel.send({
+    content:
+      '**Next step:** Describe your issue below. Include **error text**, **screenshots**, **framework** (ESX / QBCore / standalone), and **resource name** if it helps us reproduce the problem.',
+  })
+
+  const rec: TicketRecord = {
+    ...tempRec,
     welcomeMessageId: welcomeMsg.id,
     lastUserMessageAt: openedAt,
-    staffEngaged: false,
   }
   await saveTicket(rec)
 
@@ -401,31 +561,81 @@ async function postStaffTicketLog(
 
     const title =
       kind === 'opened'
-        ? 'Ticket opened'
+        ? 'Support · Ticket opened'
         : kind === 'claimed'
-          ? 'Ticket claimed'
+          ? 'Support · Ticket claimed'
           : kind === 'closed'
-            ? 'Ticket closed'
+            ? 'Support · Ticket closed'
             : kind === 'reopened'
-              ? 'Ticket reopened'
-              : 'Ticket deleted'
+              ? 'Support · Ticket reopened'
+              : 'Support · Ticket deleted'
 
-    const embed = ndEmbed()
+    const embed = ndTicketEmbedStaff()
       .setTitle(title)
       .addFields(
-        { name: 'Ticket', value: `#${padId(ticket.id)}`, inline: true },
-        { name: 'User', value: `${ticket.userTag} (\`${ticket.userId}\`)`, inline: true },
-        { name: 'Reason', value: ticket.reason.slice(0, 1024), inline: false },
+        {
+          name: 'Ticket ID',
+          value: `\`#${padId(ticket.id)}\``,
+          inline: true,
+        },
+        {
+          name: 'Requester',
+          value: `${ticket.userTag} · \`${ticket.userId}\``,
+          inline: true,
+        },
+        { name: 'Category', value: ticket.reason.slice(0, 1024), inline: false },
       )
 
-    if (ticket.claimedByTag) {
+    if (ticket.workflowStatus) {
+      embed.addFields({
+        name: 'Workflow status',
+        value: ticket.workflowStatus.slice(0, 1024),
+        inline: true,
+      })
+    }
+
+    if (ticket.claimedByTag && kind !== 'closed') {
       embed.addFields({
         name: 'Claimed by',
         value: ticket.claimedByTag,
         inline: true,
       })
     }
-    if (jump) embed.setDescription(`[Open ticket](${jump})`)
+    if (jump) embed.setDescription(`[Open ticket channel](${jump})`)
+
+    if (kind === 'closed' && ticket.closedAt) {
+      const dur = formatDuration(ticket.closedAt - ticket.openedAt)
+      embed.addFields(
+        { name: 'Closed by', value: ticket.closedByTag ?? '—', inline: true },
+        { name: 'Duration', value: dur, inline: true },
+        {
+          name: 'Logged messages',
+          value: String(ticket.messageCount ?? '—'),
+          inline: true,
+        },
+      )
+      if (ticket.claimedByTag) {
+        embed.addFields({
+          name: 'Claimed by',
+          value: ticket.claimedByTag,
+          inline: true,
+        })
+      }
+      if (ticket.closeReason) {
+        embed.addFields({
+          name: 'Staff notes',
+          value: ticket.closeReason.slice(0, 1024),
+          inline: false,
+        })
+      }
+      embed.setFooter({
+        text: !ticketTranscriptEnabled
+          ? `${TICKET_FOOTER_SUPPORT} · Transcripts off`
+          : ticketTranscriptHtmlEnabled
+            ? `${TICKET_FOOTER_SUPPORT} · Files: .txt + .html in ticket channel`
+            : `${TICKET_FOOTER_SUPPORT} · File: .txt in ticket channel`,
+      })
+    }
 
     if (ticket.logMessageId) {
       try {
@@ -462,11 +672,18 @@ export async function tryHandleTicketSystem(
   if (!ticketSystemEnabled) return false
 
   if (interaction.isStringSelectMenu()) {
+    if (interaction.customId.startsWith(`${TICKET_PREFIX}:workflow:`)) {
+      const channelId = interaction.customId.slice(
+        `${TICKET_PREFIX}:workflow:`.length,
+      )
+      await handleWorkflowStatus(interaction, channelId)
+      return true
+    }
     if (interaction.customId !== `${TICKET_PREFIX}:reason`) return false
     const reason = interaction.values[0] ?? 'Other'
     pendingReason.set(interaction.user.id, { reason, at: Date.now() })
     await interaction.reply({
-      content: 'Category selected. Click **Open Ticket**.',
+      content: 'Category saved. Now tap **Open Ticket** to create your private channel.',
       ephemeral: true,
     })
     return true
@@ -506,7 +723,7 @@ export async function tryHandleTicketSystem(
     }
     if (parts[1] === 'delcancel') {
       await interaction
-        .update({ content: 'Delete cancelled.', components: [] })
+        .update({ content: 'Channel delete cancelled. Nothing was removed.', components: [] })
         .catch(() => {})
       return true
     }
@@ -530,7 +747,10 @@ export async function tryHandleTicketSystem(
 
 async function handleOpenButton(interaction: Interaction): Promise<void> {
   if (!interaction.isButton() || !interaction.guild) {
-    await interaction.reply({ content: 'Use this in the server.', ephemeral: true })
+    await interaction.reply({
+      content: 'Use the support panel in the **server**, not in DMs.',
+      ephemeral: true,
+    })
     return
   }
 
@@ -545,10 +765,78 @@ async function handleOpenButton(interaction: Interaction): Promise<void> {
   try {
     const member = await interaction.guild.members.fetch(interaction.user.id)
     const ch = await createTicketChannel(interaction.guild, member, reason)
-    await interaction.editReply(`Created ${ch}`)
+    await interaction.editReply({
+      content: `**Ticket created.** Continue in ${ch} — only you and staff can see it.`,
+    })
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e)
     await interaction.editReply({ content: err.slice(0, 2000) })
+  }
+}
+
+async function handleWorkflowStatus(
+  interaction: StringSelectMenuInteraction,
+  channelId: string,
+): Promise<void> {
+  if (!interaction.guild) {
+    await interaction.reply({
+      content: 'Use this in the **server**.',
+      ephemeral: true,
+    })
+    return
+  }
+  const member = await interaction.guild.members.fetch(interaction.user.id)
+  if (!isGuildMod(member)) {
+    await interaction.reply({
+      content: 'Only **staff** can update ticket status.',
+      ephemeral: true,
+    })
+    return
+  }
+
+  const ticket = await getTicketByChannel(channelId)
+  if (!ticket || ticket.status !== 'open') {
+    await interaction.reply({
+      content: 'This ticket is not open or could not be found.',
+      ephemeral: true,
+    })
+    return
+  }
+
+  await interaction.deferReply({ ephemeral: true })
+
+  const newStatus = interaction.values[0] ?? defaultWorkflowStatus()
+  await updateTicketPartial(channelId, {
+    workflowStatus: newStatus,
+    staffEngaged: true,
+  })
+
+  const t2 = (await getTicketByChannel(channelId))!
+  const ch = (await interaction.guild.channels
+    .fetch(channelId)
+    .catch(() => null)) as TextChannel | null
+  if (!ch?.isTextBased() || ch.isDMBased()) {
+    await interaction.editReply({
+      content: 'Could not load this channel.',
+    })
+    return
+  }
+
+  try {
+    await syncWelcomeMessageFromTicket(ch, t2)
+    await interaction.editReply({
+      content: `**Ticket status** updated to **${newStatus}**.`,
+    })
+    await postTicketWorkflowStaffLog(
+      interaction.client,
+      t2,
+      ch,
+      newStatus,
+      interaction.user.tag,
+    )
+  } catch (e) {
+    const err = e instanceof Error ? e.message : String(e)
+    await interaction.editReply({ content: err.slice(0, 500) })
   }
 }
 
@@ -560,7 +848,7 @@ async function handleClaim(
   const member = await interaction.guild.members.fetch(interaction.user.id)
   if (!isGuildMod(member)) {
     await interaction.reply({
-      content: 'Only staff can claim tickets.',
+      content: 'Only **Nightz staff** can claim tickets.',
       ephemeral: true,
     })
     return
@@ -568,57 +856,42 @@ async function handleClaim(
 
   const ticket = await getTicketByChannel(channelId)
   if (!ticket || ticket.status !== 'open') {
-    await interaction.reply({ content: 'Ticket not found or not open.', ephemeral: true })
+    await interaction.reply({
+      content: 'This ticket is missing or is no longer open.',
+      ephemeral: true,
+    })
     return
   }
 
   const ch = await interaction.guild.channels.fetch(channelId).catch(() => null)
   if (!ch?.isTextBased() || ch.isDMBased()) {
-    await interaction.reply({ content: 'Channel not found.', ephemeral: true })
+    await interaction.reply({
+      content: 'Could not load this channel. Try again or ask an admin.',
+      ephemeral: true,
+    })
     return
   }
 
   await interaction.deferUpdate()
 
+  const claimedStatus = pickClaimedWorkflowStatus()
   await updateTicketPartial(channelId, {
     claimedBy: interaction.user.id,
     claimedByTag: interaction.user.tag,
     staffEngaged: true,
+    workflowStatus: claimedStatus,
   })
 
   const t2 = (await getTicketByChannel(channelId))!
+  await syncWelcomeMessageFromTicket(ch as TextChannel, t2)
 
-  if (ticket.welcomeMessageId) {
-    try {
-      const msg = await ch.messages.fetch(ticket.welcomeMessageId)
-      const old = msg.embeds[0]
-        ? EmbedBuilder.from(msg.embeds[0])
-        : ndEmbed()
-      old.addFields({
-        name: 'Claimed by',
-        value: `${interaction.user} (\`${interaction.user.id}\`)`,
-        inline: true,
-      })
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`${TICKET_PREFIX}:claim:${channelId}`)
-          .setLabel('Claimed')
-          .setStyle(ButtonStyle.Success)
-          .setDisabled(true),
-        new ButtonBuilder()
-          .setCustomId(`${TICKET_PREFIX}:close:${channelId}`)
-          .setLabel('Close Ticket')
-          .setStyle(ButtonStyle.Danger),
-      )
-      await msg.edit({ embeds: [old], components: [row] })
-    } catch (e) {
-      console.warn('[tickets] claim edit failed:', e)
-    }
-  }
-
-  await ch.send(
-    `This ticket has been claimed by **${interaction.user.tag}**.`,
-  )
+  await ch.send({
+    embeds: [
+      ndTicketEmbedStaff().setDescription(
+        `**Claimed** by ${interaction.user} · \`${interaction.user.tag}\` — staff is handling this ticket.`,
+      ),
+    ],
+  })
   await postStaffTicketLog(interaction.client, t2, 'claimed', ch as TextChannel)
 }
 
@@ -629,21 +902,27 @@ async function handleCloseButton(
   if (!interaction.isButton() || !interaction.guild) return
   const ticket = await getTicketByChannel(channelId)
   if (!ticket) {
-    await interaction.reply({ content: 'Not a ticket channel.', ephemeral: true })
+    await interaction.reply({
+      content: 'This channel is not linked to a support ticket.',
+      ephemeral: true,
+    })
     return
   }
   if (!canManageTicket(interaction, ticket)) {
-    await interaction.reply({ content: 'You cannot close this ticket.', ephemeral: true })
+    await interaction.reply({
+      content: 'You are not allowed to close this ticket (must be the opener or staff).',
+      ephemeral: true,
+    })
     return
   }
 
   const modal = new ModalBuilder()
     .setCustomId(`${TICKET_PREFIX}:close_modal:${channelId}`)
-    .setTitle('Close ticket')
+    .setTitle('Close support ticket')
 
   const input = new TextInputBuilder()
     .setCustomId('close_notes')
-    .setLabel('Reason or notes (optional)')
+    .setLabel('Staff notes (optional, shown in log)')
     .setStyle(TextInputStyle.Paragraph)
     .setRequired(false)
     .setMaxLength(1000)
@@ -663,13 +942,16 @@ async function handleCloseModal(
   const ticket = await getTicketByChannel(channelId)
   if (!ticket || ticket.status !== 'open') {
     await interaction.reply({
-      content: 'Ticket not open.',
+      content: 'This ticket is already closed or no longer exists.',
       ephemeral: true,
     })
     return
   }
   if (!canManageTicket(interaction, ticket)) {
-    await interaction.reply({ content: 'Not allowed.', ephemeral: true })
+    await interaction.reply({
+      content: 'You cannot close this ticket.',
+      ephemeral: true,
+    })
     return
   }
 
@@ -682,7 +964,7 @@ async function handleCloseModal(
     .fetch(channelId)
     .catch(() => null)) as TextChannel | null
   if (!ch?.isTextBased()) {
-    await interaction.editReply('Channel missing.')
+    await interaction.editReply('Channel could not be loaded. Try again.')
     return
   }
 
@@ -694,7 +976,9 @@ async function handleCloseModal(
       interaction.user,
       notes,
     )
-    await interaction.editReply('Ticket closed.')
+    await interaction.editReply(
+      '**Ticket closed.** A summary and attachments were posted in this channel.',
+    )
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e)
     await interaction.editReply(err.slice(0, 500))
@@ -711,18 +995,42 @@ async function runCloseTicket(
   const closedId = TICKET_CLOSED_CATEGORY_ID
   if (!closedId) throw new Error('TICKET_CLOSED_CATEGORY_ID not set')
 
-  let buf: Buffer | null = null
+  const closedAt = Date.now()
   let msgCount = 0
+  let participantCount = 0
+  let transcriptFiles: AttachmentBuilder[] | undefined
+
   if (ticketTranscriptEnabled) {
-    const { buffer, count } = await buildTranscriptBuffer(channel, ticket)
-    buf = buffer
-    msgCount = count
+    const messages = await fetchTicketMessages(channel, ticketTranscriptMaxMessages)
+    msgCount = messages.length
+    participantCount = countUniqueAuthors(messages)
+    const meta = {
+      kind: 'close' as const,
+      closedAt,
+      closedByTag: closedBy.tag,
+      staffNotes: closeNotes,
+      messageCount: msgCount,
+      participantCount,
+    }
+    transcriptFiles = [
+      new AttachmentBuilder(buildTranscriptTxt(ticket, messages, meta), {
+        name: `transcript-${padId(ticket.id)}.txt`,
+      }),
+    ]
+    if (ticketTranscriptHtmlEnabled) {
+      transcriptFiles.push(
+        new AttachmentBuilder(
+          buildTranscriptHtml(channel.guild, channel, ticket, messages, meta),
+          { name: `transcript-${padId(ticket.id)}.html` },
+        ),
+      )
+    }
   } else {
     const msgs = await channel.messages.fetch({ limit: 100 })
     msgCount = msgs.size
+    participantCount = countUniqueAuthors([...msgs.values()])
   }
 
-  const closedAt = Date.now()
   await updateTicketPartial(channel.id, {
     status: 'closed',
     closedAt,
@@ -744,20 +1052,89 @@ async function runCloseTicket(
 
   const durationMs = closedAt - ticket.openedAt
   const durationStr = formatDuration(durationMs)
+  const guild = channel.guild
+  const channelJump = `https://discord.com/channels/${guild.id}/${channel.id}`
+  const icon = guild.iconURL({ size: 128 })
 
-  const closingEmbed = ndEmbed()
+  const transcriptHint = ticketTranscriptEnabled
+    ? ticketTranscriptHtmlEnabled
+      ? `**Attachments:** \`transcript-${padId(ticket.id)}.txt\` (plain log) and \`transcript-${padId(ticket.id)}.html\` (styled archive). Download or open in a browser.`
+      : `**Attachment:** \`transcript-${padId(ticket.id)}.txt\` — full message log.`
+    : '**Note:** Transcripts are turned off in bot settings (`TICKET_TRANSCRIPT_ENABLED=0`).'
+
+  const closingEmbed = ndTicketEmbedStaff()
     .setColor(0xed4245)
-    .setTitle(`Ticket #${padId(ticket.id)} closed`)
+    .setAuthor({
+      name: 'Nightz Network · Ticket closed',
+      iconURL: icon ?? undefined,
+    })
+    .setTitle(`Support Ticket #${padId(ticket.id)} — Closed`)
+    .setDescription(transcriptHint)
     .addFields(
-      { name: 'Closed by', value: closedBy.tag, inline: true },
       {
-        name: 'Notes',
-        value: closeNotes.slice(0, 1024) || '(none)',
+        name: 'Requester',
+        value: `<@${ticket.userId}> · \`${ticket.userId}\``,
+        inline: false,
+      },
+      {
+        name: 'Category',
+        value: ticket.reason.slice(0, 1024),
         inline: true,
       },
-      { name: 'Duration', value: durationStr, inline: true },
-      { name: 'Messages', value: String(msgCount), inline: true },
+      {
+        name: 'Workflow status',
+        value: ticket.workflowStatus ?? defaultWorkflowStatus(),
+        inline: true,
+      },
+      {
+        name: 'Channel',
+        value: `[Open channel](${channelJump})`,
+        inline: true,
+      },
+      {
+        name: 'Opened',
+        value: `<t:${Math.floor(ticket.openedAt / 1000)}:F>`,
+        inline: true,
+      },
+      {
+        name: 'Closed',
+        value: `<t:${Math.floor(closedAt / 1000)}:F>`,
+        inline: true,
+      },
+      {
+        name: 'Claimed by',
+        value: ticket.claimedByTag ?? '— *(unclaimed)*',
+        inline: true,
+      },
+      {
+        name: 'Closed by',
+        value: closedBy.tag,
+        inline: true,
+      },
+      {
+        name: 'Duration',
+        value: durationStr,
+        inline: true,
+      },
+      {
+        name: 'Messages logged',
+        value: String(msgCount),
+        inline: true,
+      },
+      {
+        name: 'Participants',
+        value: String(participantCount),
+        inline: true,
+      },
+      {
+        name: 'Staff notes',
+        value: closeNotes.slice(0, 1024) || '*(none)*',
+        inline: false,
+      },
     )
+    .setFooter({
+      text: `${TICKET_FOOTER_SUPPORT} · Reopen · Delete · Transcript (DM)`,
+    })
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -780,12 +1157,8 @@ async function runCloseTicket(
     files?: AttachmentBuilder[]
   } = { embeds: [closingEmbed], components: [row] }
 
-  if (buf && ticketTranscriptEnabled) {
-    payload.files = [
-      new AttachmentBuilder(buf, {
-        name: `transcript-${padId(ticket.id)}.txt`,
-      }),
-    ]
+  if (transcriptFiles?.length) {
+    payload.files = transcriptFiles
   }
 
   await channel.send(payload)
@@ -795,9 +1168,25 @@ async function runCloseTicket(
   if (ticketDmOnClose) {
     try {
       const u = await client.users.fetch(ticket.userId)
-      await u.send({
-        content: `Your support ticket #${padId(ticket.id)} was closed by **${closedBy.tag}**.${closeNotes ? ` Notes: ${closeNotes.slice(0, 1500)}` : ''}`,
-      })
+      const dmEmbed = ndTicketEmbedStaff()
+        .setColor(0xed4245)
+        .setTitle(`Support Ticket #${padId(ticket.id)} — Closed`)
+        .setDescription(
+          `Thanks for contacting **${guild.name}**. This ticket was closed by **${closedBy.tag}**.`,
+        )
+        .addFields(
+          { name: 'Category', value: ticket.reason.slice(0, 256), inline: true },
+          { name: 'Duration', value: durationStr, inline: true },
+          {
+            name: 'Staff notes',
+            value: closeNotes.slice(0, 1024) || '*(none)*',
+            inline: false,
+          },
+        )
+        .setFooter({
+          text: `${TICKET_FOOTER_SUPPORT} · Need more help? Open a new ticket from the server panel.`,
+        })
+      await u.send({ embeds: [dmEmbed] })
     } catch {
       /* DMs closed */
     }
@@ -815,47 +1204,6 @@ function formatDuration(ms: number): string {
   return `${s}s`
 }
 
-async function buildTranscriptBuffer(
-  channel: TextChannel,
-  ticket: TicketRecord,
-): Promise<{ buffer: Buffer; count: number }> {
-  const header: string[] = [
-    `Ticket #${padId(ticket.id)}`,
-    `User: ${ticket.userTag} (${ticket.userId})`,
-    `Reason: ${ticket.reason}`,
-    `Opened: ${new Date(ticket.openedAt).toISOString()}`,
-    '---',
-  ]
-
-  const collected: Message[] = []
-  let lastId: string | undefined
-  for (let i = 0; i < 6; i++) {
-    const batch = await channel.messages.fetch({ limit: 100, before: lastId })
-    if (batch.size === 0) break
-    collected.push(...batch.values())
-    lastId = batch.last()?.id
-    if (batch.size < 100) break
-  }
-
-  collected.sort((a, b) => a.createdTimestamp - b.createdTimestamp)
-
-  const lines: string[] = [...header]
-  for (const m of collected) {
-    const ts = new Date(m.createdTimestamp).toISOString()
-    const body = m.content || '(no text)'
-    const att =
-      m.attachments.size > 0
-        ? ` [attachments: ${[...m.attachments.values()].map((a) => a.url).join(', ')}]`
-        : ''
-    lines.push(`[${ts}] ${m.author.tag}: ${body}${att}`)
-  }
-
-  return {
-    buffer: Buffer.from(lines.join('\n'), 'utf8'),
-    count: collected.length,
-  }
-}
-
 async function handleReopen(
   interaction: Interaction,
   channelId: string,
@@ -863,13 +1211,19 @@ async function handleReopen(
   if (!interaction.isButton() || !interaction.guild) return
   const member = await interaction.guild.members.fetch(interaction.user.id)
   if (!isGuildMod(member)) {
-    await interaction.reply({ content: 'Staff only.', ephemeral: true })
+    await interaction.reply({
+      content: 'Only **staff** can reopen tickets.',
+      ephemeral: true,
+    })
     return
   }
 
   const ticket = await getTicketByChannel(channelId)
   if (!ticket || ticket.status !== 'closed') {
-    await interaction.reply({ content: 'Ticket not in closed state.', ephemeral: true })
+    await interaction.reply({
+      content: 'This ticket is not closed or could not be found.',
+      ephemeral: true,
+    })
     return
   }
 
@@ -877,7 +1231,10 @@ async function handleReopen(
     .fetch(channelId)
     .catch(() => null)) as TextChannel | null
   if (!ch?.isTextBased()) {
-    await interaction.reply({ content: 'Channel not found.', ephemeral: true })
+    await interaction.reply({
+      content: 'Could not load the channel. Try again.',
+      ephemeral: true,
+    })
     return
   }
 
@@ -902,32 +1259,21 @@ async function handleReopen(
     claimedBy: undefined,
     claimedByTag: undefined,
     staffEngaged: false,
+    workflowStatus: defaultWorkflowStatus(),
   })
 
-  const claimBtn = new ButtonBuilder()
-    .setCustomId(`${TICKET_PREFIX}:claim:${channelId}`)
-    .setLabel('Claim')
-    .setStyle(ButtonStyle.Success)
-  const closeBtn = new ButtonBuilder()
-    .setCustomId(`${TICKET_PREFIX}:close:${channelId}`)
-    .setLabel('Close Ticket')
-    .setStyle(ButtonStyle.Danger)
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    claimBtn,
-    closeBtn,
-  )
+  const tFresh = (await getTicketByChannel(channelId))!
+  await syncWelcomeMessageFromTicket(ch, tFresh)
 
   await ch.send({
     embeds: [
-      ndEmbed().setDescription(
-        `Ticket reopened by **${interaction.user.tag}**.`,
+      ndTicketEmbedStaff().setDescription(
+        `**Support Ticket #${padId(ticket.id)} — Reopened** by ${interaction.user} · \`${interaction.user.tag}\`.\nThe requester can send messages again. **Status** was reset to **${defaultWorkflowStatus()}** on the pinned welcome message — use **Claim** or the status menu as needed.`,
       ),
     ],
-    components: [row],
   })
 
-  const t2 = (await getTicketByChannel(channelId))!
-  await postStaffTicketLog(interaction.client, t2, 'reopened', ch)
+  await postStaffTicketLog(interaction.client, tFresh, 'reopened', ch)
 }
 
 async function handleDeletePrompt(
@@ -937,13 +1283,19 @@ async function handleDeletePrompt(
   if (!interaction.isButton() || !interaction.guild) return
   const member = await interaction.guild.members.fetch(interaction.user.id)
   if (!isGuildMod(member)) {
-    await interaction.reply({ content: 'Staff only.', ephemeral: true })
+    await interaction.reply({
+      content: 'Only **staff** can delete ticket channels.',
+      ephemeral: true,
+    })
     return
   }
 
-  const embed = ndEmbed()
-    .setTitle('Delete ticket channel?')
-    .setDescription('This cannot be undone. All messages will be lost.')
+  const embed = ndTicketEmbedStaff()
+    .setColor(0xed4245)
+    .setTitle('Delete this ticket channel?')
+    .setDescription(
+      '**Permanent.** The channel and all messages will be removed. Download a transcript first if you still need it.',
+    )
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -966,7 +1318,10 @@ async function handleDeleteConfirm(
   if (!interaction.isButton() || !interaction.guild) return
   const member = await interaction.guild.members.fetch(interaction.user.id)
   if (!isGuildMod(member)) {
-    await interaction.reply({ content: 'Staff only.', ephemeral: true })
+    await interaction.reply({
+      content: 'Only **staff** can delete ticket channels.',
+      ephemeral: true,
+    })
     return
   }
 
@@ -990,10 +1345,10 @@ async function handleDeleteConfirm(
         if (logCh?.isTextBased() && !logCh.isDMBased()) {
           await logCh.send({
             embeds: [
-              ndEmbed()
-                .setTitle('Ticket channel deleted')
+              ndTicketEmbedStaff()
+                .setTitle('Support · Channel deleted')
                 .setDescription(
-                  `Ticket #${padId(ticket.id)} for ${ticket.userTag} removed by **${interaction.user.tag}**.`,
+                  `**Ticket \`#${padId(ticket.id)}\`** for **${ticket.userTag}** was **permanently deleted** by ${interaction.user.tag}.`,
                 ),
             ],
           })
@@ -1012,7 +1367,10 @@ async function handleTranscriptDm(
   if (!interaction.isButton() || !interaction.guild) return
   const ticket = await getTicketByChannel(channelId)
   if (!ticket) {
-    await interaction.reply({ content: 'Not a ticket.', ephemeral: true })
+    await interaction.reply({
+      content: 'This is not a valid support ticket.',
+      ephemeral: true,
+    })
     return
   }
 
@@ -1023,7 +1381,10 @@ async function handleTranscriptDm(
     ))
 
   if (!allowed) {
-    await interaction.reply({ content: 'Not allowed.', ephemeral: true })
+    await interaction.reply({
+      content: 'Only the **ticket opener** or **staff** can request a transcript.',
+      ephemeral: true,
+    })
     return
   }
 
@@ -1031,25 +1392,53 @@ async function handleTranscriptDm(
     .fetch(channelId)
     .catch(() => null)) as TextChannel | null
   if (!ch?.isTextBased()) {
-    await interaction.reply({ content: 'Channel not found.', ephemeral: true })
+    await interaction.reply({
+      content: 'Could not load this channel.',
+      ephemeral: true,
+    })
     return
   }
 
   await interaction.deferReply({ ephemeral: true })
 
-  const { buffer } = await buildTranscriptBuffer(ch, ticket)
+  if (!ticketTranscriptEnabled) {
+    await interaction.editReply('Transcripts are disabled in bot settings for this bot.')
+    return
+  }
+
+  const messages = await fetchTicketMessages(ch, ticketTranscriptMaxMessages)
+  const participantCount = countUniqueAuthors(messages)
+  const meta = {
+    kind: 'manual' as const,
+    exportedAt: Date.now(),
+    exportedByTag: interaction.user.tag,
+    messageCount: messages.length,
+    participantCount,
+  }
+  const files = [
+    new AttachmentBuilder(buildTranscriptTxt(ticket, messages, meta), {
+      name: `transcript-${padId(ticket.id)}.txt`,
+    }),
+  ]
+  if (ticketTranscriptHtmlEnabled) {
+    files.push(
+      new AttachmentBuilder(
+        buildTranscriptHtml(interaction.guild!, ch, ticket, messages, meta),
+        { name: `transcript-${padId(ticket.id)}.html` },
+      ),
+    )
+  }
+
   try {
-    await interaction.user.send({
-      files: [
-        new AttachmentBuilder(buffer, {
-          name: `transcript-${padId(ticket.id)}.txt`,
-        }),
-      ],
-    })
-    await interaction.editReply('Sent transcript to your DMs.')
+    await interaction.user.send({ files })
+    await interaction.editReply(
+      ticketTranscriptHtmlEnabled
+        ? '**Done.** Check your DMs for **.txt** and **.html** transcript files.'
+        : '**Done.** Check your DMs for the **.txt** transcript file.',
+    )
   } catch {
     await interaction.editReply(
-      'Could not DM you. Enable DMs from server members.',
+      'Could not DM you. Enable **Allow direct messages from server members** for this server, then try again.',
     )
   }
 }
@@ -1122,7 +1511,7 @@ export function startTicketAutoCloseLoop(client: Client): void {
         await updateTicketPartial(ticket.channelId, { warnedAutoCloseAt: now })
         await ch
           .send(
-            `This ticket will be closed automatically in ${ticketAutoCloseGraceHours} hours if there is no response from the ticket opener.`,
+            `**Auto-close:** This ticket will be closed in **${ticketAutoCloseGraceHours} hours** if the **ticket opener** does not reply.`,
           )
           .catch(() => {})
         continue
@@ -1152,27 +1541,30 @@ export function startTicketAutoCloseLoop(client: Client): void {
 
 export async function formatOpenTicketsList(guildId: string): Promise<string> {
   const open = await listOpenTickets(guildId)
-  if (open.length === 0) return 'No open tickets.'
+  if (open.length === 0) return '**No open tickets** in this server right now.'
   const lines = open
     .sort((a, b) => a.openedAt - b.openedAt)
     .map((t) => {
       const age = formatDuration(Date.now() - t.openedAt)
-      const claim = t.claimedByTag ? `claimed by ${t.claimedByTag}` : 'unclaimed'
-      return `- #${padId(t.id)} <#${t.channelId}> ${t.userTag} ${t.reason.slice(0, 40)} (${age}, ${claim})`
+      const claim = t.claimedByTag
+        ? `claimed · **${t.claimedByTag}**`
+        : '*unclaimed*'
+      const wf = t.workflowStatus ?? 'Open'
+      return `**#${padId(t.id)}** · <#${t.channelId}> · ${t.userTag} · ${t.reason.slice(0, 36)}${t.reason.length > 36 ? '…' : ''}\n · **${wf}** · ${claim} · open ${age}`
     })
-  return lines.join('\n').slice(0, 3500)
+  return lines.join('\n\n').slice(0, 3500)
 }
 
 export async function formatTicketStatsLine(guildId: string): Promise<string> {
   const s = await getTicketStats(guildId)
   const avgMin =
     s.avgResolutionMs != null
-      ? `${Math.round(s.avgResolutionMs / 60000)} min avg resolution`
-      : 'n/a'
+      ? `~**${Math.round(s.avgResolutionMs / 60000)}** min avg. resolution`
+      : '*n/a*'
   const reasons = Object.entries(s.byReason)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join(', ')
-  return `Open: ${s.totalOpen} | Closed (recorded): ${s.totalClosed} | ${avgMin}${reasons ? ` | By reason: ${reasons}` : ''}`
+    .map(([k, v]) => `**${k}:** ${v}`)
+    .join(' · ')
+  return `**Open:** ${s.totalOpen} · **Closed (tracked):** ${s.totalClosed} · ${avgMin}${reasons ? `\n**By category:** ${reasons}` : ''}`
 }
 
 export async function ticketAddUser(
@@ -1181,9 +1573,13 @@ export async function ticketAddUser(
   actor: GuildMember,
   targetId: string,
 ): Promise<string> {
-  if (!isGuildMod(actor)) return 'Moderator only.'
+  if (!isGuildMod(actor)) {
+    return '**Staff only** — you need a moderator role to add people to tickets.'
+  }
   const ticket = await getTicketByChannel(channel.id)
-  if (!ticket || ticket.status !== 'open') return 'Use this in an open ticket channel.'
+  if (!ticket || ticket.status !== 'open') {
+    return 'Run **`nd!adduser`** only in an **open** support ticket channel.'
+  }
   await channel.permissionOverwrites.create(targetId, {
     ViewChannel: true,
     SendMessages: true,
@@ -1191,7 +1587,7 @@ export async function ticketAddUser(
     AttachFiles: true,
     EmbedLinks: true,
   })
-  return `Added <@${targetId}> to this ticket.`
+  return `**Done.** <@${targetId}> can now see and send messages in this ticket.`
 }
 
 export async function ticketRemoveUser(
@@ -1200,10 +1596,16 @@ export async function ticketRemoveUser(
   actor: GuildMember,
   targetId: string,
 ): Promise<string> {
-  if (!isGuildMod(actor)) return 'Moderator only.'
+  if (!isGuildMod(actor)) {
+    return '**Staff only** — you need a moderator role to remove people from tickets.'
+  }
   const ticket = await getTicketByChannel(channel.id)
-  if (!ticket || ticket.status !== 'open') return 'Use this in an open ticket channel.'
-  if (targetId === ticket.userId) return 'Cannot remove the ticket opener.'
+  if (!ticket || ticket.status !== 'open') {
+    return 'Run **`nd!removeuser`** only in an **open** support ticket channel.'
+  }
+  if (targetId === ticket.userId) {
+    return 'You **cannot remove** the **ticket opener** from their own ticket.'
+  }
   await channel.permissionOverwrites.delete(targetId).catch(() => {})
-  return `Removed <@${targetId}> from this ticket.`
+  return `**Done.** <@${targetId}> no longer has access to this ticket channel.`
 }

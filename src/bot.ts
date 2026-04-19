@@ -40,7 +40,9 @@ import {
 } from './handlers/prefix-extra.ts'
 import { registerRaidTracking, startAiAutomodProcessor } from './services/ai-automod.ts'
 import { ensureDataDir } from './services/data-store.ts'
+import { registerPollMonitor } from './services/poll-monitor.ts'
 import { deployTicketPanel, startTicketAutoCloseLoop } from './services/ticket-system.ts'
+import { autoJoinOnReady, registerVoiceEvents } from './services/voice-tts.ts'
 
 const client = new Client({
   intents: [
@@ -65,6 +67,8 @@ registerAuditHandler(client)
 registerReactionRoles(client)
 registerTempVc(client)
 registerAiFeedbackHandler(client)
+registerVoiceEvents(client)
+registerPollMonitor(client)
 
 client.once(Events.ClientReady, async (c) => {
   await ensureDataDir()
@@ -119,6 +123,7 @@ client.once(Events.ClientReady, async (c) => {
   startScheduleLoop(client)
   await deployTicketPanel(c)
   startTicketAutoCloseLoop(c)
+  await autoJoinOnReady(c)
 })
 
 client.login(TOKEN).catch((e) => {

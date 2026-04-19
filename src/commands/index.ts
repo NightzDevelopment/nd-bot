@@ -11,8 +11,20 @@ import {
   tryHandleTicketSystem,
 } from '../services/ticket-system.ts'
 import {
+  isInVoice,
+  joinChannel,
+  leaveVoice,
+  speakText,
+} from '../services/voice-tts.ts'
+import { voiceTtsEnabled } from '../config.ts'
+import {
+  MODEL_ID,
   SYSTEM_PROMPT_DM,
   SYSTEM_PROMPT_GUILD,
+  geminiFallbackModels,
+  openaiEnabled,
+  openaiFallbackModels,
+  openaiModel,
   WELCOME_TICKET_CHANNEL_ID,
   ticketSystemEnabled,
   aiMonitoringNotice,
@@ -29,18 +41,31 @@ import { takeReportSlot } from '../utils/report-cooldown.ts'
 import { consumeTranslateSlot } from '../handlers/prefix.ts'
 import { chunkText } from '../utils/chunk.ts'
 import { ndEmbed, refusalEmbed } from '../utils/embed.ts'
+import { buildServerInfoEmbed } from '../utils/server-info.ts'
+import { buildUserInfoEmbed } from '../utils/user-info.ts'
 import { buildAugmentedUserContentAsync } from '../services/context-bundle.ts'
-import { generateOnce, getModel } from '../services/gemini.ts'
+import {
+  checkOpenAiAvailability,
+  generateOnce,
+  getModel,
+  getPublicAiErrorMessage,
+} from '../services/gemini.ts'
 import { searchFaq } from '../services/faq.ts'
 import { clearChannel } from '../services/memory.ts'
 import { containsProfanity } from '../services/profanity.ts'
 import { addWarning } from '../services/moderation.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { slashCommands } from './definitions.ts'
-import { BOT_HELP_DESCRIPTION } from '../utils/help-text.ts'
+import { buildHelpEmbed } from '../utils/help-text.ts'
 import { isComingSoonTopic, randomComingSoonReply } from '../utils/coming-soon.ts'
 import { reportUserReport } from '../services/logging.ts'
 import { listOpenTickets } from '../services/ticket-store.ts'
+import {
+  getAiProviderState,
+  setAiProviderMode,
+  type AiProviderMode,
+} from '../services/ai-provider.ts'
+import { handlePollsSlash } from '../services/polls-slash.ts'
 
 const modelDm = getModel(SYSTEM_PROMPT_DM)
 const modelGuild = getModel(SYSTEM_PROMPT_GUILD)
@@ -73,11 +98,13 @@ export function registerInteractionHandler(client: Client): void {
     const { commandName, options } = interaction
 
     try {
+      if (commandName === 'polls') {
+        await handlePollsSlash(interaction)
+        return
+      }
+
       if (commandName === 'help') {
-        const embed = ndEmbed()
-          .setTitle('[ND] Nightz Development Bot')
-          .setDescription(BOT_HELP_DESCRIPTION)
-        await interaction.reply({ embeds: [embed], ephemeral: true })
+        await interaction.reply({ embeds: [buildHelpEmbed()], ephemeral: true })
         return
       }
 
@@ -113,19 +140,7 @@ export function registerInteractionHandler(client: Client): void {
           await interaction.reply({ content: 'Use in a server.', ephemeral: true })
           return
         }
-        const g = interaction.guild
-        const embed = ndEmbed()
-          .setTitle(g.name)
-          .setThumbnail(g.iconURL({ size: 256 }))
-          .addFields(
-            { name: 'Members', value: String(g.memberCount), inline: true },
-            {
-              name: 'Created',
-              value: `<t:${Math.floor(g.createdTimestamp / 1000)}:R>`,
-              inline: true,
-            },
-            { name: 'Boost', value: String(g.premiumTier), inline: true },
-          )
+        const embed = await buildServerInfoEmbed(interaction.guild)
         await interaction.reply({ embeds: [embed], ephemeral: true })
         return
       }
@@ -133,20 +148,13 @@ export function registerInteractionHandler(client: Client): void {
       if (commandName === 'userinfo') {
         const user =
           options.getUser('user') ?? interaction.user
-        const member = interaction.guild?.members.cache.get(user.id)
-        const embed = ndEmbed()
-          .setTitle(user.tag)
-          .setThumbnail(user.displayAvatarURL({ size: 256 }))
-          .addFields(
-            { name: 'ID', value: user.id, inline: true },
-            {
-              name: 'Joined',
-              value: member
-                ? `<t:${Math.floor(member.joinedTimestamp! / 1000)}:R>`
-                : 'N/A',
-              inline: true,
-            },
+        let member = interaction.guild?.members.cache.get(user.id) ?? null
+        if (interaction.guild) {
+          member = await interaction.guild.members.fetch(user.id).catch(
+            () => member,
           )
+        }
+        const embed = await buildUserInfoEmbed(user, member)
         await interaction.reply({ embeds: [embed], ephemeral: true })
         return
       }
@@ -231,11 +239,11 @@ export function registerInteractionHandler(client: Client): void {
 
       if (commandName === 'ticket') {
         let line = WELCOME_TICKET_CHANNEL_ID
-          ? `Open a ticket from <#${WELCOME_TICKET_CHANNEL_ID}> (select a reason, then **Open Ticket**).`
-          : 'Ask staff where the ticket channel is for this server.'
+          ? `**Open a ticket:** go to <#${WELCOME_TICKET_CHANNEL_ID}> → pick a **category** → **Open Ticket**.`
+          : '**Support:** ask staff where the ticket panel is for this server.'
         if (ticketSystemEnabled && interaction.guildId) {
           const n = (await listOpenTickets(interaction.guildId)).length
-          line += `\n\nOpen tickets in this server: **${n}**`
+          line += `\n\n**Open tickets (queue):** ${n}`
         }
         await interaction.reply({ content: line.slice(0, 2000), ephemeral: true })
         return
@@ -462,6 +470,142 @@ export function registerInteractionHandler(client: Client): void {
         return
       }
 
+      if (commandName === 'ai_model') {
+        const selected = options.getString('provider') as AiProviderMode | null
+        const state = await getAiProviderState()
+        const openaiHealth = openaiEnabled
+          ? await checkOpenAiAvailability()
+          : {
+              ok: false,
+              reason: 'disabled' as const,
+              detail: 'OpenAI is disabled (`OPENAI_API_KEY` is not set).',
+            }
+        const available = [
+          `Current mode: **${state.mode}**`,
+          `Gemini primary: \`${MODEL_ID}\``,
+          `Gemini fallbacks: ${geminiFallbackModels.length ? geminiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+          `OpenAI provider: ${openaiEnabled ? `enabled (\`${openaiModel}\`)` : 'disabled'}`,
+          `OpenAI fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+          `OpenAI status: ${openaiHealth.ok ? 'online' : 'offline'}`,
+          `OpenAI details: ${openaiHealth.detail}`,
+        ].join('\n')
+
+        if (!selected) {
+          await interaction.reply({ content: available.slice(0, 1900), ephemeral: true })
+          return
+        }
+        if (!interaction.guild) {
+          await interaction.reply({
+            content: 'Use this command in a server (moderator only).',
+            ephemeral: true,
+          })
+          return
+        }
+        const m = await interaction.guild.members.fetch(interaction.user.id)
+        if (!isGuildMod(m)) {
+          await interaction.reply({ content: 'Moderator only.', ephemeral: true })
+          return
+        }
+        if (selected === 'openai' && !openaiEnabled) {
+          await interaction.reply({
+            content: 'OpenAI provider is disabled in `.env` (`OPENAI_API_KEY` not set).',
+            ephemeral: true,
+          })
+          return
+        }
+        if (selected === 'openai' && !openaiHealth.ok) {
+          await interaction.reply({
+            content: `Cannot switch to **openai** right now.\n${openaiHealth.detail}`.slice(
+              0,
+              1900,
+            ),
+            ephemeral: true,
+          })
+          return
+        }
+        const next = await setAiProviderMode(selected, interaction.user.id)
+        const after = [
+          `Current mode: **${next.mode}**`,
+          `Gemini primary: \`${MODEL_ID}\``,
+          `Gemini fallbacks: ${geminiFallbackModels.length ? geminiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+          `OpenAI provider: ${openaiEnabled ? `enabled (\`${openaiModel}\`)` : 'disabled'}`,
+          `OpenAI fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+        ].join('\n')
+        await interaction.reply({
+          content: `AI provider mode set to **${selected}**.\n\n${after}`.slice(
+            0,
+            1900,
+          ),
+          ephemeral: true,
+        })
+        return
+      }
+
+      if (commandName === 'join') {
+        if (!voiceTtsEnabled) {
+          await interaction.reply({ content: 'Voice TTS is not enabled.', ephemeral: true })
+          return
+        }
+        if (!interaction.guild) {
+          await interaction.reply({ content: 'Use in a server.', ephemeral: true })
+          return
+        }
+        const member = await interaction.guild.members.fetch(interaction.user.id)
+        const vc = member.voice.channel
+        if (!vc) {
+          await interaction.reply({
+            content: 'Join a voice channel first.',
+            ephemeral: true,
+          })
+          return
+        }
+        await interaction.deferReply({ ephemeral: true })
+        try {
+          await joinChannel(vc, interaction.client)
+          await interaction.editReply(`Joined ${vc.name}.`)
+        } catch (e) {
+          const err = e instanceof Error ? e.message : String(e)
+          await interaction.editReply(err.slice(0, 500))
+        }
+        return
+      }
+
+      if (commandName === 'leave') {
+        if (!interaction.guild) {
+          await interaction.reply({ content: 'Use in a server.', ephemeral: true })
+          return
+        }
+        if (!isInVoice(interaction.guild.id)) {
+          await interaction.reply({ content: 'Not in a voice channel.', ephemeral: true })
+          return
+        }
+        leaveVoice(interaction.guild.id)
+        await interaction.reply({ content: 'Left voice channel.', ephemeral: true })
+        return
+      }
+
+      if (commandName === 'say') {
+        if (!voiceTtsEnabled) {
+          await interaction.reply({ content: 'Voice TTS is not enabled.', ephemeral: true })
+          return
+        }
+        if (!interaction.guild || !isInVoice(interaction.guild.id)) {
+          await interaction.reply({
+            content: 'Bot is not in a voice channel. Use `/join` first.',
+            ephemeral: true,
+          })
+          return
+        }
+        const text = options.getString('text', true).trim()
+        if (!text) {
+          await interaction.reply({ content: 'Nothing to say.', ephemeral: true })
+          return
+        }
+        await interaction.reply({ content: `Speaking: ${text.slice(0, 100)}...`, ephemeral: true })
+        void speakText(interaction.guild.id, text)
+        return
+      }
+
       if (commandName === 'ask') {
         const question = options.getString('question', true).trim()
         if (containsProfanity(question)) {
@@ -502,10 +646,11 @@ export function registerInteractionHandler(client: Client): void {
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
       console.error('[interaction]', err)
+      const safe = await getPublicAiErrorMessage()
       if (interaction.deferred || interaction.replied) {
-        await interaction.editReply(`Error: ${err.slice(0, 500)}`).catch(() => {})
+        await interaction.editReply(safe).catch(() => {})
       } else {
-        await interaction.reply({ content: `Error: ${err.slice(0, 500)}`, ephemeral: true }).catch(() => {})
+        await interaction.reply({ content: safe, ephemeral: true }).catch(() => {})
       }
     }
   })

@@ -8,12 +8,17 @@ import {
   type TextChannel,
 } from 'discord.js'
 import {
+  MODEL_ID,
   SYSTEM_PROMPT_DM,
   SYSTEM_PROMPT_GUILD,
   WELCOME_TICKET_CHANNEL_ID,
   ticketSystemEnabled,
   aiMonitoringNotice,
   automodPublicBlurb,
+  geminiFallbackModels,
+  openaiEnabled,
+  openaiFallbackModels,
+  openaiModel,
   productAliasUrls,
   reportCooldownMs,
   reportMaxBodyLength,
@@ -24,7 +29,12 @@ import {
 import { chunkText } from '../utils/chunk.ts'
 import { ndEmbed, refusalEmbed } from '../utils/embed.ts'
 import { buildAugmentedUserContentAsync } from '../services/context-bundle.ts'
-import { generateOnce, getModel } from '../services/gemini.ts'
+import {
+  checkOpenAiAvailability,
+  generateOnce,
+  getModel,
+  getPublicAiErrorMessage,
+} from '../services/gemini.ts'
 import { searchFaq } from '../services/faq.ts'
 import { clearChannel } from '../services/memory.ts'
 import { containsProfanity } from '../services/profanity.ts'
@@ -40,7 +50,7 @@ import {
   cmdUnlock,
 } from '../services/mod-actions.ts'
 import { handleExtraPrefix } from './prefix-extra.ts'
-import { BOT_HELP_DESCRIPTION } from '../utils/help-text.ts'
+import { buildHelpEmbed } from '../utils/help-text.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { getEntriesLastMs } from '../services/analytics-store.ts'
 import { isComingSoonTopic, randomComingSoonReply } from '../utils/coming-soon.ts'
@@ -51,11 +61,23 @@ import { takeReportSlot } from '../utils/report-cooldown.ts'
 import { reportUserReport } from '../services/logging.ts'
 import { listOpenTickets } from '../services/ticket-store.ts'
 import {
+  isInVoice,
+  joinChannel,
+  leaveVoice,
+  speakText,
+} from '../services/voice-tts.ts'
+import { voiceTtsEnabled } from '../config.ts'
+import {
   formatOpenTicketsList,
   formatTicketStatsLine,
   ticketAddUser,
   ticketRemoveUser,
 } from '../services/ticket-system.ts'
+import {
+  getAiProviderState,
+  setAiProviderMode,
+  type AiProviderMode,
+} from '../services/ai-provider.ts'
 
 const PREFIX = 'nd!'
 
@@ -117,10 +139,70 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (extra) return
 
   if (cmd === 'help') {
-    const embed = ndEmbed()
-      .setTitle('[ND] Nightz Development Bot')
-      .setDescription(BOT_HELP_DESCRIPTION)
-    await msg.reply({ embeds: [embed] })
+    await msg.reply({ embeds: [buildHelpEmbed()] })
+    return
+  }
+
+  if (cmd === 'model' || cmd === 'aimodel' || cmd === 'aiprovider') {
+    const state = await getAiProviderState()
+    const openaiHealth = openaiEnabled
+      ? await checkOpenAiAvailability()
+      : {
+          ok: false,
+          reason: 'disabled' as const,
+          detail: 'OpenAI is disabled (`OPENAI_API_KEY` is not set).',
+        }
+    const details = [
+      `Current mode: **${state.mode}**`,
+      `Gemini primary: \`${MODEL_ID}\``,
+      `Gemini fallbacks: ${geminiFallbackModels.length ? geminiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+      `OpenAI provider: ${openaiEnabled ? `enabled (\`${openaiModel}\`)` : 'disabled'}`,
+      `OpenAI fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+      `OpenAI status: ${openaiHealth.ok ? 'online' : 'offline'}`,
+      `OpenAI details: ${openaiHealth.detail}`,
+    ].join('\n')
+
+    const wanted = args.split(/\s+/)[0]?.trim().toLowerCase()
+    if (!wanted) {
+      await msg.reply(details.slice(0, 1900))
+      return
+    }
+    if (!['auto', 'gemini', 'openai'].includes(wanted)) {
+      await msg.reply(
+        'Usage: `nd!model <auto|gemini|openai>` (or no arg to view current mode).',
+      )
+      return
+    }
+    if (!msg.guild) {
+      await msg.reply('Use this in a server (moderator only).')
+      return
+    }
+    const member = await guildMemberForModCheck(msg)
+    if (!member || !isGuildMod(member)) {
+      await msg.reply('Moderator only.')
+      return
+    }
+    if (wanted === 'openai' && !openaiEnabled) {
+      await msg.reply('OpenAI provider is disabled in `.env` (`OPENAI_API_KEY` not set).')
+      return
+    }
+    if (wanted === 'openai' && !openaiHealth.ok) {
+      await msg.reply(
+        `Cannot switch to **openai** right now.\n${openaiHealth.detail}`.slice(0, 1900),
+      )
+      return
+    }
+    const next = await setAiProviderMode(wanted as AiProviderMode, msg.author.id)
+    const after = [
+      `Current mode: **${next.mode}**`,
+      `Gemini primary: \`${MODEL_ID}\``,
+      `Gemini fallbacks: ${geminiFallbackModels.length ? geminiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+      `OpenAI provider: ${openaiEnabled ? `enabled (\`${openaiModel}\`)` : 'disabled'}`,
+      `OpenAI fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+    ].join('\n')
+    await msg.reply(
+      `AI provider mode set to **${next.mode}**.\n\n${after}`.slice(0, 1900),
+    )
     return
   }
 
@@ -170,7 +252,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       await msg.reply(out.slice(0, 3900))
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
-      await msg.reply(`Error: ${err.slice(0, 350)}`).catch(() => {})
+      console.error('[prefix summarize]', err)
+      await msg.reply(await getPublicAiErrorMessage()).catch(() => {})
     }
     return
   }
@@ -200,7 +283,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       await msg.reply(out.slice(0, 3900))
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
-      await msg.reply(`Error: ${err.slice(0, 350)}`).catch(() => {})
+      console.error('[prefix digest]', err)
+      await msg.reply(await getPublicAiErrorMessage()).catch(() => {})
     }
     return
   }
@@ -223,7 +307,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       await msg.reply(`**English:** ${out.slice(0, 3800)}`)
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
-      await msg.reply(`Error: ${err.slice(0, 350)}`).catch(() => {})
+      console.error('[prefix translate]', err)
+      await msg.reply(await getPublicAiErrorMessage()).catch(() => {})
     }
     return
   }
@@ -259,8 +344,65 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       }
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
-      await msg.reply(`Error: ${err.slice(0, 350)}`).catch(() => {})
+      console.error('[prefix ask]', err)
+      await msg.reply(await getPublicAiErrorMessage()).catch(() => {})
     }
+    return
+  }
+
+  if (cmd === 'join' || cmd === 'vc') {
+    if (!voiceTtsEnabled) {
+      await msg.reply('Voice TTS is not enabled.')
+      return
+    }
+    if (!msg.guild) {
+      await msg.reply('Use in a server.')
+      return
+    }
+    const vc = msg.member?.voice.channel
+    if (!vc) {
+      await msg.reply('Join a voice channel first.')
+      return
+    }
+    try {
+      await joinChannel(vc, msg.client)
+      await msg.reply(`Joined ${vc.name}.`)
+    } catch (e) {
+      const err = e instanceof Error ? e.message : String(e)
+      await msg.reply(err.slice(0, 500))
+    }
+    return
+  }
+
+  if (cmd === 'leave' || cmd === 'disconnect' || cmd === 'dc') {
+    if (!msg.guild) {
+      await msg.reply('Use in a server.')
+      return
+    }
+    if (!isInVoice(msg.guild.id)) {
+      await msg.reply('Not in a voice channel.')
+      return
+    }
+    leaveVoice(msg.guild.id)
+    await msg.reply('Left voice channel.')
+    return
+  }
+
+  if (cmd === 'say' || cmd === 'speak' || cmd === 'tts') {
+    if (!voiceTtsEnabled) {
+      await msg.reply('Voice TTS is not enabled.')
+      return
+    }
+    if (!msg.guild || !isInVoice(msg.guild.id)) {
+      await msg.reply('Bot is not in a voice channel. Use `nd!join` first.')
+      return
+    }
+    if (!args) {
+      await msg.reply('Usage: `nd!say <text to speak>`')
+      return
+    }
+    void speakText(msg.guild.id, args)
+    await msg.react('\u{1F50A}').catch(() => {})
     return
   }
 
@@ -313,14 +455,14 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     }
 
     let line = WELCOME_TICKET_CHANNEL_ID
-      ? `Open a ticket from <#${WELCOME_TICKET_CHANNEL_ID}>.`
-      : 'Ask staff where the ticket channel is.'
+      ? `**Tickets:** <#${WELCOME_TICKET_CHANNEL_ID}> → category → **Open Ticket**.`
+      : '**Support:** ask staff where the ticket panel is.'
     if (ticketSystemEnabled && msg.guildId) {
       const n = (await listOpenTickets(msg.guildId)).length
-      line += `\n\nOpen tickets in this server: **${n}**`
+      line += `\n\n**Open tickets:** ${n}`
     }
     line +=
-      '\n\nStaff: `nd!tickets` or `nd!ticket list` (same as `/tickets`). `nd!ticketstats` or `nd!ticket stats` (same as `/ticketstats`).'
+      '\n\n**Staff:** `nd!tickets` / `nd!ticket list` (= `/tickets`) · `nd!ticketstats` (= `/ticketstats`)'
     await msg.reply(line.slice(0, 2000))
     return
   }

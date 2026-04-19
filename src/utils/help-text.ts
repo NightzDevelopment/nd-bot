@@ -1,25 +1,79 @@
-/** Single help body for `nd!help` and `/help` so they never drift apart. */
-export const BOT_HELP_DESCRIPTION =
-  '**AI chat (guild)**, @mention the bot or reply to it (2 min follow-up window without pinging). If `GUILD_AI_TICKET_CATEGORY_IDS` is set, a user’s **first** message in a channel under that category also gets AI. **DMs** always get AI.\n\n' +
-  '**Prefix** (`nd!`)\n' +
-  '`nd!help`, this list\n' +
-  '`nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en`\n' +
-  '`nd!summarize` (mod, reply to message) · `nd!digest` (mod, weekly-style summary)\n' +
-  '`nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge`\n' +
-  '`nd!lockdown` · `nd!unlock`\n' +
-  '`nd!serverinfo` · `nd!userinfo` · `nd!avatar` · `nd!poll` · `nd!announce` · `nd!say` · `nd!reminder`\n' +
-  '`nd!rolereact` · `nd!giveaway` · `nd!giveaway-end` · `nd!giveaway-list`\n' +
-  '`nd!suggest` · `nd!approve` · `nd!deny` · `nd!suggestions`\n' +
-  '`nd!schedule` · `nd!schedule-list` · `nd!schedule-cancel`\n' +
-  '`nd!vc-limit` · `nd!vc-name` · `nd!vc-lock` · `nd!vc-unlock` (temp voice owner)\n' +
-  '`nd!ping` · `nd!links` · `nd!ticket` (panel + staff: `nd!ticket list` = `/tickets`)\n' +
-  '`nd!tickets` / `nd!ticket-list` (mod, same as `/tickets`) · `nd!ticketstats` / `nd!ticket stats` (mod)\n' +
-  '`nd!adduser` / `nd!removeuser` (mod, in ticket)\n' +
-  '`nd!search` · `nd!product` · `nd!roll` · `nd!choose`\n' +
-  '`nd!safety` · `nd!scamtips` · `nd!privacy` · `nd!report` · `nd!automodpublic` · `nd!modautomod` (mod)\n' +
-  '`nd!scamcheck` · `nd!tldr`\n\n' +
-  '**Slash**\n' +
-  '`/help` · `/faq` · `/ask` · `/clear` · `/serverinfo` · `/userinfo` · `/warn` · `/purge`\n' +
-  '`/translate` · `/ping` · `/links` · `/ticket` · `/tickets` (mod) · `/ticketstats` (mod) · `/search` · `/product` · `/roll` · `/choose`\n' +
-  '`/safety` · `/scamtips` · `/privacy` · `/report` · `/automod_public` · `/scam_check` · `/tldr` · `/mod_automod`\n\n' +
-  '**Training ND’s AI:** Edit `data/nd-knowledge.md` (via `ND_KEYWORDS_FILE`), add `data/products/*.md`, pin FAQ entries (`FAQ_CHANNEL_ID`), set `DEV_BUILD_PATHS`, optional `VECTOR_RETRIEVAL_ENABLED=1`. Staff can react to bot replies for feedback (see `.env` `AI_FEEDBACK_*`).'
+import { EmbedBuilder } from 'discord.js'
+import { ndEmbed } from './embed.ts'
+
+/**
+ * Help embed for `nd!help` and `/help`: categorized commands + AI / privacy copy.
+ */
+export function buildHelpEmbed(): EmbedBuilder {
+  return ndEmbed()
+    .setTitle('[ND] Nightz Development Bot')
+    .setDescription(
+      '**AI in this server:** @mention the bot or reply to its message (about 2 minutes without pinging again). ' +
+        '**DMs** always use the AI when DMs are enabled.',
+    )
+    .addFields(
+      {
+        name: 'General',
+        value:
+          '**Prefix:** `nd!help` · `nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en` · `nd!ping` · `nd!links` · `nd!search` · `nd!product` · `nd!roll` · `nd!choose`\n' +
+          '**Slash:** `/help` · `/faq` · `/ask` · `/clear` · `/translate` · `/ping` · `/links` · `/search` · `/product` · `/roll` · `/choose`',
+        inline: false,
+      },
+      {
+        name: 'Moderation (staff)',
+        value:
+          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>`\n' +
+          '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model`',
+        inline: false,
+      },
+      {
+        name: 'Server and profiles',
+        value:
+          '**Prefix:** `nd!serverinfo` · `nd!userinfo` · `nd!avatar`\n' +
+          '**Slash:** `/serverinfo` · `/userinfo`',
+        inline: false,
+      },
+      {
+        name: 'Community',
+        value:
+          '**Prefix:** `nd!poll` (reaction poll) · `nd!polls` / `nd!polls list` · `nd!polls create …` · `nd!polls end …` · `nd!announce` · `nd!reminder` · `nd!rolereact` · `nd!giveaway` · `nd!giveaway-end` · `nd!giveaway-list` · `nd!suggest` · `nd!approve` · `nd!deny` · `nd!suggestions` · `nd!schedule` · `nd!schedule-list` · `nd!schedule-cancel`\n' +
+          '**Slash:** `/polls list` · `/polls create` · `/polls end` (native Discord polls in your configured Polls channel)',
+        inline: false,
+      },
+      {
+        name: 'Voice and TTS',
+        value:
+          '**Prefix:** `nd!join` / `nd!vc` · `nd!leave` / `nd!dc` · `nd!say` / `nd!speak` / `nd!tts`\n' +
+          '**Temp voice (owner):** `nd!vc-limit` · `nd!vc-name` · `nd!vc-lock` · `nd!vc-unlock`\n' +
+          '**Slash:** `/join` · `/leave` · `/say`',
+        inline: false,
+      },
+      {
+        name: 'Tickets',
+        value:
+          '**Panel:** pick a category → **Open Ticket** (private channel).\n' +
+          '**Prefix:** `nd!ticket` · `nd!tickets` / `nd!ticket list` (= `/tickets`) · `nd!ticketstats` · `nd!adduser` / `nd!removeuser` (inside a ticket)\n' +
+          '**Slash:** `/ticket` · `/tickets` · `/ticketstats`',
+        inline: false,
+      },
+      {
+        name: 'Safety and trust',
+        value:
+          '**Prefix:** `nd!safety` · `nd!scamtips` · `nd!privacy` · `nd!report` · `nd!automodpublic` · `nd!scamcheck` · `nd!tldr`\n' +
+          '**Slash:** `/safety` · `/scamtips` · `/privacy` · `/report` · `/automod_public` · `/scam_check` · `/tldr`',
+        inline: false,
+      },
+      {
+        name: 'Warning',
+        value:
+          'We collect this data solely to improve your support experience. We do not sell your personal information, and we strive to keep our training sets focused on technical accuracy and product knowledge.',
+        inline: false,
+      },
+      {
+        name: 'Note',
+        value:
+          'By continuing to interact with the AI, you agree to help us make our tools better for the whole community.',
+        inline: false,
+      },
+    )
+}

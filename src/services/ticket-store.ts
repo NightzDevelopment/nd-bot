@@ -14,6 +14,8 @@ export type TicketRecord = {
   userId: string
   userTag: string
   reason: string
+  /** Staff workflow label (see TICKET_WORKFLOW_STATUSES). */
+  workflowStatus?: string
   claimedBy?: string
   claimedByTag?: string
   openedAt: number

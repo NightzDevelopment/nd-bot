@@ -10,6 +10,36 @@ config()
 export const TOKEN = requiredEnv('DISCORD_BOT_TOKEN')
 export const GOOGLE_KEY = requiredEnv('GOOGLE_API_KEY')
 export const MODEL_ID = process.env.GEMINI_MODEL ?? 'gemini-3-flash-preview'
+const DEFAULT_GEMINI_FALLBACK_MODELS = [
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-2.0-flash-lite',
+  'gemini-1.5-flash',
+]
+/** Comma-separated model IDs tried after GEMINI_MODEL. */
+export const geminiFallbackModels = (
+  process.env.GEMINI_FALLBACK_MODELS?.trim()
+    ? process.env.GEMINI_FALLBACK_MODELS.split(',').map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_GEMINI_FALLBACK_MODELS
+) as readonly string[]
+/** Optional secondary provider: OpenAI. */
+export const openaiApiKey = process.env.OPENAI_API_KEY?.trim() || undefined
+export const openaiEnabled = Boolean(openaiApiKey)
+export const openaiBaseUrl =
+  process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1'
+export const openaiModel =
+  process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+const DEFAULT_OPENAI_FALLBACK_MODELS = ['gpt-4.1-mini']
+export const openaiFallbackModels = (
+  process.env.OPENAI_FALLBACK_MODELS?.trim()
+    ? process.env.OPENAI_FALLBACK_MODELS.split(',').map((s) => s.trim()).filter(Boolean)
+    : DEFAULT_OPENAI_FALLBACK_MODELS
+) as readonly string[]
+export const openaiRequestTimeoutMs = Math.max(
+  3000,
+  parseInt(process.env.OPENAI_TIMEOUT_MS ?? '45000', 10) || 45_000,
+)
 /** Max image size (bytes) for vision; Discord CDN fetch, default ~3 MiB. */
 export const IMAGE_ATTACHMENT_MAX_BYTES = Math.min(
   4 * 1024 * 1024,
@@ -18,6 +48,25 @@ export const IMAGE_ATTACHMENT_MAX_BYTES = Math.min(
     parseInt(process.env.IMAGE_ATTACHMENT_MAX_BYTES ?? `${3 * 1024 * 1024}`, 10) ||
       3 * 1024 * 1024,
   ),
+)
+/** Max ZIP size (bytes) for attachment analysis. */
+export const ZIP_ATTACHMENT_MAX_BYTES = Math.min(
+  25 * 1024 * 1024,
+  Math.max(
+    512 * 1024,
+    parseInt(process.env.ZIP_ATTACHMENT_MAX_BYTES ?? `${10 * 1024 * 1024}`, 10) ||
+      10 * 1024 * 1024,
+  ),
+)
+/** Max ZIP entries scanned for summaries. */
+export const ZIP_ATTACHMENT_MAX_FILES = Math.min(
+  200,
+  Math.max(5, parseInt(process.env.ZIP_ATTACHMENT_MAX_FILES ?? '40', 10) || 40),
+)
+/** Max chars captured per text file when summarizing ZIP contents. */
+export const ZIP_ATTACHMENT_MAX_FILE_CHARS = Math.min(
+  2000,
+  Math.max(120, parseInt(process.env.ZIP_ATTACHMENT_MAX_FILE_CHARS ?? '600', 10) || 600),
 )
 
 const DEFAULT_GUILD_PROMPT = `You are [ND] Nightz Development Support, powered by Google Gemini. Nightz Development sells and distributes FiveM scripts and resources.
@@ -30,6 +79,7 @@ Rules:
 - If unsure, say so and suggest checking documentation or opening a support ticket.
 - Stay professional and concise in public channels.
 - **No emojis:** Do not use emojis, emoticons, or decorative symbols in replies unless the user explicitly asks for them. Plain text only.
+- **Light humor allowed:** If the conversation is playful, you may use short clean humor while still being useful. Avoid humor in moderation/safety actions, disputes, or when the user is frustrated.
 - **Lists vs essays:** If the user asks for a **list** of ND scripts, products, resources, modules, or "what do you have", answer with a **short bullet list** (markdown \`- \` lines), **one line per item** (resource name + optional few words). Prefer **distinct product folders** from indexed dev builds (e.g. \`ND_DiscordUnified\`, \`ND_Scenes\`) over long enumerations of internal \`.lua\` files unless they asked about **one** product’s internals. Do **not** write a long paragraph per item or full feature write-ups unless they ask for details on a specific item. After a list, you may add one sentence inviting them to name what they want help with.
 - **Indexed product names:** Build lists from **injected codebase context** only (distinct \`RootFolder\` / top-level product directory names in snippets). Do **not** invent or guess product names (for example do not cite \`ND_Money\` or other scripts unless they appear in context). If context shows several roots, list those. If context shows only one product, say so and mention the official store or site for the full catalog without claiming you have no products.
 - **One topic, one resource:** Answer about the product or script the user is actually asking about. Do not chain unrelated ND resources in one reply (for example mixing Discord bridge, weapons, parking, and menu scripts) unless the user clearly tied them together. If injected context spans different products, ignore what does not match the question and say you are focusing on the named resource only.
@@ -41,6 +91,7 @@ const DEFAULT_DM_PROMPT = `You are [ND] Nightz Development private DM support, p
 
 Be warm and helpful. Same rules as public support: never paste raw source code in Discord, describe and reference filenames only. Never share secrets or bypass licensing.
 - **No emojis:** Do not use emojis or emoticons in replies unless the user asks. Plain text only.
+- **Light humor allowed:** If chat becomes playful, you may add brief clean humor while keeping help accurate. Avoid jokes in moderation/safety or conflict-heavy situations.
 - **Lists vs essays:** If they want a **list** of scripts/products/modules, reply with a **compact bullet list** (one line per item, names first). Prefer **product/resource folder names** from indexed context over many internal filenames unless they asked about one product’s code layout. Do not expand every item into paragraphs unless they ask for depth on one item. Only name products that appear in injected context; do not invent names.
 - **One topic, one resource:** Stay focused on the script or issue the user named; do not jump across unrelated ND products in one answer unless they asked you to compare or link them.
 - **Indexed paths:** Snippets may show \`RootFolder/ResourceName/...\`; cite those when pointing to config files.
@@ -270,6 +321,33 @@ export const STAFF_LOG_CHANNEL_ID = process.env.STAFF_LOG_CHANNEL_ID?.trim() || 
 /** Channel where all DM conversations are recorded (for staff review) */
 export const DM_LOG_CHANNEL_ID = process.env.DM_LOG_CHANNEL_ID?.trim() || undefined
 
+/** Native Discord polls: vote logs to staff + “last hour” reminder in the poll channel */
+export const pollMonitorEnabled = !isEnvOff(process.env.POLL_MONITOR_ENABLED ?? '0')
+/**
+ * Your **polls** channel(s) only — same place vote logs apply and last-hour pings go.
+ * Prefer `POLL_REMINDER_CHANNEL_IDS`; `POLL_MONITOR_CHANNEL_IDS` is still read for compatibility.
+ */
+export const pollReminderChannelIds = (() => {
+  const s = new Set<string>()
+  for (const id of parseIdSet(process.env.POLL_REMINDER_CHANNEL_IDS)) s.add(id)
+  for (const id of parseIdSet(process.env.POLL_MONITOR_CHANNEL_IDS)) s.add(id)
+  return s
+})()
+/** Defaults to STAFF_LOG_CHANNEL_ID */
+export const pollStaffLogChannelId =
+  process.env.POLL_STAFF_LOG_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID
+/** When remaining time is at or below this many hours, send one reminder ping (default 1). */
+export const pollReminderHoursBefore = Math.max(
+  0.05,
+  parseFloat(process.env.POLL_REMINDER_HOURS_BEFORE ?? '1') || 1,
+)
+/** Reminder ping in the poll channel: `here` or `everyone` */
+export const pollReminderPingMode =
+  process.env.POLL_REMINDER_PING?.trim().toLowerCase() === 'everyone'
+    ? 'everyone'
+    : 'here'
+export const pollLogVotes = !isEnvOff(process.env.POLL_LOG_VOTES ?? '1')
+
 /** Guild AI: respond only when @mentioned / reply / active window; window duration in ms */
 export const ACTIVE_CONVERSATION_MS = Math.max(
   30_000,
@@ -476,6 +554,18 @@ export const ticketMaxOpenPerUser = Math.max(
 export const ticketTranscriptEnabled = !isEnvOff(
   process.env.TICKET_TRANSCRIPT_ENABLED ?? '1',
 )
+/** Max messages to include in ticket transcripts (paginated, cap 5000). */
+export const ticketTranscriptMaxMessages = Math.min(
+  5000,
+  Math.max(
+    50,
+    parseInt(process.env.TICKET_TRANSCRIPT_MAX_MESSAGES ?? '2000', 10) || 2000,
+  ),
+)
+/** When ticket transcripts are on, also generate Ticket Tool–style HTML (default on). */
+export const ticketTranscriptHtmlEnabled = !isEnvOff(
+  process.env.TICKET_TRANSCRIPT_HTML ?? '1',
+)
 export const ticketDmOnClose = !isEnvOff(process.env.TICKET_DM_ON_CLOSE ?? '0')
 export const ticketAutoCloseHours = Math.max(
   0,
@@ -487,6 +577,29 @@ export const ticketAutoCloseGraceHours = Math.max(
 )
 /** Channel name prefix, e.g. ticket-0042 */
 export const ticketNamingPrefix = process.env.TICKET_NAMING?.trim() || 'ticket'
+
+const DEFAULT_TICKET_WORKFLOW_STATUSES =
+  'Open,Claimed,In progress,Waiting on user,On hold,Resolved (ready to close)'
+
+/** Labels staff can set on open tickets (dropdown on welcome message). Max 25. */
+export function parseTicketWorkflowStatuses(): string[] {
+  const raw =
+    process.env.TICKET_WORKFLOW_STATUSES?.trim() || DEFAULT_TICKET_WORKFLOW_STATUSES
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const part of raw.split(',')) {
+    const s = part.trim()
+    if (!s || s.length > 100) continue
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+    if (out.length >= 25) break
+  }
+  return out.length > 0
+    ? out
+    : DEFAULT_TICKET_WORKFLOW_STATUSES.split(',').map((x) => x.trim())
+}
 
 /** User reports: defaults to staff log if REPORT_CHANNEL_ID unset */
 export const REPORT_CHANNEL_ID = process.env.REPORT_CHANNEL_ID?.trim() || undefined
@@ -535,6 +648,56 @@ export const TEMPVC_DEFAULT_LIMIT = parseInt(process.env.TEMPVC_DEFAULT_LIMIT ??
 
 /** Suggestions */
 export const SUGGESTION_CHANNEL_ID = process.env.SUGGESTION_CHANNEL_ID?.trim() || undefined
+
+/** Voice TTS: bot joins VC and speaks AI replies via Google Cloud TTS. */
+export const voiceTtsEnabled = !isEnvOff(process.env.VOICE_TTS_ENABLED ?? '0')
+/** Auto-join this VC on bot startup (optional). */
+export const voiceAutoJoinChannelId =
+  process.env.VOICE_AUTO_JOIN_CHANNEL_ID?.trim() || undefined
+/** Google Cloud TTS language (BCP-47). Default en-US. */
+export const voiceTtsLanguage =
+  process.env.GOOGLE_TTS_LANGUAGE?.trim() || 'en-US'
+/** Google Cloud TTS voice name (optional; if blank, Google picks a default for the language). */
+export const voiceTtsVoiceName =
+  process.env.GOOGLE_TTS_VOICE_NAME?.trim() || undefined
+/** Speaking speed (0.25 to 4.0, default 1.0). */
+export const voiceTtsSpeakingRate = Math.min(
+  4.0,
+  Math.max(0.25, parseFloat(process.env.GOOGLE_TTS_SPEAKING_RATE ?? '1.0') || 1.0),
+)
+/** Pitch adjustment (-20.0 to 20.0, default 0). */
+export const voiceTtsPitch = Math.min(
+  20,
+  Math.max(-20, parseFloat(process.env.GOOGLE_TTS_PITCH ?? '0') || 0),
+)
+/** Max chars sent to TTS per utterance (default 4000; longer text is truncated). */
+export const voiceTtsMaxChars = Math.min(
+  5000,
+  Math.max(200, parseInt(process.env.VOICE_TTS_MAX_CHARS ?? '4000', 10) || 4000),
+)
+/** Auto-disconnect from empty VC after this many seconds (0 = never). */
+export const voiceAutoLeaveSeconds = Math.max(
+  0,
+  parseInt(process.env.VOICE_AUTO_LEAVE_SECONDS ?? '300', 10) || 300,
+)
+
+/** Guild text channels where AI replies without @mention (e.g. #ai-support next to AI Support VC). */
+export const voiceAiTextChannelIds = parseIdSet(process.env.VOICE_AI_TEXT_CHANNEL_IDS)
+/** Transcribe voice in VC and run the same AI + TTS flow (requires Google Speech-to-Text + reply text channel). */
+export const voiceSttEnabled = !isEnvOff(process.env.VOICE_STT_ENABLED ?? '0')
+/** Min ms between STT processing per user in a guild (default 5000). */
+export const voiceSttCooldownMs = Math.max(
+  2000,
+  parseInt(process.env.VOICE_STT_COOLDOWN_MS ?? '5000', 10) || 5000,
+)
+
+/** Where to post AI replies for voice transcripts; defaults to first ID in VOICE_AI_TEXT_CHANNEL_IDS. */
+export function getVoiceSttReplyChannelId(): string | undefined {
+  const explicit = process.env.VOICE_STT_REPLY_TEXT_CHANNEL_ID?.trim()
+  if (explicit) return explicit
+  const raw = process.env.VOICE_AI_TEXT_CHANNEL_IDS?.split(',') ?? []
+  return raw.map((s) => s.trim()).find(Boolean)
+}
 
 /** Data directory for JSON stores */
 export const DATA_DIR = process.env.DATA_DIR?.trim() || './data'

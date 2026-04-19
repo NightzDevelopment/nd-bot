@@ -6,7 +6,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
-  EmbedBuilder,
   type ButtonInteraction,
   type Client,
   type Message,
@@ -22,6 +21,7 @@ import {
   ticketSystemEnabled,
   WELCOME_TICKET_CHANNEL_ID,
 } from '../config.ts'
+import { ndTicketEmbedOpen } from '../utils/embed.ts'
 import { createTicketChannel } from './ticket-system.ts'
 import { isTicketCueBotReply } from './analytics-store.ts'
 import { reportTicketIntake } from './logging.ts'
@@ -73,7 +73,7 @@ export async function maybeSendTicketOffer(
 
   await msg.channel.send({
     content:
-      'Need human help? Use the button below (or visit the ticket channel in the server list).',
+      '**Human support** — tap below to open a **private ticket**, or use the **#tickets / support** channel in the server list.',
     components: [row],
   })
 }
@@ -113,7 +113,8 @@ export async function maybeOfferTicketFromHowQuestion(msg: Message): Promise<voi
   )
 
   await msg.reply({
-    content: 'I can help you get to the right place:',
+    content:
+      '**Tickets:** I can open a **private support channel** for you — tap the button below.',
     components: [row],
   })
 }
@@ -164,8 +165,9 @@ export async function tryHandleTicketButton(
       await interaction.message.edit({ components: [] }).catch(() => {})
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
+      console.error('[ticket button open]', err)
       await interaction.followUp({
-        content: `Error: ${err.slice(0, 200)}`,
+        content: "I can't help with this request right now.",
         ephemeral: true,
       }).catch(() => {})
     }
@@ -203,13 +205,15 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
         contextJumpUrl: jump,
       })
       await triggerMsg.reply({
-        content: `Created your ticket: ${ch}`,
+        content: `**Ticket created.** Continue in ${ch} — category **Support (from chat)**.`,
       })
       return
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
+      console.error('[ticket auto-create]', err)
       await triggerMsg.reply({
-        content: `Could not create a ticket channel: ${err.slice(0, 300)}. Staff were notified instead.`,
+        content:
+          '**Could not open a ticket channel** (permissions or limits). Staff were **pinged** with your message — watch for a reply here.',
       })
       await reportTicketIntake(
         tag,
@@ -228,9 +232,9 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
     await reportTicketIntake(tag, userId, chName, triggerMsg.channel.id, guild.id, snippet, jump)
     await triggerMsg.reply({
       content:
-        `Thanks, **staff have been notified** with a link to this message.` +
+        `**Staff pinged** with a link to this message.` +
         (WELCOME_TICKET_CHANNEL_ID
-          ? ` You can also use <#${WELCOME_TICKET_CHANNEL_ID}> if your server has a ticket panel.`
+          ? ` For a **private ticket**, use <#${WELCOME_TICKET_CHANNEL_ID}>.`
           : ''),
     })
     return
@@ -241,15 +245,15 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
     await reportTicketIntake(tag, userId, chName, triggerMsg.channel.id, guild.id, snippet, jump)
     await triggerMsg.reply({
       content:
-        'Ticket forum is not configured correctly; staff were notified instead.',
+        '**Forum tickets** are not configured. Staff were **notified** with your message instead.',
     })
     return
   }
 
-  const embed = new EmbedBuilder()
-    .setTitle('Support ticket')
+  const embed = ndTicketEmbedOpen()
+    .setTitle('Support · Forum intake')
     .setDescription(snippet.slice(0, 4000))
-    .addFields({ name: 'Original message', value: `[Jump](${jump})` })
+    .addFields({ name: 'Source', value: `[Jump to message](${jump})` })
 
   const thread = await parent.threads.create({
     name: `support-${tag}`.replace(/[^a-z0-9-_]/gi, '-').slice(0, 100),
@@ -271,6 +275,6 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
   )
 
   await triggerMsg.reply({
-    content: `Created your ticket: ${thread}${threadUrl ? ` (${threadUrl})` : ''}`,
+    content: `**Forum thread created:** ${thread}${threadUrl ? `\n${threadUrl}` : ''}`,
   })
 }

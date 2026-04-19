@@ -1,9 +1,9 @@
-import { SlashCommandBuilder } from 'discord.js'
+import { ChannelType, SlashCommandBuilder } from 'discord.js'
 
 export const slashCommands = [
   new SlashCommandBuilder()
     .setName('help')
-    .setDescription('Show bot commands and info'),
+    .setDescription('Show categorized commands, AI info, and notices'),
   new SlashCommandBuilder()
     .setName('faq')
     .setDescription('Search FAQ from pinned messages in the FAQ channel')
@@ -27,10 +27,10 @@ export const slashCommands = [
     .setDescription('Clear AI conversation memory in this channel'),
   new SlashCommandBuilder()
     .setName('serverinfo')
-    .setDescription('Show server information'),
+    .setDescription('Show detailed server information (members, channels, boosts, security)'),
   new SlashCommandBuilder()
     .setName('userinfo')
-    .setDescription('Show user information')
+    .setDescription('Show account, server profile, roles, and permissions')
     .addUserOption((o) =>
       o.setName('user').setDescription('User (optional)').setRequired(false),
     ),
@@ -61,13 +61,13 @@ export const slashCommands = [
     .setDescription('Support links (FAQ, tickets, rules)'),
   new SlashCommandBuilder()
     .setName('ticket')
-    .setDescription('How to open a support ticket'),
+    .setDescription('Where to open a Nightz support ticket (panel + queue info)'),
   new SlashCommandBuilder()
     .setName('tickets')
-    .setDescription('Staff: list open support tickets'),
+    .setDescription('Staff: list all open tickets in this server'),
   new SlashCommandBuilder()
     .setName('ticketstats')
-    .setDescription('Staff: ticket statistics for this server'),
+    .setDescription('Staff: ticket stats (open, closed, avg. resolution, by category)'),
   new SlashCommandBuilder()
     .setName('search')
     .setDescription('Search FAQ (alias for faq)')
@@ -139,4 +139,81 @@ export const slashCommands = [
   new SlashCommandBuilder()
     .setName('mod_automod')
     .setDescription('Staff: show AutoMod effective settings'),
+  new SlashCommandBuilder()
+    .setName('ai_model')
+    .setDescription('Show or switch AI provider (auto, gemini, openai)')
+    .addStringOption((o) =>
+      o
+        .setName('provider')
+        .setDescription('Provider mode to set')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Auto (Gemini then OpenAI fallback)', value: 'auto' },
+          { name: 'Gemini only', value: 'gemini' },
+          { name: 'OpenAI only', value: 'openai' },
+        ),
+    ),
+  new SlashCommandBuilder()
+    .setName('polls')
+    .setDescription('List native polls or post/end one (mods) in the polls channel')
+    .addSubcommand((sc) =>
+      sc.setName('list').setDescription('Show active native Discord polls in the polls channel(s)'),
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName('create')
+        .setDescription('Post a native poll (mods)')
+        .addStringOption((o) =>
+          o
+            .setName('question')
+            .setDescription('Poll question')
+            .setRequired(true)
+            .setMaxLength(300),
+        )
+        .addStringOption((o) =>
+          o
+            .setName('answers')
+            .setDescription('Options separated by | (2–10)')
+            .setRequired(true)
+            .setMaxLength(550),
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName('duration_hours')
+            .setDescription('Duration in hours (default 24, max 168)')
+            .setRequired(false)
+            .setMinValue(1)
+            .setMaxValue(168),
+        )
+        .addBooleanOption((o) =>
+          o.setName('multiselect').setDescription('Allow multiple choices').setRequired(false),
+        )
+        .addChannelOption((o) =>
+          o
+            .setName('channel')
+            .setDescription('Post here (default: first configured polls channel)')
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+            .setRequired(false),
+        ),
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName('end')
+        .setDescription('End a native poll early (mods)')
+        .addStringOption((o) =>
+          o.setName('message_id').setDescription('Poll message ID (right-click message → Copy ID)').setRequired(true),
+        ),
+    ),
+  new SlashCommandBuilder()
+    .setName('join')
+    .setDescription('Bot joins your current voice channel (TTS)'),
+  new SlashCommandBuilder()
+    .setName('leave')
+    .setDescription('Bot leaves the voice channel'),
+  new SlashCommandBuilder()
+    .setName('say')
+    .setDescription('Speak text in voice channel via TTS')
+    .addStringOption((o) =>
+      o.setName('text').setDescription('Text to speak').setRequired(true),
+    ),
 ]
