@@ -273,6 +273,12 @@ export function registerInteractionHandler(client: Client): void {
     }
 
     if (interaction.isButton()) {
+      const { tryHandleVerifyInteraction } = await import('../services/verification.ts')
+      const handled = await tryHandleVerifyInteraction(interaction)
+      if (handled) return
+    }
+
+    if (interaction.isButton()) {
       const handled = await tryHandleTicketButton(interaction)
       if (handled) return
 

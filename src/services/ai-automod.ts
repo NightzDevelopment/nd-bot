@@ -36,6 +36,8 @@ import {
   aiAutomodVisionMaxPerMinute,
   heatedSlowmodeCooldownMs,
   heatedSlowmodeSeconds,
+  raidAutolockDurationMs,
+  raidAutolockEnabled,
   raidJoinThreshold,
   raidJoinWindowSec,
   raidNewAccountAlertEnabled,
@@ -111,8 +113,21 @@ export function registerRaidTracking(client: Client): void {
     joinTimestamps.set(gid, arr)
     if (arr.length >= raidJoinThreshold) {
       void reportRaidAlert(member.guild.name, member.guild.id, arr.length, raidJoinWindowSec)
-      lockdownGuilds.add(gid)
-      console.warn(`[ai-automod] raid mode: lockdown enabled for guild ${gid}`)
+      if (raidAutolockEnabled && !lockdownGuilds.has(gid)) {
+        void import('./lockdown.ts').then(({ setLockdown }) => setLockdown(gid, true))
+        console.warn(`[ai-automod] raid mode: lockdown enabled for guild ${gid}`)
+        if (raidAutolockDurationMs > 0) {
+          void import('./scheduled-actions-store.ts').then(({ scheduleAction }) =>
+            scheduleAction({
+              type: 'raid_unlock',
+              guildId: gid,
+              userId: 'system',
+              dueAt: Date.now() + raidAutolockDurationMs,
+              reason: 'Raid auto-lock expired',
+            }),
+          )
+        }
+      }
     }
 
     if (raidNewAccountAlertEnabled && member.user.createdAt) {

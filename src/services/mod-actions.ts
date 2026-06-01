@@ -224,6 +224,14 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
     return
   }
 
+  // Record the ban for alt-detection name matching (best-effort).
+  try {
+    const { recordBan } = await import('./alt-detection.ts')
+    await recordBan(user)
+  } catch (e) {
+    console.warn('[ban] recordBan failed:', e)
+  }
+
   // DM the banned user an appeal button (best-effort; no-op if appeals off).
   try {
     const { dmBanAppealPrompt } = await import('./appeals.ts')
@@ -324,15 +332,15 @@ export async function cmdPurge(msg: Message, args: string): Promise<void> {
 
 export async function cmdLockdown(msg: Message): Promise<void> {
   if (!(await requireMod(msg))) return
-  const { lockdownGuilds } = await import('./lockdown.ts')
-  lockdownGuilds.add(msg.guild!.id)
+  const { setLockdown } = await import('./lockdown.ts')
+  await setLockdown(msg.guild!.id, true)
   await modReply(msg, 'Lockdown enabled, non-moderator messages will be deleted. Use `nd!unlock`.')
   await reportAutomod(msg, 'Lockdown enabled', 'manual')
 }
 
 export async function cmdUnlock(msg: Message): Promise<void> {
   if (!(await requireMod(msg))) return
-  const { lockdownGuilds } = await import('./lockdown.ts')
-  lockdownGuilds.delete(msg.guild!.id)
+  const { setLockdown } = await import('./lockdown.ts')
+  await setLockdown(msg.guild!.id, false)
   await modReply(msg, 'Lockdown disabled.')
 }

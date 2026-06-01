@@ -640,6 +640,13 @@ export const raidJoinWindowSec = Math.max(
   10,
   parseInt(process.env.RAID_JOIN_WINDOW_SEC ?? '60', 10) || 60,
 )
+/** Auto-enable lockdown when the raid join threshold is crossed. */
+export const raidAutolockEnabled = !isEnvOff(process.env.RAID_AUTOLOCK_ENABLED ?? '1')
+/** Auto-unlock after this many ms (0 = stay locked until staff unlock). */
+export const raidAutolockDurationMs = Math.max(
+  0,
+  parseInt(process.env.RAID_AUTOLOCK_DURATION_MS ?? '600000', 10) || 600000,
+)
 export const raidNewAccountDays = Math.max(
   1,
   parseInt(process.env.RAID_NEW_ACCOUNT_DAYS ?? '7', 10) || 7,
@@ -841,6 +848,27 @@ export const appealsChannelId =
 
 /** When true, DM banned users an appeal button on ban. */
 export const appealsEnabled = !isEnvOff(process.env.APPEALS_ENABLED ?? '1')
+
+/** Alt-account detection: score new joins for ban-evasion signals and alert staff. */
+export const altDetectionEnabled = !isEnvOff(process.env.ALT_DETECTION_ENABLED ?? '0')
+/** Risk score (0-7) at or above which an alt alert is posted. */
+export const altAlertThreshold = Math.max(
+  1,
+  parseInt(process.env.ALT_ALERT_THRESHOLD ?? '3', 10) || 3,
+)
+
+/** Verification gate: new members must click a button before gaining access. */
+export const verifyEnabled = !isEnvOff(process.env.VERIFY_ENABLED ?? '0')
+export const verifyChannelId = process.env.VERIFY_CHANNEL_ID?.trim() || undefined
+/** Role granted once verified. */
+export const verifyRoleId = process.env.VERIFY_ROLE_ID?.trim() || undefined
+/** Optional holding role assigned on join, removed on verify. */
+export const verifyUnverifiedRoleId = process.env.VERIFY_UNVERIFIED_ROLE_ID?.trim() || undefined
+/** Kick members who never verify after this many ms (0 = never kick). */
+export const verifyKickAfterMs = Math.max(
+  0,
+  parseInt(process.env.VERIFY_KICK_AFTER_MS ?? '0', 10) || 0,
+)
 
 /** Modmail: relay user DMs to a private staff channel and back. */
 export const modmailEnabled = !isEnvOff(process.env.MODMAIL_ENABLED ?? '0')

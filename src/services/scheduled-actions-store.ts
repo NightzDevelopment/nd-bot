@@ -15,7 +15,7 @@ import { readJson, writeJson } from './data-store.ts'
 
 const log = childLogger('sched')
 
-export type ScheduledActionType = 'unban'
+export type ScheduledActionType = 'unban' | 'verify_kick' | 'raid_unlock'
 
 export type ScheduledAction = {
   id: number
@@ -111,6 +111,26 @@ export function startScheduledActionsLoop(client: Client): void {
               at: Date.now(),
             })
             log.info({ userId: a.userId, guildId: a.guildId }, 'auto-unban executed')
+            break
+          }
+          case 'verify_kick': {
+            // Only kick if the member is still present and still unverified.
+            const member = await guild.members.fetch(a.userId).catch(() => null)
+            if (!member) break
+            const { isStillUnverified } = await import('./verification.ts')
+            if (!isStillUnverified(member)) break
+            if (member.kickable) {
+              await member.kick(a.reason ?? 'Did not verify in time').catch(() => {})
+              log.info({ userId: a.userId, guildId: a.guildId }, 'verify_kick executed')
+            }
+            break
+          }
+          case 'raid_unlock': {
+            const { setLockdown, lockdownGuilds } = await import('./lockdown.ts')
+            if (lockdownGuilds.has(a.guildId)) {
+              await setLockdown(a.guildId, false)
+              log.info({ guildId: a.guildId }, 'raid auto-unlock executed')
+            }
             break
           }
         }

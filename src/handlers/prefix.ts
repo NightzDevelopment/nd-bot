@@ -721,6 +721,27 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return
   }
 
+  if (cmd === 'verifypanel') {
+    if (!msg.guild || !msg.channel.isTextBased() || msg.channel.isDMBased()) {
+      await msg.reply('Use this in a server text channel.')
+      return
+    }
+    const member = await guildMemberForModCheck(msg)
+    if (!member || !isGuildMod(member)) {
+      await msg.reply('Moderator only. Posts the verification panel in this channel.')
+      return
+    }
+    const { verifyEnabled, verifyRoleId } = await import('../config.ts')
+    if (!verifyEnabled || !verifyRoleId) {
+      await msg.reply('Verification is not configured (set VERIFY_ENABLED=1 and VERIFY_ROLE_ID).')
+      return
+    }
+    const { buildVerifyPanel } = await import('../services/verification.ts')
+    await (msg.channel as TextChannel).send(buildVerifyPanel())
+    await msg.reply('Verification panel posted.')
+    return
+  }
+
   if (cmd === 'modmail') {
     if (msg.channel.type !== ChannelType.DM) {
       await msg.reply('DM me `nd!modmail <your message>` to start a private conversation with staff.')
