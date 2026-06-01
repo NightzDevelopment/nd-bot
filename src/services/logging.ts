@@ -5,24 +5,84 @@
  */
 import {
   type Client,
+  EmbedBuilder,
   type GuildMember,
   type Message,
   type TextChannel,
-  EmbedBuilder,
 } from 'discord.js'
 import {
   AI_FEEDBACK_LOG_CHANNEL_ID,
+  aiAutomodMinConfidence,
+  aiAutomodReportMsgDedupeSec,
+  aiAutomodStaffLogDedupeSec,
   DM_LOG_CHANNEL_ID,
+  MODEL_ID,
   REPORT_CHANNEL_ID,
-  STAFF_LOG_CHANNEL_ID,
   raidNewAccountDays,
+  STAFF_LOG_CHANNEL_ID,
 } from '../config.ts'
+import type { AiAutomodResolvedAction } from '../utils/automod-actions.ts'
+import { resolveAiAutomodAction } from '../utils/automod-actions.ts'
 import { ndEmbed } from '../utils/embed.ts'
 
 let staffChannel: TextChannel | null = null
 let reportChannel: TextChannel | null = null
 let dmLogChannel: TextChannel | null = null
 let feedbackLogChannel: TextChannel | null = null
+
+/** Dedupe AI AutoMod staff posts: author + normalized body → last sent ms */
+const aiAutomodStaffDedupe = new Map<string, number>()
+/** Dedupe by message id when the same message is reported twice (e.g. duplicate queue entries). */
+const aiAutomodReportByMessageId = new Map<string, number>()
+
+function normalizeForAiAutomodDedupe(content: string): string {
+  return content.toLowerCase().replace(/\s+/g, ' ').trim().slice(0, 240)
+}
+
+function aiAutomodMessageJumpUrl(msg: Message): string | null {
+  const g = msg.guild
+  if (!g || !msg.channel || msg.channel.isDMBased()) return null
+  return `https://discord.com/channels/${g.id}/${msg.channel.id}/${msg.id}`
+}
+
+function formatAiAutomodActions(a: AiAutomodResolvedAction): string {
+  const parts: string[] = []
+  parts.push(a.report ? 'Staff log' : 'No staff log')
+  parts.push(a.deleteMessage ? 'Delete message' : 'Do not delete')
+  parts.push(a.timeoutMs > 0 ? `Timeout ${Math.round(a.timeoutMs / 60_000)} min` : 'No timeout')
+  return parts.join(' · ')
+}
+
+function formatAiAutomodAttachments(msg: Message): string {
+  if (msg.attachments.size === 0) return '—'
+  const lines: string[] = []
+  for (const a of msg.attachments.values()) {
+    const line = `• **${a.name.replace(/\*/g, '')}** — ${(a.size / 1024).toFixed(1)} KiB`
+    if (lines.join('\n').length + line.length > 950) {
+      lines.push(`… +${msg.attachments.size - lines.length} more`)
+      break
+    }
+    lines.push(line)
+  }
+  return lines.join('\n').slice(0, 1024)
+}
+
+function formatAiAutomodEmbedPreviews(msg: Message): string {
+  if (msg.embeds.length === 0) return '—'
+  const lines: string[] = []
+  const n = Math.min(5, msg.embeds.length)
+  for (let i = 0; i < n; i++) {
+    const e = msg.embeds[i]!
+    const bits = [e.title, e.url, e.description?.slice(0, 120)].filter((x): x is string =>
+      Boolean(x && String(x).trim()),
+    )
+    lines.push(`${i + 1}. ${bits.join(' — ').slice(0, 240)}`)
+  }
+  if (msg.embeds.length > n) {
+    lines.push(`… +${msg.embeds.length - n} more`)
+  }
+  return lines.join('\n').slice(0, 1024)
+}
 
 export async function initLogChannels(client: Client): Promise<void> {
   if (STAFF_LOG_CHANNEL_ID) {
@@ -132,7 +192,11 @@ export async function reportProfanity(msg: Message): Promise<void> {
       .setTitle('Profanity / Abuse Alert')
       .addFields(
         { name: 'User', value: `${msg.author.tag} (\`${msg.author.id}\`)`, inline: true },
-        { name: 'Channel', value: msg.channel.isDMBased() ? 'DM' : `<#${msg.channel.id}>`, inline: true },
+        {
+          name: 'Channel',
+          value: msg.channel.isDMBased() ? 'DM' : `<#${msg.channel.id}>`,
+          inline: true,
+        },
         { name: 'Message', value: msg.content.slice(0, 1000) || '(empty)' },
       )
       .setTimestamp()
@@ -144,10 +208,7 @@ export async function reportProfanity(msg: Message): Promise<void> {
 }
 
 /** Log a DM exchange (user message + bot reply) to the staff DM log channel */
-export async function logDmExchange(
-  msg: Message,
-  botReply: string,
-): Promise<void> {
+export async function logDmExchange(msg: Message, botReply: string): Promise<void> {
   if (!dmLogChannel) return
   try {
     const userText = msg.content.slice(0, 900) || '(empty)'
@@ -156,7 +217,11 @@ export async function logDmExchange(
       .setTitle('DM Conversation Log')
       .addFields(
         { name: 'User', value: `${msg.author.tag} (\`${msg.author.id}\`)`, inline: true },
-        { name: 'Timestamp', value: `<t:${Math.floor(msg.createdTimestamp / 1000)}:f>`, inline: true },
+        {
+          name: 'Timestamp',
+          value: `<t:${Math.floor(msg.createdTimestamp / 1000)}:f>`,
+          inline: true,
+        },
         { name: 'User Message', value: userText },
         { name: 'Bot Reply', value: replyText },
       )
@@ -186,11 +251,7 @@ export async function logDmBlocked(msg: Message): Promise<void> {
   }
 }
 
-export async function reportAutomod(
-  msg: Message,
-  rule: string,
-  action: string,
-): Promise<void> {
+export async function reportAutomod(msg: Message, rule: string, action: string): Promise<void> {
   if (!staffChannel) return
   try {
     const embed = new EmbedBuilder()
@@ -240,10 +301,44 @@ export async function reportRaidAlert(
   }
 }
 
-export async function reportNewAccountJoin(
+/** Profile / avatar scan hit (username, display name, nickname, or avatar image). */
+export async function reportProfileFlag(
   member: GuildMember,
-  ageDays: number,
+  kind: 'text' | 'avatar',
+  summary: string,
+  extraFields?: { name: string; value: string }[],
 ): Promise<void> {
+  if (!staffChannel) return
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(kind === 'avatar' ? 0xe67e22 : 0xed4245)
+      .setTitle(
+        kind === 'avatar' ? 'Profile scan · Avatar flagged' : 'Profile scan · Name/text flagged',
+      )
+      .setDescription(
+        `**${member.user.tag}** · <@${member.user.id}>\n**Guild:** ${member.guild.name} (\`${member.guild.id}\`)\n\n${summary.slice(0, 1800)}`,
+      )
+      .setThumbnail(member.user.displayAvatarURL({ size: 128 }))
+      .setTimestamp()
+      .setFooter({
+        text: 'ND Bot · Scans names/nicknames and optional custom status if enabled. Discord “About Me” bio is not available to bots.',
+      })
+    if (extraFields?.length) {
+      embed.addFields(
+        ...extraFields.map((f) => ({
+          name: f.name.slice(0, 256),
+          value: f.value.slice(0, 1024),
+          inline: false,
+        })),
+      )
+    }
+    await staffChannel.send({ embeds: [embed] })
+  } catch (e) {
+    console.error('[logging] profile flag report failed:', e)
+  }
+}
+
+export async function reportNewAccountJoin(member: GuildMember, ageDays: number): Promise<void> {
   if (!staffChannel) return
   try {
     const embed = new EmbedBuilder()
@@ -322,10 +417,7 @@ export async function reportTicketIntake(
 }
 
 /** Optional: staff copy-paste draft when bot answers in configured support channels */
-export async function reportStaffDraftReply(
-  msg: Message,
-  draftReply: string,
-): Promise<void> {
+export async function reportStaffDraftReply(msg: Message, draftReply: string): Promise<void> {
   if (!staffChannel || !msg.guild) return
   try {
     const url = `https://discord.com/channels/${msg.guild.id}/${msg.channel.id}/${msg.id}`
@@ -347,6 +439,38 @@ export async function reportStaffDraftReply(
   }
 }
 
+/** Auto warn / kick / ban after repeated AI AutoMod strikes */
+export async function reportAutomodEscalation(
+  msg: Message,
+  level: 'warn' | 'kick' | 'ban',
+  strikes: number,
+  lastVerdict: string,
+): Promise<void> {
+  if (!staffChannel) return
+  try {
+    const titles = {
+      warn: 'AI AutoMod escalation · auto-warn',
+      kick: 'AI AutoMod escalation · auto-kick',
+      ban: 'AI AutoMod escalation · auto-ban',
+    }
+    const embed = new EmbedBuilder()
+      .setColor(level === 'ban' ? 0x992d22 : level === 'kick' ? 0xe67e22 : 0xfee75c)
+      .setTitle(titles[level])
+      .setDescription(
+        `**${msg.author.tag}** · <@${msg.author.id}>\n**Guild:** ${msg.guild?.name ?? '?'} (\`${msg.guild?.id ?? '?'}\`)\n**Strikes:** ${strikes}\n**Last verdict:** ${lastVerdict}`,
+      )
+      .addFields({
+        name: 'Source message (truncated)',
+        value: (msg.content ?? '').slice(0, 500) || '(empty)',
+      })
+      .setTimestamp()
+      .setFooter({ text: 'ND Bot · AI AutoMod escalation' })
+    await staffChannel.send({ embeds: [embed] })
+  } catch (e) {
+    console.error('[logging] automod escalation report failed:', e)
+  }
+}
+
 export async function reportAiAutomod(
   msg: Message,
   verdict: string,
@@ -354,28 +478,109 @@ export async function reportAiAutomod(
   confidence: number,
 ): Promise<void> {
   if (!staffChannel) return
+  const now = Date.now()
+  if (aiAutomodReportMsgDedupeSec > 0) {
+    const windowMs = aiAutomodReportMsgDedupeSec * 1000
+    const prevMsg = aiAutomodReportByMessageId.get(msg.id) ?? 0
+    if (now - prevMsg < windowMs) return
+  }
+  if (aiAutomodStaffLogDedupeSec > 0) {
+    const raw = msg.content ?? ''
+    const key = `${msg.author.id}:${normalizeForAiAutomodDedupe(raw)}`
+    const windowMs = aiAutomodStaffLogDedupeSec * 1000
+    const prev = aiAutomodStaffDedupe.get(key) ?? 0
+    if (now - prev < windowMs) return
+    aiAutomodStaffDedupe.set(key, now)
+    if (aiAutomodStaffDedupe.size > 800) {
+      const cutoff = now - windowMs * 2
+      for (const [k, t] of aiAutomodStaffDedupe) {
+        if (t < cutoff) aiAutomodStaffDedupe.delete(k)
+      }
+    }
+  }
   try {
+    const actions = resolveAiAutomodAction(verdict)
+    const jump = aiAutomodMessageJumpUrl(msg)
+    const confPct = `${(Math.min(1, Math.max(0, confidence)) * 100).toFixed(1)}%`
     const embed = new EmbedBuilder()
       .setColor(0xeb459e)
       .setTitle('AI AutoMod')
+      .setDescription(
+        `Classifier flagged this message. **Verdict:** \`${verdict}\` · **Score:** ${confidence.toFixed(3)} (${confPct}) · must be ≥ **${aiAutomodMinConfidence}** to act`.slice(
+          0,
+          4096,
+        ),
+      )
       .addFields(
-        { name: 'Verdict', value: verdict.slice(0, 200), inline: true },
-        { name: 'Confidence', value: String(confidence), inline: true },
-        { name: 'Reason', value: reason.slice(0, 900) },
+        { name: 'Reason (model)', value: reason.slice(0, 1024) || '—' },
+        {
+          name: 'Follow-up actions (from config)',
+          value: formatAiAutomodActions(actions).slice(0, 1024),
+        },
+        ...(msg.guild
+          ? [
+              {
+                name: 'Guild',
+                value: `${msg.guild.name} · \`${msg.guild.id}\``.slice(0, 1024),
+              } as const,
+            ]
+          : []),
         {
           name: 'User',
-          value: `${msg.author.tag} (\`${msg.author.id}\`)`,
+          value: `${msg.author.tag} · \`${msg.author.id}\``.slice(0, 1024),
           inline: true,
         },
         {
           name: 'Channel',
-          value: msg.channel.isDMBased() ? 'DM' : `<#${msg.channel.id}>`,
+          value: msg.channel.isDMBased()
+            ? 'DM'
+            : `<#${msg.channel.id}> · \`${msg.channel.id}\``.slice(0, 1024),
           inline: true,
         },
-        { name: 'Message', value: msg.content.slice(0, 600) || '(empty)' },
+        {
+          name: 'Message',
+          value: [`ID \`${msg.id}\``, jump ? `[Jump to message](${jump})` : null]
+            .filter(Boolean)
+            .join(' · ')
+            .slice(0, 1024),
+          inline: false,
+        },
+        {
+          name: 'Message text',
+          value: (msg.content ?? '').slice(0, 900) || '(empty)',
+        },
+        ...(msg.attachments.size > 0
+          ? [
+              {
+                name: `Attachments (${msg.attachments.size})`,
+                value: formatAiAutomodAttachments(msg),
+              } as const,
+            ]
+          : []),
+        ...(msg.embeds.length > 0
+          ? [
+              {
+                name: `Unfurled link previews (${msg.embeds.length})`,
+                value: formatAiAutomodEmbedPreviews(msg),
+              } as const,
+            ]
+          : []),
       )
       .setTimestamp()
+      .setFooter({
+        text: `ND Bot · AI AutoMod · model ${MODEL_ID}`,
+      })
     await staffChannel.send({ embeds: [embed] })
+    if (aiAutomodReportMsgDedupeSec > 0) {
+      const t = Date.now()
+      aiAutomodReportByMessageId.set(msg.id, t)
+      if (aiAutomodReportByMessageId.size > 800) {
+        const cutoff = t - aiAutomodReportMsgDedupeSec * 2000
+        for (const [k, tt] of aiAutomodReportByMessageId) {
+          if (tt < cutoff) aiAutomodReportByMessageId.delete(k)
+        }
+      }
+    }
   } catch (e) {
     console.error('[logging] AI automod report failed:', e)
   }

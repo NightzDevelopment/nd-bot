@@ -1,11 +1,9 @@
 /**
  * Environment and ND branding, single source of truth for the bot.
  */
+import './config-bootstrap.ts'
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { config } from 'dotenv'
-
-config()
 
 export const TOKEN = requiredEnv('DISCORD_BOT_TOKEN')
 export const GOOGLE_KEY = requiredEnv('GOOGLE_API_KEY')
@@ -20,33 +18,50 @@ const DEFAULT_GEMINI_FALLBACK_MODELS = [
 /** Comma-separated model IDs tried after GEMINI_MODEL. */
 export const geminiFallbackModels = (
   process.env.GEMINI_FALLBACK_MODELS?.trim()
-    ? process.env.GEMINI_FALLBACK_MODELS.split(',').map((s) => s.trim()).filter(Boolean)
+    ? process.env.GEMINI_FALLBACK_MODELS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : DEFAULT_GEMINI_FALLBACK_MODELS
 ) as readonly string[]
 /** Optional secondary provider: OpenAI. */
 export const openaiApiKey = process.env.OPENAI_API_KEY?.trim() || undefined
 export const openaiEnabled = Boolean(openaiApiKey)
-export const openaiBaseUrl =
-  process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1'
-export const openaiModel =
-  process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+export const openaiBaseUrl = process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1'
+export const openaiModel = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
 const DEFAULT_OPENAI_FALLBACK_MODELS = ['gpt-4.1-mini']
 export const openaiFallbackModels = (
   process.env.OPENAI_FALLBACK_MODELS?.trim()
-    ? process.env.OPENAI_FALLBACK_MODELS.split(',').map((s) => s.trim()).filter(Boolean)
+    ? process.env.OPENAI_FALLBACK_MODELS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
     : DEFAULT_OPENAI_FALLBACK_MODELS
 ) as readonly string[]
 export const openaiRequestTimeoutMs = Math.max(
   3000,
   parseInt(process.env.OPENAI_TIMEOUT_MS ?? '45000', 10) || 45_000,
 )
+/** Optional tertiary provider: Anthropic Claude. */
+export const claudeApiKey = process.env.CLAUDE_API_KEY?.trim() || undefined
+export const claudeEnabled = Boolean(claudeApiKey)
+export const claudeModel = process.env.CLAUDE_MODEL?.trim() || 'claude-sonnet-4-5-20250929'
+const DEFAULT_CLAUDE_FALLBACK_MODELS = ['claude-opus-4-5-20251101', 'claude-haiku-4-5-20251001']
+export const claudeFallbackModels = (
+  process.env.CLAUDE_FALLBACK_MODELS?.trim()
+    ? process.env.CLAUDE_FALLBACK_MODELS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : DEFAULT_CLAUDE_FALLBACK_MODELS
+) as readonly string[]
+export const claudeRequestTimeoutMs = Math.max(
+  3000,
+  parseInt(process.env.CLAUDE_TIMEOUT_MS ?? '45000', 10) || 45_000,
+)
 /** Max image size (bytes) for vision; Discord CDN fetch, default ~3 MiB. */
 export const IMAGE_ATTACHMENT_MAX_BYTES = Math.min(
   4 * 1024 * 1024,
   Math.max(
     256 * 1024,
-    parseInt(process.env.IMAGE_ATTACHMENT_MAX_BYTES ?? `${3 * 1024 * 1024}`, 10) ||
-      3 * 1024 * 1024,
+    parseInt(process.env.IMAGE_ATTACHMENT_MAX_BYTES ?? `${3 * 1024 * 1024}`, 10) || 3 * 1024 * 1024,
   ),
 )
 /** Max ZIP size (bytes) for attachment analysis. */
@@ -54,8 +69,7 @@ export const ZIP_ATTACHMENT_MAX_BYTES = Math.min(
   25 * 1024 * 1024,
   Math.max(
     512 * 1024,
-    parseInt(process.env.ZIP_ATTACHMENT_MAX_BYTES ?? `${10 * 1024 * 1024}`, 10) ||
-      10 * 1024 * 1024,
+    parseInt(process.env.ZIP_ATTACHMENT_MAX_BYTES ?? `${10 * 1024 * 1024}`, 10) || 10 * 1024 * 1024,
   ),
 )
 /** Max ZIP entries scanned for summaries. */
@@ -168,9 +182,7 @@ export const guildChannelIds = parseIdSet(process.env.GUILD_CHANNEL_IDS)
  * Parent **category** IDs (comma-separated). In channels or threads under one of these
  * categories, a user’s **first** message in that channel always gets an AI reply (no @mention).
  */
-export const guildAiTicketCategoryIds = parseIdSet(
-  process.env.GUILD_AI_TICKET_CATEGORY_IDS,
-)
+export const guildAiTicketCategoryIds = parseIdSet(process.env.GUILD_AI_TICKET_CATEGORY_IDS)
 
 export const WELCOME_CHANNEL_ID = process.env.WELCOME_CHANNEL_ID?.trim() || undefined
 export const WELCOME_ROLE_ID = process.env.WELCOME_ROLE_ID?.trim() || undefined
@@ -188,7 +200,8 @@ export const WELCOME_NEW_PRODUCTS_CHANNEL_ID =
   process.env.WELCOME_NEW_PRODUCTS_CHANNEL_ID?.trim() || WELCOME_CH.announcement
 export const WELCOME_UPDATES_CHANNEL_ID =
   process.env.WELCOME_UPDATES_CHANNEL_ID?.trim() || WELCOME_CH.updates
-export const WELCOME_GENERAL_CHANNEL_ID = process.env.WELCOME_GENERAL_CHANNEL_ID?.trim() || undefined
+export const WELCOME_GENERAL_CHANNEL_ID =
+  process.env.WELCOME_GENERAL_CHANNEL_ID?.trim() || undefined
 export const WELCOME_SUPPORT_CHANNEL_ID =
   process.env.WELCOME_SUPPORT_CHANNEL_ID?.trim() || WELCOME_CH.support
 export const WELCOME_TICKET_CHANNEL_ID =
@@ -210,6 +223,53 @@ export const productDocsDir = process.env.PRODUCT_DOCS_DIR?.trim() || 'data/prod
 export const productDocsMaxFiles = Math.min(
   8,
   Math.max(1, parseInt(process.env.PRODUCT_DOCS_MAX_FILES ?? '3', 10) || 3),
+)
+
+/**
+ * Fetch public store listing (HTML→text) for AI context; refresh on a timer.
+ * Nightz uses **FaxStore** (Weblutions): https://weblutions.com/store/faxstore — storefront URL is still your public `STORE_PAGE_URL`.
+ */
+export const storePageSnapshotEnabled = !isEnvOff(process.env.STORE_PAGE_SNAPSHOT_ENABLED ?? '1')
+export const storePageUrl = process.env.STORE_PAGE_URL?.trim() || 'https://store.nightz.dev/store'
+export const storePageRefreshMinutes = Math.max(
+  15,
+  parseInt(process.env.STORE_PAGE_REFRESH_MINUTES ?? '60', 10) || 60,
+)
+export const storePageMaxChars = Math.min(
+  100_000,
+  Math.max(2000, parseInt(process.env.STORE_PAGE_MAX_CHARS ?? '16000', 10) || 16_000),
+)
+export const storePageFetchTimeoutMs = Math.max(
+  5000,
+  parseInt(process.env.STORE_PAGE_FETCH_TIMEOUT_MS ?? '25000', 10) || 25_000,
+)
+
+function parseStoreFeaturedLines(): string[] {
+  const raw = process.env.STORE_FEATURED_LINES?.trim()
+  if (!raw) return []
+  return raw
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+}
+
+/** Curated bullets for `/store` / `nd!store` (one line per row). Overrides auto-parsed “featured” list. */
+export const storeFeaturedLines = parseStoreFeaturedLines()
+export const storeFeaturedCount = Math.min(
+  10,
+  Math.max(1, parseInt(process.env.STORE_FEATURED_COUNT ?? '3', 10) || 3),
+)
+export const storeLookupMaxResults = Math.min(
+  15,
+  Math.max(1, parseInt(process.env.STORE_LOOKUP_MAX_RESULTS ?? '5', 10) || 5),
+)
+/** Snapshot considered “stale” in health UI after this many minutes without a successful refresh. */
+export const storeSnapshotStaleMinutes = Math.max(
+  30,
+  parseInt(
+    process.env.STORE_SNAPSHOT_STALE_MINUTES ?? String(Math.max(storePageRefreshMinutes * 2, 90)),
+    10,
+  ) || Math.max(storePageRefreshMinutes * 2, 90),
 )
 
 /** Gemini embedding retrieval over chunked FAQ + product docs + dev index (optional). */
@@ -236,10 +296,8 @@ export const embeddingMaxCorpusChunks = Math.min(
 export const aiFeedbackReactionsEnabled = !isEnvOff(
   process.env.AI_FEEDBACK_REACTIONS_ENABLED ?? '1',
 )
-export const aiFeedbackPositiveEmoji =
-  process.env.AI_FEEDBACK_POSITIVE_EMOJI?.trim() || '\u2705'
-export const aiFeedbackNegativeEmoji =
-  process.env.AI_FEEDBACK_NEGATIVE_EMOJI?.trim() || '\u274c'
+export const aiFeedbackPositiveEmoji = process.env.AI_FEEDBACK_POSITIVE_EMOJI?.trim() || '\u2705'
+export const aiFeedbackNegativeEmoji = process.env.AI_FEEDBACK_NEGATIVE_EMOJI?.trim() || '\u274c'
 export const AI_FEEDBACK_LOG_CHANNEL_ID =
   process.env.AI_FEEDBACK_LOG_CHANNEL_ID?.trim() || undefined
 
@@ -294,8 +352,7 @@ export const EXTRA_BANNED_WORDS = parseCommaList(process.env.EXTRA_BANNED_WORDS)
 
 /** Short-circuit AI with random “coming soon” replies when user text matches these products (normalized, substring). */
 export const comingSoonRepliesEnabled = !isEnvOff(process.env.COMING_SOON_REPLIES_ENABLED ?? '1')
-const DEFAULT_COMING_SOON_RESOURCES =
-  'ND_Menu,ND_Framework,ND_Fuel,ND_Inventory,ND_Shops,ND_Taser'
+const DEFAULT_COMING_SOON_RESOURCES = 'ND_Menu,ND_Framework,ND_Fuel,ND_Inventory,ND_Shops,ND_Taser'
 
 function parseComingSoonNeedles(): string[] {
   const raw = process.env.COMING_SOON_RESOURCES?.trim() || DEFAULT_COMING_SOON_RESOURCES
@@ -343,10 +400,17 @@ export const pollReminderHoursBefore = Math.max(
 )
 /** Reminder ping in the poll channel: `here` or `everyone` */
 export const pollReminderPingMode =
-  process.env.POLL_REMINDER_PING?.trim().toLowerCase() === 'everyone'
-    ? 'everyone'
-    : 'here'
+  process.env.POLL_REMINDER_PING?.trim().toLowerCase() === 'everyone' ? 'everyone' : 'here'
 export const pollLogVotes = !isEnvOff(process.env.POLL_LOG_VOTES ?? '1')
+
+/** When posting with `/polls create` / `nd!polls create`, prepend this text on the **same message** as the native poll (plus optional @everyone). Use `{poll_channel}` for `#votes`-style ping, `{question}` for the poll question. Empty = poll only (backward compatible). */
+export const pollCreateAnnouncementTemplate = (
+  process.env.POLL_CREATE_ANNOUNCEMENT_TEMPLATE ?? ''
+).trim()
+/** If template is non-empty (or standalone ping): prefix with `@everyone` (needs Mention Everyone bot perm in that channel). */
+export const pollCreateAnnouncementPingEveryone = !isEnvOff(
+  process.env.POLL_CREATE_ANNOUNCEMENT_PING_EVERYONE ?? '0',
+)
 
 /** Guild AI: respond only when @mentioned / reply / active window; window duration in ms */
 export const ACTIVE_CONVERSATION_MS = Math.max(
@@ -366,15 +430,64 @@ export const WARN_KICK_THRESHOLD = Math.max(
   parseInt(process.env.WARN_KICK_THRESHOLD ?? '5', 10) || 5,
 )
 
+/** Scan username / global name / nickname for profanity & optional terms; optional Gemini vision on avatars. Discord does not expose user “About Me” bios to bots. */
+export const profileScanEnabled = !isEnvOff(process.env.PROFILE_SCAN_ENABLED ?? '0')
+export const profileScanText = !isEnvOff(process.env.PROFILE_SCAN_TEXT ?? '1')
+/**
+ * Include **custom status** (the short line under the username when set) in text checks.
+ * Not the same as About Me — bios are still unavailable to bots. Requires **Presence Intent**
+ * (Developer Portal → Bot → Privileged Gateway Intents) and `GuildPresences` in code.
+ */
+export const profileScanCustomStatus = !isEnvOff(process.env.PROFILE_SCAN_CUSTOM_STATUS ?? '0')
+/** Uses Gemini (cost); only when PROFILE_SCAN_ENABLED=1 */
+export const profileScanAvatarVision = !isEnvOff(process.env.PROFILE_SCAN_AVATAR_VISION ?? '0')
+export const profileScanDefaultAvatars = !isEnvOff(process.env.PROFILE_SCAN_DEFAULT_AVATARS ?? '0')
+export const profileScanInviteInName = !isEnvOff(process.env.PROFILE_SCAN_INVITE_IN_NAME ?? '1')
+export const profileScanMinConfidence = Math.min(
+  0.99,
+  Math.max(0.5, parseFloat(process.env.PROFILE_SCAN_MIN_CONFIDENCE ?? '0.75') || 0.75),
+)
+export const profileScanCooldownSec = Math.max(
+  30,
+  parseInt(process.env.PROFILE_SCAN_COOLDOWN_SEC ?? '120', 10) || 120,
+)
+export const profileScanMaxPerMinute = Math.max(
+  1,
+  parseInt(process.env.PROFILE_SCAN_MAX_PER_MINUTE ?? '20', 10) || 20,
+)
+
+function parseProfileFlagTerms(): string[] {
+  const raw = process.env.PROFILE_FLAG_TERMS?.trim()
+  if (!raw) return []
+  return raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length >= 2)
+}
+
+export const profileFlagTerms: readonly string[] = parseProfileFlagTerms()
+
 /** Rule-based automod */
 export const automodEnabled = !isEnvOff(process.env.AUTOMOD_ENABLED ?? '1')
 export const automodBlockInvites = !isEnvOff(process.env.AUTOMOD_BLOCK_INVITES ?? '1')
-export const automodMaxMentions = Math.max(1, parseInt(process.env.AUTOMOD_MAX_MENTIONS ?? '5', 10) || 5)
+export const automodMaxMentions = Math.max(
+  1,
+  parseInt(process.env.AUTOMOD_MAX_MENTIONS ?? '5', 10) || 5,
+)
 export const automodMaxLinks = Math.max(1, parseInt(process.env.AUTOMOD_MAX_LINKS ?? '4', 10) || 4)
 export const automodMaxDupes = Math.max(2, parseInt(process.env.AUTOMOD_MAX_DUPES ?? '3', 10) || 3)
-export const automodDupeWindowSec = Math.max(3, parseInt(process.env.AUTOMOD_DUPE_WINDOW_SEC ?? '10', 10) || 10)
-export const automodFastMsgCount = Math.max(5, parseInt(process.env.AUTOMOD_FAST_MSG_COUNT ?? '6', 10) || 6)
-export const automodFastMsgWindowSec = Math.max(2, parseInt(process.env.AUTOMOD_FAST_MSG_WINDOW_SEC ?? '5', 10) || 5)
+export const automodDupeWindowSec = Math.max(
+  3,
+  parseInt(process.env.AUTOMOD_DUPE_WINDOW_SEC ?? '10', 10) || 10,
+)
+export const automodFastMsgCount = Math.max(
+  5,
+  parseInt(process.env.AUTOMOD_FAST_MSG_COUNT ?? '6', 10) || 6,
+)
+export const automodFastMsgWindowSec = Math.max(
+  2,
+  parseInt(process.env.AUTOMOD_FAST_MSG_WINDOW_SEC ?? '5', 10) || 5,
+)
 
 /** Heuristic URL / phishing risk (rule automod, no Gemini) */
 export const urlRiskEnabled = !isEnvOff(process.env.URL_RISK_ENABLED ?? '1')
@@ -461,6 +574,64 @@ export const aiAutomodMaxCallsPerMinute = Math.max(
   1,
   parseInt(process.env.AI_AUTOMOD_MAX_CALLS_PER_MINUTE ?? '10', 10) || 10,
 )
+/** If >0, skip duplicate staff-log embeds for same author + similar message within this many seconds (stops multi-channel spam floods). */
+export const aiAutomodStaffLogDedupeSec = Math.max(
+  0,
+  parseInt(process.env.AI_AUTOMOD_STAFF_LOG_DEDUPE_SEC ?? '0', 10) || 0,
+)
+/**
+ * If >0, skip duplicate staff-log embeds for the same Discord message ID within this window (guards against
+ * double-processing / duplicate verdict rows). Set to 0 to disable. Default 90s when unset.
+ */
+const reportMsgDedupeParsed = parseInt(process.env.AI_AUTOMOD_REPORT_MSG_DEDUPE_SEC ?? '90', 10)
+export const aiAutomodReportMsgDedupeSec =
+  Number.isFinite(reportMsgDedupeParsed) && reportMsgDedupeParsed >= 0 ? reportMsgDedupeParsed : 90
+
+/** Progressive auto warn → kick → ban after N AI AutoMod “strikes” (one per flagged message). Requires warn < kick < ban. */
+export const aiAutomodEscalationEnabled = !isEnvOff(
+  process.env.AI_AUTOMOD_ESCALATION_ENABLED ?? '0',
+)
+function parseEscalationThresholds(): {
+  warnAt: number
+  kickAt: number
+  banAt: number
+} {
+  let w = Math.max(1, parseInt(process.env.AI_AUTOMOD_ESCALATION_WARN_AT ?? '4', 10) || 4)
+  let k = Math.max(1, parseInt(process.env.AI_AUTOMOD_ESCALATION_KICK_AT ?? '7', 10) || 7)
+  let b = Math.max(1, parseInt(process.env.AI_AUTOMOD_ESCALATION_BAN_AT ?? '12', 10) || 12)
+  const arr = [w, k, b].sort((a, b) => a - b)
+  ;[w, k, b] = arr
+  if (w === k || k === b) {
+    w = 4
+    k = 7
+    b = 12
+  }
+  return { warnAt: w, kickAt: k, banAt: b }
+}
+export const {
+  warnAt: aiAutomodEscalationWarnAt,
+  kickAt: aiAutomodEscalationKickAt,
+  banAt: aiAutomodEscalationBanAt,
+} = parseEscalationThresholds()
+
+/** After this many days without an AI AutoMod strike, reset strike count (0 = never). */
+export const aiAutomodEscalationDecayDays = Math.max(
+  0,
+  parseInt(process.env.AI_AUTOMOD_ESCALATION_DECAY_DAYS ?? '0', 10) || 0,
+)
+
+/** Verdicts that do not add an escalation strike (comma-separated), e.g. HEATED,TOXICITY_LOW */
+export const aiAutomodEscalationSkipVerdicts: Set<string> = (() => {
+  const raw =
+    process.env.AI_AUTOMOD_ESCALATION_SKIP_VERDICTS?.trim() || 'HEATED,TOXICITY_LOW,SELFHARM'
+  const s = new Set<string>()
+  for (const p of raw.split(',')) {
+    const x = p.trim().toUpperCase()
+    if (x) s.add(x)
+  }
+  return s
+})()
+
 export const raidJoinThreshold = Math.max(
   4,
   parseInt(process.env.RAID_JOIN_THRESHOLD ?? '10', 10) || 10,
@@ -499,13 +670,140 @@ export function automodUrlBlocklistRegex(): RegExp | null {
   }
 }
 
+/**
+ * Comma-separated substrings (case-insensitive). If any http(s) URL in the message contains a
+ * substring, rule AutoMod deletes the message (simpler than escaping AUTOMOD_URL_BLOCKLIST_REGEX).
+ * Minimum substring length 4.
+ */
+export function automodUrlBlocklistSubstrings(): readonly string[] {
+  const raw = process.env.AUTOMOD_URL_BLOCKLIST_SUBSTRINGS?.trim()
+  if (!raw) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const p of raw.split(',')) {
+    const s = p.trim()
+    if (s.length < 4) continue
+    const key = s.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(s)
+  }
+  return out
+}
+
+/**
+ * When enabled, rule AutoMod deletes messages that contain http(s) URLs whose host matches a
+ * known GIF / short-loop / meme embed domain (plus optional AUTOMOD_GIF_BLOCK_HOSTS).
+ * Default off — many communities allow Tenor/Giphy.
+ */
+export const automodBlockGifUrls = !isEnvOff(process.env.AUTOMOD_BLOCK_GIF_URLS ?? '0')
+
+function normalizeGifHostSuffix(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/^\s*www\./, '')
+    .replace(/^\./, '')
+    .replace(/\/+$/, '')
+}
+
+function parseAutomodGifBlockExtraHosts(): string[] {
+  const raw = process.env.AUTOMOD_GIF_BLOCK_HOSTS?.trim()
+  if (!raw) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const part of raw.split(',')) {
+    const h = normalizeGifHostSuffix(part)
+    if (h.length < 3 || seen.has(h)) continue
+    seen.add(h)
+    out.push(h)
+  }
+  return out
+}
+
+/** Popular GIF / meme-loop / short video embed hosts (hostname suffix match; subdomains match) */
+const DEFAULT_GIF_EMBED_HOST_SUFFIXES: readonly string[] = [
+  'tenor.com',
+  'tenor.co',
+  'giphy.com',
+  'gph.is',
+  'giphy.media',
+  'giphygifs.com',
+  'gfycat.com',
+  'redgifs.com',
+  'klipy.com',
+  'getyarn.io',
+  'gyazo.com',
+  'imgflip.com',
+  'makeagif.com',
+  'wifflegif.com',
+  'reactiongifs.com',
+  'picgifs.com',
+  'ezgif.com',
+  'discordemoji.com',
+  'emoji.gg',
+  'emoj.gg',
+  'gifer.com',
+  'gifbin.com',
+  'bestanimations.com',
+  'gifs.com',
+  'popkey.co',
+  'sharegif.com',
+  'gifgif.io',
+  'coub.com',
+  'cliply.io',
+  'streamable.com',
+  'kapwing.com',
+  'gifanimado.com',
+  'gifgifgif.ai',
+  'reactiongif.org',
+  'animatedimages.org',
+  'freegifmaker.me',
+  'gifmagic.com',
+  'gifkeyboard.com',
+  'momento360.com',
+  'giflytics.com',
+  'gifprint.com',
+  'gifimages.org',
+  'animates.net',
+  'animationsource.org',
+  'giphy.world',
+  'gliphy.com',
+  'flipagram.com',
+  'vsgif.com',
+  'gifsgifs.com',
+  'gifgifs.com',
+  'gifmaker.org',
+  'gifmaker.me',
+  'lunapic.com',
+  'onlinegifmaker.com',
+  'picasion.com',
+  'gifanimate.com',
+  'gifimage.net',
+  'gifrific.com',
+  'memecreator.org',
+]
+
+/** Effective host suffix list when AUTOMOD_BLOCK_GIF_URLS is on */
+export const automodGifUrlBlockHostSuffixes: readonly string[] = automodBlockGifUrls
+  ? [...DEFAULT_GIF_EMBED_HOST_SUFFIXES, ...parseAutomodGifBlockExtraHosts()]
+  : []
+
+/** True if hostname is exactly a listed suffix or a subdomain of it (e.g. media.tenor.com) */
+export function urlHostMatchesAutomodGifBlocklist(host: string): boolean {
+  if (automodGifUrlBlockHostSuffixes.length === 0) return false
+  const h = normalizeGifHostSuffix(host.split('/')[0] ?? host).split(':')[0] ?? ''
+  if (!h) return false
+  for (const suf of automodGifUrlBlockHostSuffixes) {
+    if (h === suf || h.endsWith(`.${suf}`)) return true
+  }
+  return false
+}
+
 /** Ratio of non-ASCII letters to total letters; above this triggers delete (rule automod) */
 export const automodHomoglyphScriptRatio = Math.min(
   1,
-  Math.max(
-    0.35,
-    parseFloat(process.env.AUTOMOD_HOMOGLYPH_SCRIPT_RATIO ?? '0.55') || 0.55,
-  ),
+  Math.max(0.35, parseFloat(process.env.AUTOMOD_HOMOGLYPH_SCRIPT_RATIO ?? '0.55') || 0.55),
 )
 
 /** Ticket handoff after AI suggests opening a ticket */
@@ -515,8 +813,7 @@ export const ticketOfferCooldownMs = Math.max(
   parseInt(process.env.TICKET_OFFER_COOLDOWN_MS ?? '120000', 10) || 120_000,
 )
 /** Forum or text channel where private threads are created; optional if using staff intake only */
-export const ticketForumChannelId =
-  process.env.TICKET_FORUM_CHANNEL_ID?.trim() || undefined
+export const ticketForumChannelId = process.env.TICKET_FORUM_CHANNEL_ID?.trim() || undefined
 /** When set, post ticket requests to staff log instead of creating threads (safest default) */
 export const ticketStaffIntakeOnly = !isEnvOff(process.env.TICKET_STAFF_INTAKE_ONLY ?? '1')
 export const ticketAutoCreate = !isEnvOff(process.env.TICKET_AUTO_CREATE ?? '0')
@@ -534,8 +831,21 @@ export const TICKET_CLOSED_CATEGORY_ID =
 export const ticketLogChannelId =
   process.env.TICKET_LOG_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID || undefined
 
+/** Channel where audit-log alerts (mass ban, mass kick, etc.) are posted. Defaults to staff log. */
+export const auditAlertChannelId =
+  process.env.AUDIT_ALERT_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID || undefined
+
+/** How often (ms) to poll Discord audit logs for suspicious activity (default 5 min). */
+export const auditAlertPollMs = Math.max(
+  30_000,
+  Number(process.env.AUDIT_ALERT_POLL_MS ?? '') || 5 * 60 * 1000,
+)
+
+/** Ticket SLA nudge: DM staff if first reply hasn't happened within this many hours (0 = off). */
+export const ticketSlaStaffNudgeHours = Number(process.env.TICKET_SLA_STAFF_NUDGE_HOURS ?? '') || 0
+
 const DEFAULT_TICKET_REASONS =
-  'Buying Product,Technical Help,Script Support,Account/Role Issues,Billing/Refund,Commission Inquiry,Suggestions,Report a Problem,Partnership/Collaboration,Other'
+  'Pre-sale Question,Buying Product,Bug Report,Technical Help,Script Support,Account/Role Issues,Billing/Refund,Refund Request,Commission Inquiry,Suggestions,Report a Problem,Partnership/Collaboration,Other'
 
 export function parseTicketReasons(): string[] {
   const raw = process.env.TICKET_REASONS?.trim() || DEFAULT_TICKET_REASONS
@@ -551,21 +861,14 @@ export const ticketMaxOpenPerUser = Math.max(
   1,
   parseInt(process.env.TICKET_MAX_OPEN_PER_USER ?? '3', 10) || 3,
 )
-export const ticketTranscriptEnabled = !isEnvOff(
-  process.env.TICKET_TRANSCRIPT_ENABLED ?? '1',
-)
+export const ticketTranscriptEnabled = !isEnvOff(process.env.TICKET_TRANSCRIPT_ENABLED ?? '1')
 /** Max messages to include in ticket transcripts (paginated, cap 5000). */
 export const ticketTranscriptMaxMessages = Math.min(
   5000,
-  Math.max(
-    50,
-    parseInt(process.env.TICKET_TRANSCRIPT_MAX_MESSAGES ?? '2000', 10) || 2000,
-  ),
+  Math.max(50, parseInt(process.env.TICKET_TRANSCRIPT_MAX_MESSAGES ?? '2000', 10) || 2000),
 )
 /** When ticket transcripts are on, also generate Ticket Tool–style HTML (default on). */
-export const ticketTranscriptHtmlEnabled = !isEnvOff(
-  process.env.TICKET_TRANSCRIPT_HTML ?? '1',
-)
+export const ticketTranscriptHtmlEnabled = !isEnvOff(process.env.TICKET_TRANSCRIPT_HTML ?? '1')
 export const ticketDmOnClose = !isEnvOff(process.env.TICKET_DM_ON_CLOSE ?? '0')
 export const ticketAutoCloseHours = Math.max(
   0,
@@ -583,8 +886,7 @@ const DEFAULT_TICKET_WORKFLOW_STATUSES =
 
 /** Labels staff can set on open tickets (dropdown on welcome message). Max 25. */
 export function parseTicketWorkflowStatuses(): string[] {
-  const raw =
-    process.env.TICKET_WORKFLOW_STATUSES?.trim() || DEFAULT_TICKET_WORKFLOW_STATUSES
+  const raw = process.env.TICKET_WORKFLOW_STATUSES?.trim() || DEFAULT_TICKET_WORKFLOW_STATUSES
   const seen = new Set<string>()
   const out: string[] = []
   for (const part of raw.split(',')) {
@@ -596,9 +898,7 @@ export function parseTicketWorkflowStatuses(): string[] {
     out.push(s)
     if (out.length >= 25) break
   }
-  return out.length > 0
-    ? out
-    : DEFAULT_TICKET_WORKFLOW_STATUSES.split(',').map((x) => x.trim())
+  return out.length > 0 ? out : DEFAULT_TICKET_WORKFLOW_STATUSES.split(',').map((x) => x.trim())
 }
 
 /** User reports: defaults to staff log if REPORT_CHANNEL_ID unset */
@@ -635,11 +935,59 @@ export const productAliasUrls = parseProductAliases(process.env.PRODUCT_ALIAS_UR
 
 /** Audit */
 export const AUDIT_LOG_CHANNEL_ID = process.env.AUDIT_LOG_CHANNEL_ID?.trim() || undefined
+/** Log user profile + server member updates to AUDIT_LOG (avatar, banner, names, roles, timeout, etc.) */
+export const auditLogProfileUpdates = !isEnvOff(process.env.AUDIT_LOG_PROFILE_UPDATES ?? '1')
 export const auditIgnoredChannels = parseIdSet(process.env.AUDIT_IGNORED_CHANNELS)
 /** Parent category IDs, skip audit (and rule automod) for all channels under these categories */
-export const auditIgnoredCategories = parseIdSet(
-  process.env.AUDIT_IGNORED_CATEGORY_IDS,
+export const auditIgnoredCategories = parseIdSet(process.env.AUDIT_IGNORED_CATEGORY_IDS)
+
+/** Internal feature tier for this private Discord bot (not public billing). */
+export type NightzFeatureTier = 'standard' | 'premium'
+export const nightzFeatureTier: NightzFeatureTier =
+  process.env.ND_BOT_TIER?.trim().toLowerCase() === 'standard' ? 'standard' : 'premium'
+
+/** Feature gates for private/internal deployments. */
+export const levelsEnabled = !isEnvOff(process.env.LEVELS_ENABLED ?? '1')
+export const afkEnabled = !isEnvOff(process.env.AFK_ENABLED ?? '1')
+export const autoDeleteEnabled = !isEnvOff(process.env.AUTO_DELETE_ENABLED ?? '0')
+export const autoPurgeEnabled = !isEnvOff(process.env.AUTO_PURGE_ENABLED ?? '0')
+export const tiktokNotificationsEnabled = !isEnvOff(process.env.TIKTOK_NOTIFICATIONS_ENABLED ?? '0')
+export const twitchNotificationsEnabled = !isEnvOff(process.env.TWITCH_NOTIFICATIONS_ENABLED ?? '0')
+
+/** Levels / XP */
+export const levelsXpMin = Math.max(1, parseInt(process.env.LEVELS_XP_MIN ?? '8', 10) || 8)
+export const levelsXpMax = Math.max(
+  levelsXpMin,
+  parseInt(process.env.LEVELS_XP_MAX ?? '15', 10) || 15,
 )
+export const levelsCooldownMs = Math.max(
+  5_000,
+  (parseInt(process.env.LEVELS_COOLDOWN_SEC ?? '60', 10) || 60) * 1000,
+)
+export const levelsAlertChannelId = process.env.LEVELS_ALERT_CHANNEL_ID?.trim() || undefined
+export const levelsDmEnabled = !isEnvOff(process.env.LEVELS_DM_ENABLED ?? '1')
+export const levelsIgnoredChannels = parseIdSet(process.env.LEVELS_IGNORED_CHANNELS)
+export const levelsIgnoredCategories = parseIdSet(process.env.LEVELS_IGNORED_CATEGORY_IDS)
+export const levelsRoleMilestonesJson = process.env.LEVELS_ROLE_MILESTONES_JSON?.trim() || ''
+export const levelsRemovePreviousRoles = !isEnvOff(process.env.LEVELS_REMOVE_PREVIOUS_ROLES ?? '1')
+
+/** AFK */
+export const afkAutoClear = !isEnvOff(process.env.AFK_AUTO_CLEAR ?? '1')
+export const afkNicknamePrefix = process.env.AFK_NICKNAME_PREFIX?.trim() || ''
+
+/** Delayed auto-delete rules (JSON array; see .env.example). */
+export const autoDeleteRulesJson = process.env.AUTO_DELETE_RULES_JSON?.trim() || ''
+export const autoPurgeRulesJson = process.env.AUTO_PURGE_RULES_JSON?.trim() || ''
+export const autoPurgeIntervalMs = Math.max(
+  60_000,
+  (parseInt(process.env.AUTO_PURGE_INTERVAL_MIN ?? '15', 10) || 15) * 60_000,
+)
+
+/** Dedicated action log channels; fallback to AUDIT_LOG_CHANNEL_ID if unset. */
+export const MESSAGE_LOG_CHANNEL_ID = process.env.MESSAGE_LOG_CHANNEL_ID?.trim() || undefined
+export const MEMBER_LOG_CHANNEL_ID = process.env.MEMBER_LOG_CHANNEL_ID?.trim() || undefined
+export const ROLE_LOG_CHANNEL_ID = process.env.ROLE_LOG_CHANNEL_ID?.trim() || undefined
+export const CHANNEL_LOG_CHANNEL_ID = process.env.CHANNEL_LOG_CHANNEL_ID?.trim() || undefined
 
 /** Temp VC */
 export const TEMPVC_LOBBY_ID = process.env.TEMPVC_LOBBY_ID?.trim() || undefined
@@ -670,15 +1018,17 @@ export function channelPromptExtraByChannelId(): Record<string, string> {
 }
 
 /** Comma-separated extra hosts trusted in `/scam_check` heuristics (merged with URL_RISK_TRUSTED_HOSTS idea). */
-export const scamCheckExtraTrustedHosts = parseHostList(
-  process.env.SCAM_CHECK_EXTRA_TRUSTED_HOSTS,
-)
+export const scamCheckExtraTrustedHosts = parseHostList(process.env.SCAM_CHECK_EXTRA_TRUSTED_HOSTS)
 
 function parseHostList(raw: string | undefined): Set<string> {
   const s = new Set<string>()
   if (!raw?.trim()) return s
   for (const part of raw.split(',')) {
-    const h = part.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0]
+    const h = part
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .split('/')[0]
     if (h) s.add(h)
   }
   return s
@@ -690,8 +1040,52 @@ export const ticketFirstReplySlaMs = Math.max(
   parseInt(process.env.TICKET_FIRST_REPLY_SLA_MS ?? '0', 10) || 0,
 )
 
+/**
+ * Workflow status labels (comma-separated) for which we skip SLA reminders while set
+ * (case-insensitive; e.g. "Waiting on user").
+ */
+export function parseTicketSlaIgnoreWorkflows(): string[] {
+  const raw = process.env.TICKET_SLA_IGNORE_WORKFLOWS?.trim()
+  const fallback = 'Waiting on user'
+  const src = raw || fallback
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const part of src.split(',')) {
+    const s = part.trim().toLowerCase()
+    if (!s || seen.has(s)) continue
+    seen.add(s)
+    out.push(s)
+  }
+  return out
+}
+
+/**
+ * After first SLA breach, post a second staff-log reminder this many ms later (0 = off).
+ * Only if there is still no staff reply.
+ */
+export const ticketSlaSecondNudgeMs = Math.max(
+  0,
+  parseInt(process.env.TICKET_SLA_SECOND_NUDGE_MS ?? '0', 10) || 0,
+)
+
+/** Reject new ticket opens from the same user within this many ms (0 = off). */
+export const ticketOpenCooldownMs = Math.max(
+  0,
+  parseInt(process.env.TICKET_OPEN_COOLDOWN_MS ?? '0', 10) || 0,
+)
+
+/** If set, register slash commands on this guild only (instant; dev/home server). Unset to use global registration. */
+export const slashCommandsGuildId = process.env.SLASH_COMMANDS_GUILD_ID?.trim() || undefined
+
 /** Data directory for JSON stores */
 export const DATA_DIR = process.env.DATA_DIR?.trim() || './data'
+
+/** ServerStats-style stat channels (`/counters`); renames channel names on an interval. */
+export const counterChannelsEnabled = !isEnvOff(process.env.COUNTER_CHANNELS_ENABLED ?? '1')
+export const counterChannelsUpdateMs = Math.max(
+  60_000,
+  parseInt(process.env.COUNTER_CHANNELS_UPDATE_MS ?? `${15 * 60 * 1000}`, 10) || 15 * 60 * 1000,
+)
 
 function requiredEnv(name: string): string {
   const v = process.env[name]?.trim()

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="color-scheme" content="dark light" />
+  <title>nd-bot Dashboard — Sign In</title>
+  <link rel="stylesheet" href="/styles/splash.css" />
+</head>
+<body class="splash-page">
+  <div class="splash-container">
+    <div class="splash-card">
+      <!-- Logo & Branding -->
+      <div class="splash-header">
+        <div class="splash-logo">
+          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <!-- Simple bot icon -->
+            <rect x="12" y="12" width="24" height="24" rx="4" stroke="currentColor" stroke-width="2" />
+            <circle cx="18" cy="20" r="2" fill="currentColor" />
+            <circle cx="30" cy="20" r="2" fill="currentColor" />
+            <path d="M 18 28 Q 24 30 30 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </div>
+        <h1>nd-bot</h1>
+        <p class="splash-tagline">Discord Bot Configuration</p>
+      </div>
+
+      <!-- Auth Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="password">Email</button>
+        <button class="auth-tab" data-tab="oauth">Discord</button>
+      </div>
+
+      <!-- Password Login Form -->
+      <form id="passwordForm" class="auth-form active" data-tab="password">
+        <div class="form-group">
+          <label for="email-input">Email</label>
+          <input
+            id="email-input"
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            required
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password-input">Password</label>
+          <div style="position:relative">
+            <input
+              id="password-input"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              required
+              autocomplete="off"
+              style="width:100%;padding-right:44px"
+            />
+            <button type="button" id="toggle-pw"
+              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8892b0;font-size:13px;padding:4px">
+              Show
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+
+        <p class="form-help">
+          <a href="#forgot">Forgot password?</a>
+        </p>
+      </form>
+
+      <!-- OAuth Login Form -->
+      <form id="oauthForm" class="auth-form" data-tab="oauth" style="display: none">
+        <p class="oauth-help">Sign in with your Discord account. We'll request server configuration access.</p>
+
+        <a href="/auth/discord" class="btn btn-discord btn-block">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+            <!-- Discord logo -->
+            <path d="M16.98 2a1.5 1.5 0 0 0-1.46-1H2.48a1.5 1.5 0 0 0-1.45 1.5v14c0 .83.67 1.5 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-14z" />
+          </svg>
+          Continue with Discord
+        </a>
+
+        <p class="form-help">
+          <a href="#">Don't have a Discord account?</a>
+        </p>
+      </form>
+
+      <!-- Loading State -->
+      <div id="loadingState" class="auth-form" style="display: none">
+        <div class="spinner"></div>
+        <p>Signing in...</p>
+      </div>
+
+      <!-- Error Message -->
+      <div id="errorBanner" class="error-banner" role="alert" style="display: none"></div>
+
+      <!-- Server Selection (shown after auth) -->
+      <div id="serverSelect" class="server-select" style="display: none">
+        <label for="server-dropdown">Select a Server</label>
+        <select id="server-dropdown">
+          <option>Loading servers...</option>
+        </select>
+        <button type="button" class="btn btn-primary btn-block" id="continueBtn">Continue</button>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="splash-footer">
+      <p>
+        <a href="https://github.com/yourrepo/nd-bot">GitHub</a> •
+        <a href="/docs">Documentation</a> •
+        <a href="https://discord.gg/yourserver">Support</a>
+      </p>
+      <p class="version" id="version">v2.0.0</p>
+    </footer>
+  </div>
+
+  <script src="/pages/splash.js"></script>
+</body>
+</html>

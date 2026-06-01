@@ -1,6 +1,9 @@
 /**
  * Per-verdict AI AutoMod actions from env AI_AUTOMOD_ACTION_<VERDICT> and AI_AUTOMOD_TIMEOUT_MIN_<VERDICT>.
  * Tokens: none | log | delete | timeout (comma-separated). Example: log,delete,timeout
+ *
+ * Progressive **kick** / **ban** are not tokens here — they come from strike escalation:
+ * AI_AUTOMOD_ESCALATION_ENABLED=1 plus AI_AUTOMOD_ESCALATION_WARN_AT / _KICK_AT / _BAN_AT.
  */
 
 export type AiAutomodResolvedAction = {
@@ -77,9 +80,7 @@ export function resolveAiAutomodAction(verdict: string): AiAutomodResolvedAction
   const deleteMessage = t.delete
   const wantTimeout = t.timeout
   const fallbackMin = DEFAULTS[v]?.timeoutMin ?? 10
-  const timeoutMs = wantTimeout
-    ? timeoutMsForVerdict(v, fallbackMin > 0 ? fallbackMin : 10)
-    : 0
+  const timeoutMs = wantTimeout ? timeoutMsForVerdict(v, fallbackMin > 0 ? fallbackMin : 10) : 0
 
   return {
     report,

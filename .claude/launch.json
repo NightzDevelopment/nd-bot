@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bot-dev",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["--watch", "run", "src/bot.ts"],
+      "port": 3849
+    },
+    {
+      "name": "bot-start",
+      "runtimeExecutable": "bun",
+      "runtimeArgs": ["run", "src/bot.ts"],
+      "port": 3849
+    },
+    {
+      "name": "bot-pm2",
+      "runtimeExecutable": "bunx",
+      "runtimeArgs": ["pm2", "start", "ecosystem.config.cjs", "--no-daemon"],
+      "port": 3849
+    }
+  ]
+}

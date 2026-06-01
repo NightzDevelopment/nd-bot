@@ -1,9 +1,4 @@
-import {
-  EmbedBuilder,
-  GuildMember,
-  PermissionFlagsBits,
-  type User,
-} from 'discord.js'
+import { type EmbedBuilder, type GuildMember, PermissionFlagsBits, type User } from 'discord.js'
 import { ndEmbed } from './embed.ts'
 
 function formatRoles(member: GuildMember): string {
@@ -11,7 +6,10 @@ function formatRoles(member: GuildMember): string {
     .filter((r) => r.id !== member.guild.id)
     .sort((a, b) => b.position - a.position)
   if (roles.size === 0) return 'None'
-  return roles.map((r) => r.toString()).join(' ').slice(0, 900)
+  return roles
+    .map((r) => r.toString())
+    .join(' ')
+    .slice(0, 900)
 }
 
 function summarizeKeyPermissions(member: GuildMember): string {
@@ -42,37 +40,30 @@ export async function buildUserInfoEmbed(
   user: User,
   member: GuildMember | null,
 ): Promise<EmbedBuilder> {
-  const displayTitle =
-    member?.displayName ??
-    user.globalName ??
-    user.username
+  const displayTitle = member?.displayName ?? user.globalName ?? user.username
 
-  const embed = ndEmbed().setTitle(displayTitle).setThumbnail(user.displayAvatarURL({ size: 256 }))
+  const embed = ndEmbed()
+    .setTitle(displayTitle)
+    .setThumbnail(user.displayAvatarURL({ size: 256 }))
 
   const created = `<t:${Math.floor(user.createdTimestamp / 1000)}:R> (<t:${Math.floor(user.createdTimestamp / 1000)}:D>)`
 
-  embed.addFields(
-    {
-      name: 'Account',
-      value: [
-        `**ID:** ${user.id}`,
-        `**Created:** ${created}`,
-        `**Bot:** ${user.bot ? 'Yes' : 'No'}`,
-        user.globalName
-          ? `**Display name:** ${user.globalName}`
-          : null,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-      inline: false,
-    },
-  )
+  embed.addFields({
+    name: 'Account',
+    value: [
+      `**ID:** ${user.id}`,
+      `**Created:** ${created}`,
+      `**Bot:** ${user.bot ? 'Yes' : 'No'}`,
+      user.globalName ? `**Display name:** ${user.globalName}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    inline: false,
+  })
 
   if (member) {
     const nick =
-      member.nickname != null && member.nickname.length > 0
-        ? member.nickname
-        : 'None set'
+      member.nickname != null && member.nickname.length > 0 ? member.nickname : 'None set'
     const joined = member.joinedTimestamp
       ? `<t:${Math.floor(member.joinedTimestamp / 1000)}:R> (<t:${Math.floor(member.joinedTimestamp / 1000)}:D>)`
       : 'Unknown'
@@ -89,9 +80,7 @@ export async function buildUserInfoEmbed(
     }
 
     const presence = member.presence
-    const statusLine = presence
-      ? `**Status:** ${presence.status}`
-      : null
+    const statusLine = presence ? `**Status:** ${presence.status}` : null
 
     const serverBlock = [
       `**Nickname:** ${nick}`,
@@ -128,8 +117,7 @@ export async function buildUserInfoEmbed(
   } else {
     embed.addFields({
       name: 'In this server',
-      value:
-        'Member data not loaded. Try again, or ensure the user is in this server.',
+      value: 'Member data not loaded. Try again, or ensure the user is in this server.',
       inline: false,
     })
   }

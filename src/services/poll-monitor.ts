@@ -3,15 +3,15 @@
  */
 import {
   ChannelType,
-  Events,
   type Client,
+  Events,
   type PartialPollAnswer,
   type PollAnswer,
 } from 'discord.js'
 import {
   pollLogVotes,
-  pollReminderChannelIds,
   pollMonitorEnabled,
+  pollReminderChannelIds,
   pollReminderHoursBefore,
   pollReminderPingMode,
   pollStaffLogChannelId,
@@ -161,15 +161,13 @@ async function logVoteToStaff(
   }
 
   const question = msg.poll?.question?.text?.slice(0, 500) ?? '*(poll)*'
-  const answerLabel =
-    pollAnswer.text?.slice(0, 500) ?? `Answer #${pollAnswer.id}`
+  const answerLabel = pollAnswer.text?.slice(0, 500) ?? `Answer #${pollAnswer.id}`
   const url = msg.url
 
   const logCh = await client.channels.fetch(logId).catch(() => null)
   if (!logCh?.isTextBased() || logCh.isDMBased()) return
 
-  const title =
-    kind === 'add' ? 'Poll · vote cast' : 'Poll · vote removed'
+  const title = kind === 'add' ? 'Poll · vote cast' : 'Poll · vote removed'
   const embed = ndEmbed()
     .setTitle(title)
     .setDescription(`[Open poll](${url})`)

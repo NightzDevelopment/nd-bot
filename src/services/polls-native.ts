@@ -8,10 +8,15 @@ import {
   type GuildMember,
   type GuildTextBasedChannel,
   type Message,
+  PermissionFlagsBits,
   type Poll,
   type PollData,
 } from 'discord.js'
-import { pollReminderChannelIds } from '../config.ts'
+import {
+  pollCreateAnnouncementPingEveryone,
+  pollCreateAnnouncementTemplate,
+  pollReminderChannelIds,
+} from '../config.ts'
 import { ndEmbed } from '../utils/embed.ts'
 import { listPinnedPollIds } from './poll-pins.ts'
 
@@ -40,9 +45,7 @@ async function ensureFullPoll(message: Message): Promise<Message> {
   return message
 }
 
-async function collectActivePolls(
-  channel: GuildTextBasedChannel,
-): Promise<Message[]> {
+async function collectActivePolls(channel: GuildTextBasedChannel): Promise<Message[]> {
   const out: Message[] = []
   const seen = new Set<string>()
   let before: string | undefined
@@ -87,8 +90,7 @@ async function linesForPinnedPolls(guild: Guild): Promise<string[]> {
     const q = found.poll.question.text?.trim() || 'Poll'
     const shortQ = q.length > 100 ? `${q.slice(0, 97)}…` : q
     const exp = found.poll.expiresTimestamp
-    const when =
-      exp != null ? ` · ends <t:${Math.floor(exp / 1000)}:R>` : ''
+    const when = exp != null ? ` · ends <t:${Math.floor(exp / 1000)}:R>` : ''
     lines.push(`📌 **${shortQ}**${when}\n  ${found.url} · ${chLabel}`)
   }
   return lines
@@ -116,8 +118,7 @@ export async function buildActivePollsEmbed(
       const shortQ = q.length > 120 ? `${q.slice(0, 117)}…` : q
       const url = m.url
       const exp = m.poll?.expiresTimestamp
-      const when =
-        exp != null ? ` · ends <t:${Math.floor(exp / 1000)}:R>` : ''
+      const when = exp != null ? ` · ends <t:${Math.floor(exp / 1000)}:R>` : ''
       rows.push(`• **${shortQ}**${when}\n  ${url} · ${ch}`)
     }
   }
@@ -155,7 +156,25 @@ export async function sendNativePoll(
     allowMultiselect,
   }
   try {
-    const msg = await target.send({ poll })
+    const tmpl = pollCreateAnnouncementTemplate
+    const pingEveryone = tmpl.length > 0 && pollCreateAnnouncementPingEveryone
+    let content: string | undefined
+    if (tmpl.length > 0) {
+      content = interpolatePollAnnouncementTemplate(tmpl, question, target)
+      if (pingEveryone) content = `@everyone\n\n${content}`
+      content = content.slice(0, 2000)
+    }
+    const msg = await target.send({
+      poll,
+      ...(content
+        ? {
+            content,
+            allowedMentions: pingEveryone
+              ? ({ parse: ['everyone'] } as const)
+              : ({ parse: [] } as const),
+          }
+        : {}),
+    })
     return { ok: true, url: msg.url }
   } catch (e) {
     const err = e instanceof Error ? e.message : String(e)
@@ -163,22 +182,30 @@ export async function sendNativePoll(
   }
 }
 
+function interpolatePollAnnouncementTemplate(
+  template: string,
+  question: string,
+  channel: GuildTextBasedChannel,
+): string {
+  const qFull = question.trim()
+  const qShort =
+    qFull.length > POLLS_QUESTION_MAX ? qFull.slice(0, POLLS_QUESTION_MAX - 1) + '…' : qFull
+  return template
+    .replace(/\{poll_channel\}/gi, channel.toString())
+    .replace(/\{poll_channel_name\}/gi, channel.name.slice(0, 100))
+    .replace(/\{question\}/gi, qShort)
+}
+
 export async function resolvePollsTargetChannel(
   guild: Guild,
   channelId: string | null,
-): Promise<
-  | { ok: true; channel: GuildTextBasedChannel }
-  | { ok: false; error: string }
-> {
+): Promise<{ ok: true; channel: GuildTextBasedChannel } | { ok: false; error: string }> {
   if (channelId) {
     const raw = await guild.channels.fetch(channelId).catch(() => null)
     if (!raw?.isTextBased()) {
       return { ok: false, error: 'Invalid channel.' }
     }
-    if (
-      raw.type !== ChannelType.GuildText &&
-      raw.type !== ChannelType.GuildAnnouncement
-    ) {
+    if (raw.type !== ChannelType.GuildText && raw.type !== ChannelType.GuildAnnouncement) {
       return { ok: false, error: 'Pick a text or announcement channel.' }
     }
     if (!pollReminderChannelIds.has(raw.id)) {
@@ -206,6 +233,11 @@ export function botCanPostPolls(
   if (!perms?.has(['SendMessages', 'EmbedLinks'])) {
     return `Missing **Send Messages** (and **Embed Links**) in ${target}.`
   }
+  const pingEveryoneNeeded =
+    pollCreateAnnouncementTemplate.length > 0 && pollCreateAnnouncementPingEveryone
+  if (pingEveryoneNeeded && !perms.has(PermissionFlagsBits.MentionEveryone)) {
+    return `${target} denies **Mention Everyone** — needed when \`POLL_CREATE_ANNOUNCEMENT_PING_EVERYONE=1\`. Turn the ping off in env/dashboard or grant the bot that permission.`
+  }
   return null
 }
 
@@ -227,8 +259,7 @@ export async function endPollInPollChannels(
   guild: Guild,
   messageId: string,
 ): Promise<
-  | { ok: true; channelId: string }
-  | { ok: false; error: 'not_found' | 'other'; detail?: string }
+  { ok: true; channelId: string } | { ok: false; error: 'not_found' | 'other'; detail?: string }
 > {
   let channel: GuildTextBasedChannel | null = null
   for (const cid of pollReminderChannelIds) {

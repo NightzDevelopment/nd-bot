@@ -1,5 +1,5 @@
-import JSZip from 'jszip'
 import type { Attachment, Collection } from 'discord.js'
+import JSZip from 'jszip'
 import {
   ZIP_ATTACHMENT_MAX_BYTES,
   ZIP_ATTACHMENT_MAX_FILE_CHARS,
@@ -116,9 +116,7 @@ export async function summarizeZipAttachment(att: Attachment): Promise<string> {
   }
 
   if (shown === 0) {
-    lines.push(
-      'No readable text files were extracted from the scanned entries.',
-    )
+    lines.push('No readable text files were extracted from the scanned entries.')
   }
   if (binaryLike > 0) {
     lines.push(`Skipped ${binaryLike} likely binary/non-text file(s).`)

@@ -1,0 +1,341 @@
+/**
+ * ND Sentinel Theme — Nightz Development Dashboard
+ * Slate base + ND signature blue, glassmorphism, depth gradients
+ */
+
+:root {
+  /* ND Signature Palette */
+  --nd-blue: #3b82f6;
+  --nd-blue-bright: #60a5fa;
+  --nd-blue-dim: #1d4ed8;
+  --nd-blue-glow: rgba(59, 130, 246, 0.35);
+  --nd-blue-soft: rgba(59, 130, 246, 0.12);
+
+  /* Slate Foundation (dark first) */
+  --slate-950: #020617;
+  --slate-900: #0a1024;
+  --slate-850: #0f172a;
+  --slate-800: #131c33;
+  --slate-700: #1e293b;
+  --slate-600: #334155;
+  --slate-500: #475569;
+  --slate-400: #64748b;
+  --slate-300: #94a3b8;
+  --slate-200: #cbd5e1;
+  --slate-100: #e2e8f0;
+
+  /* Semantic tokens — Sentinel default = dark */
+  --bg-primary: #020617;
+  --bg-secondary: rgba(15, 23, 42, 0.72);
+  --bg-tertiary: rgba(30, 41, 59, 0.55);
+  --bg-card: rgba(15, 23, 42, 0.65);
+  --bg-elevated: rgba(20, 30, 56, 0.75);
+  --bg-input: rgba(2, 6, 23, 0.6);
+
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-muted: #475569;
+
+  --border-color: rgba(148, 163, 184, 0.1);
+  --border-strong: rgba(148, 163, 184, 0.2);
+  --border-focus: var(--nd-blue);
+
+  --accent-primary: var(--nd-blue);
+  --accent-secondary: var(--nd-blue-bright);
+
+  /* Status — Sentinel grade */
+  --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --error: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --info: var(--nd-blue);
+  --info-bg: var(--nd-blue-soft);
+
+  /* Map old design system names so styles.css cards still render correctly */
+  --bg: #020617;
+  --bg-surface: #0a1024;
+  --bg-hover: rgba(255, 255, 255, 0.04);
+  --border: rgba(148, 163, 184, 0.1);
+  --text: #e2e8f0;
+  --accent: var(--nd-blue);
+  --accent-hover: var(--nd-blue-bright);
+  --accent-muted: var(--nd-blue-dim);
+  --accent-soft: var(--nd-blue-soft);
+  --accent-20: rgba(96, 165, 250, 0.2);
+  --warn: var(--warning);
+  --warn-bg: var(--warning-bg);
+  --danger: var(--error);
+  --danger-bg: var(--error-bg);
+
+  /* Shape & motion */
+  --radius: 10px;
+  --radius-sm: 7px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 48px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 24px var(--nd-blue-glow);
+
+  /* Typography */
+  --font: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+/* Light mode override (rarely used — Sentinel is dark first) */
+[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: rgba(255, 255, 255, 0.85);
+  --bg-tertiary: rgba(241, 245, 249, 0.75);
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-elevated: rgba(255, 255, 255, 0.98);
+  --bg-input: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --bg: #f8fafc;
+  --text: #0f172a;
+  color-scheme: light;
+}
+
+/* Reset & base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+html {
+  font-size: 14px;
+  scroll-behavior: smooth;
+}
+body {
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  /* Sentinel ambient lighting */
+  background-image:
+    radial-gradient(ellipse 80% 50% at 80% -10%, var(--nd-blue-soft), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 0% 20%, rgba(56, 189, 248, 0.06), transparent 55%),
+    radial-gradient(ellipse 70% 60% at 50% 110%, rgba(99, 102, 241, 0.05), transparent 60%),
+    linear-gradient(180deg, #020617, #0a1024);
+  background-attachment: fixed;
+  transition: background-color 0.3s ease;
+}
+
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent-secondary);
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+/* Sentinel-grade button */
+.btn {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--nd-blue) 0%, var(--nd-blue-dim) 100%);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+.btn:hover {
+  box-shadow:
+    0 4px 16px var(--nd-blue-glow),
+    0 1px 2px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: translateY(0);
+}
+.btn-sm {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+}
+.btn-secondary {
+  background: rgba(148, 163, 184, 0.08);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.btn-secondary:hover {
+  background: rgba(148, 163, 184, 0.14);
+}
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  background: var(--nd-blue-soft);
+  color: var(--nd-blue-bright);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.badge-success {
+  background: var(--success-bg);
+  color: var(--success);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+.badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+.badge-danger {
+  background: var(--error-bg);
+  color: var(--error);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* Toast notifications — Sentinel alert style */
+.toast {
+  position: fixed;
+  bottom: -100px;
+  left: 1rem;
+  right: auto;
+  max-width: 380px;
+  padding: 0.875rem 1rem;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid var(--border-strong);
+  border-left: 3px solid var(--nd-blue);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  font-size: 0.85rem;
+  transition: bottom 0.3s ease;
+  z-index: 1000;
+  color: var(--text-primary);
+}
+.toast--show {
+  bottom: 1rem;
+}
+.toast--error {
+  border-left-color: var(--error);
+}
+.toast--success {
+  border-left-color: var(--success);
+}
+.toast--info {
+  border-left-color: var(--nd-blue);
+}
+.toast--warning {
+  border-left-color: var(--warning);
+}
+
+/* Modal */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+.modal-content {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 540px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+.modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+}
+.modal-close:hover {
+  color: var(--text-primary);
+}
+.modal-body {
+  padding: 1.5rem;
+}
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: var(--text-secondary);
+}
+
+/* Sentinel tooltip system */
+[data-tip] {
+  position: relative;
+}
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(2, 6, 23, 0.96);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  max-width: 320px;
+  box-shadow: var(--shadow-md);
+  z-index: 100;
+  pointer-events: none;
+}

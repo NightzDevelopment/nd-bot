@@ -5,21 +5,22 @@ import {
   type ChatInputCommandInteraction,
   type GuildMember,
   type Message,
+  MessageFlags,
 } from 'discord.js'
+import { isGuildMod } from '../utils/permissions.ts'
+import { addPollPin, removePollPin } from './poll-pins.ts'
 import {
-  POLLS_ANSWER_MAX,
-  POLLS_FETCH_LIMIT,
-  POLLS_QUESTION_MAX,
   botCanPostPolls,
   buildActivePollsEmbed,
   endPollInPollChannels,
   findPollMessageInPollChannels,
+  POLLS_ANSWER_MAX,
+  POLLS_FETCH_LIMIT,
+  POLLS_QUESTION_MAX,
   pollsChannelsConfigured,
   resolvePollsTargetChannel,
   sendNativePoll,
 } from './polls-native.ts'
-import { addPollPin, removePollPin } from './poll-pins.ts'
-import { isGuildMod } from '../utils/permissions.ts'
 
 async function memberForAuthor(msg: Message): Promise<GuildMember | null> {
   if (!msg.guild) return null
@@ -31,32 +32,32 @@ async function memberForAuthor(msg: Message): Promise<GuildMember | null> {
   }
 }
 
-export async function handlePollsSlash(
-  interaction: ChatInputCommandInteraction,
-): Promise<void> {
+export async function handlePollsSlash(interaction: ChatInputCommandInteraction): Promise<void> {
   const sub = interaction.options.getSubcommand(true)
 
   if (!pollsChannelsConfigured()) {
     await interaction.reply({
       content:
         'No polls channel is configured. Set `POLL_REMINDER_CHANNEL_IDS` in `.env` to your Polls channel ID.',
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     })
     return
   }
 
   if (!interaction.guild) {
-    await interaction.reply({ content: 'Use this command in a server.', ephemeral: true })
+    await interaction.reply({
+      content: 'Use this command in a server.',
+      flags: MessageFlags.Ephemeral,
+    })
     return
   }
 
   if (sub === 'list') {
-    await interaction.deferReply({ ephemeral: true })
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral })
     const r = await buildActivePollsEmbed(interaction.guild)
     if (r === 'not_configured') {
       await interaction.editReply({
-        content:
-          'No polls channel is configured. Set `POLL_REMINDER_CHANNEL_IDS` in `.env`.',
+        content: 'No polls channel is configured. Set `POLL_REMINDER_CHANNEL_IDS` in `.env`.',
       })
       return
     }
@@ -75,7 +76,7 @@ export async function handlePollsSlash(
 
   const member = await interaction.guild.members.fetch(interaction.user.id)
   if (!isGuildMod(member)) {
-    await interaction.reply({ content: 'Moderator only.', ephemeral: true })
+    await interaction.reply({ content: 'Moderator only.', flags: MessageFlags.Ephemeral })
     return
   }
 
@@ -94,19 +95,18 @@ export async function handlePollsSlash(
     if (parts.length < 2) {
       await interaction.reply({
         content: 'Need at least **2** options. Use `Option A | Option B | Option C`.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
       return
     }
-    const duration =
-      interaction.options.getInteger('duration_hours') ?? 24
+    const duration = interaction.options.getInteger('duration_hours') ?? 24
     const allowMultiselect = interaction.options.getBoolean('multiselect') ?? false
 
     const chOpt = interaction.options.getChannel('channel')
     const channelId = chOpt?.id ?? null
     const resolved = await resolvePollsTargetChannel(interaction.guild, channelId)
     if (!resolved.ok) {
-      await interaction.reply({ content: resolved.error, ephemeral: true })
+      await interaction.reply({ content: resolved.error, flags: MessageFlags.Ephemeral })
       return
     }
     const target = resolved.channel
@@ -114,11 +114,11 @@ export async function handlePollsSlash(
     const me = interaction.guild.members.me
     const permErr = botCanPostPolls(me, target)
     if (permErr) {
-      await interaction.reply({ content: permErr, ephemeral: true })
+      await interaction.reply({ content: permErr, flags: MessageFlags.Ephemeral })
       return
     }
 
-    await interaction.deferReply({ ephemeral: true })
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral })
     const out = await sendNativePoll({
       question,
       answers: parts,
@@ -141,12 +141,12 @@ export async function handlePollsSlash(
     if (!/^\d{17,20}$/.test(messageId)) {
       await interaction.reply({
         content: 'Invalid message ID (numeric snowflake).',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
       return
     }
 
-    await interaction.deferReply({ ephemeral: true })
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral })
     const result = await endPollInPollChannels(interaction.guild, messageId)
     if (result.ok) {
       await interaction.editReply(
@@ -160,23 +160,21 @@ export async function handlePollsSlash(
       )
       return
     }
-    await interaction.editReply(
-      `Could not end poll: ${result.detail ?? 'unknown error'}`,
-    )
+    await interaction.editReply(`Could not end poll: ${result.detail ?? 'unknown error'}`)
     return
   }
 
   if (sub === 'pin' || sub === 'unpin') {
     const messageId = interaction.options.getString('message_id', true).trim()
     if (!/^\d{17,20}$/.test(messageId)) {
-      await interaction.reply({ content: 'Invalid message ID.', ephemeral: true })
+      await interaction.reply({ content: 'Invalid message ID.', flags: MessageFlags.Ephemeral })
       return
     }
     const found = await findPollMessageInPollChannels(interaction.guild, messageId)
     if (!found?.poll) {
       await interaction.reply({
         content: 'Poll not found in configured polls channel(s).',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
       return
     }
@@ -184,11 +182,11 @@ export async function handlePollsSlash(
       await addPollPin(interaction.guild.id, messageId)
       await interaction.reply({
         content: `Bookmarked poll ${found.url} (shown in \`/polls list\`).`,
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
     } else {
       await removePollPin(interaction.guild.id, messageId)
-      await interaction.reply({ content: 'Removed bookmark.', ephemeral: true })
+      await interaction.reply({ content: 'Removed bookmark.', flags: MessageFlags.Ephemeral })
     }
     return
   }
@@ -196,10 +194,10 @@ export async function handlePollsSlash(
   if (sub === 'stats') {
     const messageId = interaction.options.getString('message_id', true).trim()
     if (!/^\d{17,20}$/.test(messageId)) {
-      await interaction.reply({ content: 'Invalid message ID.', ephemeral: true })
+      await interaction.reply({ content: 'Invalid message ID.', flags: MessageFlags.Ephemeral })
       return
     }
-    await interaction.deferReply({ ephemeral: true })
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral })
     const found = await findPollMessageInPollChannels(interaction.guild, messageId)
     if (!found?.poll) {
       await interaction.editReply('Poll not found in configured polls channel(s).')
@@ -237,9 +235,7 @@ export async function handlePollsPrefix(msg: Message, args: string): Promise<boo
   if (!trimmed || first === 'list') {
     const r = await buildActivePollsEmbed(msg.guild)
     if (r === 'not_configured') {
-      await msg.reply(
-        'No polls channel is configured. Set `POLL_REMINDER_CHANNEL_IDS` in `.env`.',
-      )
+      await msg.reply('No polls channel is configured. Set `POLL_REMINDER_CHANNEL_IDS` in `.env`.')
       return true
     }
     if ('empty' in r && r.empty) {
@@ -261,7 +257,10 @@ export async function handlePollsPrefix(msg: Message, args: string): Promise<boo
   }
 
   if (first === 'end') {
-    const id = trimmed.replace(/^end\s+/i, '').trim().split(/\s+/)[0]
+    const id = trimmed
+      .replace(/^end\s+/i, '')
+      .trim()
+      .split(/\s+/)[0]
     if (!id || !/^\d{17,20}$/.test(id)) {
       await msg.reply('Usage: `nd!polls end <message_id>` (right-click poll → Copy ID)')
       return true

@@ -1,7 +1,4 @@
-import {
-  comingSoonNormalizedNeedles,
-  comingSoonRepliesEnabled,
-} from '../config.ts'
+import { comingSoonNormalizedNeedles, comingSoonRepliesEnabled } from '../config.ts'
 
 export function isComingSoonTopic(text: string): boolean {
   if (!comingSoonRepliesEnabled || comingSoonNormalizedNeedles.length === 0) {
@@ -31,8 +28,7 @@ const lastReplyByScope = new Map<string, string>()
 /** Pick a canned line; avoids sending the exact same line twice in a row in `scopeId` (e.g. channel id). */
 export function randomComingSoonReply(scopeId: string): string {
   const avoid = lastReplyByScope.get(scopeId)
-  const pool =
-    avoid && REPLIES.length > 1 ? REPLIES.filter((r) => r !== avoid) : REPLIES
+  const pool = avoid && REPLIES.length > 1 ? REPLIES.filter((r) => r !== avoid) : REPLIES
   const pick = pool[Math.floor(Math.random() * pool.length)]!
   lastReplyByScope.set(scopeId, pick)
   return pick

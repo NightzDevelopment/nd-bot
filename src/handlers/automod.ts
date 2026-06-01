@@ -4,22 +4,28 @@
 import { ChannelType, type Message } from 'discord.js'
 import {
   automodBlockedAttachmentExtensions,
-  automodEnabled,
   automodBlockInvites,
   automodDupeWindowSec,
+  automodEnabled,
   automodFastMsgCount,
   automodFastMsgWindowSec,
+  automodGifUrlBlockHostSuffixes,
   automodHomoglyphScriptRatio,
   automodMaxDupes,
   automodMaxLinks,
   automodMaxMentions,
   automodUrlBlocklistRegex,
+  automodUrlBlocklistSubstrings,
+  TICKET_CLOSED_CATEGORY_ID,
+  TICKET_OPEN_CATEGORY_ID,
+  urlHostMatchesAutomodGifBlocklist,
   urlRiskBlockScore,
   urlRiskDeleteMessage,
   urlRiskEnabled,
 } from '../config.ts'
-import { isIgnoredChannelOrCategory } from '../utils/channel-ignore.ts'
 import { reportAutomod } from '../services/logging.ts'
+import { markBotMessageDelete } from '../utils/bot-delete-attribution.ts'
+import { isIgnoredChannelOrCategory } from '../utils/channel-ignore.ts'
 import { isModMessage } from '../utils/permissions.ts'
 import { scoreMessageUrls } from '../utils/url-risk.ts'
 
@@ -29,10 +35,7 @@ const urlRe = /https?:\/\/[^\s]+/gi
 // Per-channel user message timestamps for fast-msg
 const fastMsg = new Map<string, number[]>()
 // Per-user-channel duplicate text (same normalized content)
-const dupes = new Map<
-  string,
-  { count: number; firstAt: number }
->()
+const dupes = new Map<string, { count: number; firstAt: number }>()
 
 function key(userId: string, channelId: string): string {
   return `${userId}:${channelId}`
@@ -49,17 +52,32 @@ function zalgoScore(text: string): number {
 }
 
 function emojiCount(text: string): number {
-  const re =
-    /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu
+  const re = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu
   return (text.match(re) ?? []).length
 }
 
-async function notify(
-  msg: Message,
-  rule: string,
-  action: string,
-): Promise<void> {
+async function notify(msg: Message, rule: string, action: string): Promise<void> {
   await reportAutomod(msg, rule, action)
+}
+
+async function deleteAutomodMessage(msg: Message, reason: string): Promise<void> {
+  markBotMessageDelete({
+    guildId: msg.guild?.id,
+    channelId: msg.channel.id,
+    messageId: msg.id,
+    actor: 'ND Bot · Rule AutoMod',
+    reason,
+  })
+  await msg.delete()
+}
+
+function isTicketChannel(msg: Message): boolean {
+  if (!('parentId' in msg.channel)) return false
+  const parentId = (msg.channel as { parentId?: string | null }).parentId
+  return (
+    (!!TICKET_OPEN_CATEGORY_ID && parentId === TICKET_OPEN_CATEGORY_ID) ||
+    (!!TICKET_CLOSED_CATEGORY_ID && parentId === TICKET_CLOSED_CATEGORY_ID)
+  )
 }
 
 export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
@@ -72,6 +90,7 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
 
   const content = msg.content ?? ''
   const now = Date.now()
+  const inTicket = isTicketChannel(msg)
 
   // Dangerous attachment extensions
   for (const a of msg.attachments.values()) {
@@ -81,27 +100,73 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
     const ext = name.slice(dot + 1)
     if (automodBlockedAttachmentExtensions.includes(ext)) {
       try {
-        await msg.delete()
+        await deleteAutomodMessage(msg, `Blocked attachment extension (.${ext})`)
       } catch {}
       await notify(msg, `Blocked attachment extension (.${ext})`, 'Message deleted')
       return 'blocked'
     }
   }
 
-  // Optional URL blocklist (regex)
-  const urlBlockRe = automodUrlBlocklistRegex()
-  if (urlBlockRe && urlRe.test(content)) {
-    const links = content.match(urlRe) ?? []
-    for (const link of links) {
-      if (urlBlockRe.test(link)) {
+  if (!inTicket) {
+    // Optional URL blocklist (regex)
+    const urlBlockRe = automodUrlBlocklistRegex()
+    if (urlBlockRe && urlRe.test(content)) {
+      const links = content.match(urlRe) ?? []
+      for (const link of links) {
+        if (urlBlockRe.test(link)) {
+          try {
+            await deleteAutomodMessage(msg, 'URL blocklist match')
+          } catch {}
+          await notify(msg, 'URL blocklist match', 'Message deleted')
+          try {
+            await msg.member.timeout(5 * 60 * 1000, 'AutoMod: blocklist URL')
+          } catch {}
+          return 'blocked'
+        }
+      }
+    }
+
+    // Optional URL substring blocklist (comma-separated in env; case-insensitive)
+    const urlSubs = automodUrlBlocklistSubstrings()
+    if (urlSubs.length > 0 && urlRe.test(content)) {
+      const links = content.match(urlRe) ?? []
+      for (const link of links) {
+        const low = link.toLowerCase()
+        for (const sub of urlSubs) {
+          if (low.includes(sub.toLowerCase())) {
+            try {
+              await deleteAutomodMessage(msg, 'URL blocklist substring match')
+            } catch {}
+            await notify(msg, 'URL blocklist substring match', 'Message deleted')
+            try {
+              await msg.member.timeout(5 * 60 * 1000, 'AutoMod: blocklist URL')
+            } catch {}
+            return 'blocked'
+          }
+        }
+      }
+    }
+
+    // Optional GIF / meme embed host blocklist (AUTOMOD_BLOCK_GIF_URLS + built-in + AUTOMOD_GIF_BLOCK_HOSTS)
+    if (automodGifUrlBlockHostSuffixes.length > 0 && urlRe.test(content)) {
+      const links = content.match(urlRe) ?? []
+      for (const raw of links) {
+        let u: URL
         try {
-          await msg.delete()
-        } catch {}
-        await notify(msg, 'URL blocklist match', 'Message deleted')
-        try {
-          await msg.member.timeout(5 * 60 * 1000, 'AutoMod: blocklist URL')
-        } catch {}
-        return 'blocked'
+          u = new URL(raw.replace(/[),.;]+$/g, ''))
+        } catch {
+          continue
+        }
+        if (urlHostMatchesAutomodGifBlocklist(u.hostname)) {
+          try {
+            await deleteAutomodMessage(msg, 'GIF / embed link blocked')
+          } catch {}
+          await notify(msg, 'GIF / embed link blocked', 'Message deleted')
+          try {
+            await msg.member.timeout(5 * 60 * 1000, 'AutoMod: GIF URL block')
+          } catch {}
+          return 'blocked'
+        }
       }
     }
   }
@@ -116,7 +181,7 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
       }
       if (nonLatin / letters.length >= automodHomoglyphScriptRatio) {
         try {
-          await msg.delete()
+          await deleteAutomodMessage(msg, 'Mixed-script / confusable text')
         } catch {}
         await notify(msg, 'Mixed-script / confusable text', 'Message deleted')
         return 'blocked'
@@ -125,66 +190,60 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
   }
 
   // Mass mentions
-  const mentionCount =
-    msg.mentions.users.size + (msg.mentions.everyone ? 50 : 0)
+  const mentionCount = msg.mentions.users.size + (msg.mentions.everyone ? 50 : 0)
   if (mentionCount >= automodMaxMentions) {
     try {
-      await msg.delete()
+      await deleteAutomodMessage(msg, `Mass mentions (${mentionCount})`)
     } catch {}
-    await notify(
-      msg,
-      `Mass mentions (${mentionCount})`,
-      'Message deleted',
-    )
+    await notify(msg, `Mass mentions (${mentionCount})`, 'Message deleted')
     try {
-      await msg.member.timeout(
-        10 * 60 * 1000,
-        'AutoMod: mass mentions',
-      )
+      await msg.member.timeout(10 * 60 * 1000, 'AutoMod: mass mentions')
     } catch {}
     return 'blocked'
   }
 
-  // Invite links
-  if (automodBlockInvites && inviteRe.test(content)) {
-    try {
-      await msg.delete()
-    } catch {}
-    await notify(msg, 'Invite link blocked', 'Message deleted')
-    return 'blocked'
-  }
-
-  // URL / domain risk (typosquats, IP hosts, punycode, etc.)
-  if (urlRiskEnabled && urlRe.test(content)) {
-    const { score, reasons } = scoreMessageUrls(content)
-    if (score >= urlRiskBlockScore && reasons.length > 0) {
-      const rule = `URL risk (score ${score}): ${reasons.slice(0, 4).join('; ')}`
-      if (urlRiskDeleteMessage) {
-        try {
-          await msg.delete()
-        } catch {}
-        await notify(msg, rule, 'Message deleted + timeout')
-        try {
-          await msg.member.timeout(5 * 60 * 1000, 'AutoMod: suspicious URL')
-        } catch {}
-      } else {
-        await notify(msg, rule, 'Logged only (URL_RISK_DELETE_MESSAGE=0)')
-      }
-      return urlRiskDeleteMessage ? 'blocked' : 'ok'
+  if (!inTicket) {
+    // Invite links
+    if (automodBlockInvites && inviteRe.test(content)) {
+      try {
+        await deleteAutomodMessage(msg, 'Invite link blocked')
+      } catch {}
+      await notify(msg, 'Invite link blocked', 'Message deleted')
+      return 'blocked'
     }
-  }
 
-  // Link spam
-  const links = content.match(urlRe) ?? []
-  if (links.length >= automodMaxLinks) {
-    try {
-      await msg.delete()
-    } catch {}
-    await notify(msg, `Link spam (${links.length} links)`, 'Message deleted')
-    try {
-      await msg.member.timeout(5 * 60 * 1000, 'AutoMod: link spam')
-    } catch {}
-    return 'blocked'
+    // URL / domain risk (typosquats, IP hosts, punycode, etc.)
+    if (urlRiskEnabled && urlRe.test(content)) {
+      const { score, reasons } = scoreMessageUrls(content)
+      if (score >= urlRiskBlockScore && reasons.length > 0) {
+        const rule = `URL risk (score ${score}): ${reasons.slice(0, 4).join('; ')}`
+        if (urlRiskDeleteMessage) {
+          try {
+            await deleteAutomodMessage(msg, rule)
+          } catch {}
+          await notify(msg, rule, 'Message deleted + timeout')
+          try {
+            await msg.member.timeout(5 * 60 * 1000, 'AutoMod: suspicious URL')
+          } catch {}
+        } else {
+          await notify(msg, rule, 'Logged only (URL_RISK_DELETE_MESSAGE=0)')
+        }
+        return urlRiskDeleteMessage ? 'blocked' : 'ok'
+      }
+    }
+
+    // Link spam
+    const links = content.match(urlRe) ?? []
+    if (links.length >= automodMaxLinks) {
+      try {
+        await deleteAutomodMessage(msg, `Link spam (${links.length} links)`)
+      } catch {}
+      await notify(msg, `Link spam (${links.length} links)`, 'Message deleted')
+      try {
+        await msg.member.timeout(5 * 60 * 1000, 'AutoMod: link spam')
+      } catch {}
+      return 'blocked'
+    }
   }
 
   // Caps spam
@@ -194,7 +253,7 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
       const caps = letters.replace(/[^A-Z]/g, '').length
       if (caps / letters.length >= 0.7) {
         try {
-          await msg.delete()
+          await deleteAutomodMessage(msg, 'Caps spam')
         } catch {}
         await notify(msg, 'Caps spam', 'Message deleted')
         return 'blocked'
@@ -205,7 +264,7 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
   // Newline spam
   if ((content.match(/\n/g) ?? []).length >= 15) {
     try {
-      await msg.delete()
+      await deleteAutomodMessage(msg, 'Newline spam')
     } catch {}
     await notify(msg, 'Newline spam', 'Message deleted')
     return 'blocked'
@@ -214,7 +273,7 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
   // Zalgo
   if (content.length >= 20 && zalgoScore(content) >= 15) {
     try {
-      await msg.delete()
+      await deleteAutomodMessage(msg, 'Zalgo / combining characters')
     } catch {}
     await notify(msg, 'Zalgo / combining characters', 'Message deleted')
     return 'blocked'
@@ -223,7 +282,7 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
   // Emoji spam
   if (emojiCount(content) >= 15) {
     try {
-      await msg.delete()
+      await deleteAutomodMessage(msg, 'Emoji spam')
     } catch {}
     await notify(msg, 'Emoji spam', 'Message deleted')
     return 'blocked'
@@ -239,7 +298,10 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
   fastMsg.set(fk, stamps)
   if (stamps.length >= automodFastMsgCount) {
     try {
-      await msg.delete()
+      await deleteAutomodMessage(
+        msg,
+        `Fast messaging (${automodFastMsgCount}+ in ${automodFastMsgWindowSec}s)`,
+      )
     } catch {}
     await notify(
       msg,
@@ -265,7 +327,10 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
       dupes.set(dk, prev)
       if (prev.count >= automodMaxDupes) {
         try {
-          await msg.delete()
+          await deleteAutomodMessage(
+            msg,
+            `Duplicate spam (${prev.count} same messages in ${automodDupeWindowSec}s)`,
+          )
         } catch {}
         await notify(
           msg,

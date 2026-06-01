@@ -33,9 +33,7 @@ export async function refreshProductDocs(): Promise<void> {
   if (!existsSync(dir)) {
     docs = next
     console.warn(`[product-docs] directory missing: ${dir}`)
-    void import('./embeddings.ts')
-      .then((m) => m.scheduleEmbeddingRebuild())
-      .catch(() => {})
+    void import('./embeddings.ts').then((m) => m.scheduleEmbeddingRebuild()).catch(() => {})
     return
   }
   const names = await readdir(dir)
@@ -50,9 +48,7 @@ export async function refreshProductDocs(): Promise<void> {
   }
   docs = next
   console.log(`[product-docs] loaded ${docs.size} markdown file(s) from ${dir}`)
-  void import('./embeddings.ts')
-    .then((m) => m.scheduleEmbeddingRebuild())
-    .catch(() => {})
+  void import('./embeddings.ts').then((m) => m.scheduleEmbeddingRebuild()).catch(() => {})
 }
 
 export function buildProductDocsContext(keywordSource: string): string {

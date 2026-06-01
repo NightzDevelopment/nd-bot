@@ -65,12 +65,7 @@ function stripSpaces(s: string): string {
  * @param msg Optional, in guilds, blocks @everyone / @here pings for non-mods.
  */
 export function containsProfanity(text: string, msg?: Message): boolean {
-  if (
-    msg &&
-    msg.channel.type !== ChannelType.DM &&
-    !isModMessage(msg) &&
-    msg.mentions.everyone
-  ) {
+  if (msg && msg.channel.type !== ChannelType.DM && !isModMessage(msg) && msg.mentions.everyone) {
     return true
   }
 

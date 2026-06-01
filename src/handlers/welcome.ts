@@ -1,4 +1,4 @@
-import { Events, type Client, type GuildMember } from 'discord.js'
+import { type Client, Events, type GuildMember, type PartialGuildMember } from 'discord.js'
 import {
   WELCOME_CHANNEL_ID,
   WELCOME_GENERAL_CHANNEL_ID,
@@ -9,6 +9,7 @@ import {
   WELCOME_TICKET_CHANNEL_ID,
   WELCOME_UPDATES_CHANNEL_ID,
 } from '../config.ts'
+import { broadcastActivity } from '../dashboard/websocket.ts'
 import { ndEmbed } from '../utils/embed.ts'
 
 function channelRef(id: string | undefined, plain: string): string {
@@ -16,6 +17,27 @@ function channelRef(id: string | undefined, plain: string): string {
 }
 
 export function registerWelcomeHandler(client: Client): void {
+  // Always register activity-feed broadcasts even if welcome features are disabled
+  client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
+    broadcastActivity('member_joined', {
+      userId: member.id,
+      username: member.user.username,
+      displayName: member.displayName,
+      avatarUrl: member.user.displayAvatarURL({ size: 32 }),
+      memberCount: member.guild.memberCount,
+    })
+  })
+
+  client.on(Events.GuildMemberRemove, async (member: GuildMember | PartialGuildMember) => {
+    broadcastActivity('member_left', {
+      userId: member.id,
+      username: member.user?.username || 'unknown',
+      displayName: member.displayName || member.user?.username || 'unknown',
+      avatarUrl: member.user?.displayAvatarURL({ size: 32 }),
+      memberCount: member.guild.memberCount,
+    })
+  })
+
   if (!WELCOME_CHANNEL_ID && !WELCOME_ROLE_ID) return
 
   client.on(Events.GuildMemberAdd, async (member: GuildMember) => {

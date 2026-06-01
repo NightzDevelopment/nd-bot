@@ -1,7 +1,7 @@
 /**
  * Basic env validation on boot (fail fast with clear errors).
  */
-import { TOKEN, GOOGLE_KEY } from '../config.ts'
+import { GOOGLE_KEY, TOKEN } from '../config.ts'
 
 export function validateConfigOrExit(): void {
   if (!TOKEN || TOKEN.length < 50) {

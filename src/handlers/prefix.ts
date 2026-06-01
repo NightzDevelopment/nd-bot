@@ -1,80 +1,92 @@
 /**
  * nd! prefix commands, work instantly, no slash-command registration delay.
  */
+import { ChannelType, type GuildMember, type Message, type TextChannel } from 'discord.js'
 import {
-  ChannelType,
-  type GuildMember,
-  type Message,
-  type TextChannel,
-} from 'discord.js'
-import {
-  MODEL_ID,
-  SYSTEM_PROMPT_DM,
-  SYSTEM_PROMPT_GUILD,
-  WELCOME_TICKET_CHANNEL_ID,
-  ticketSystemEnabled,
   aiMonitoringNotice,
   automodPublicBlurb,
+  claudeEnabled,
+  claudeFallbackModels,
+  claudeModel,
   geminiFallbackModels,
+  MODEL_ID,
   openaiEnabled,
   openaiFallbackModels,
   openaiModel,
   productAliasUrls,
   reportCooldownMs,
   reportMaxBodyLength,
+  SYSTEM_PROMPT_DM,
+  SYSTEM_PROMPT_GUILD,
   safetyExtraMarkdown,
   scamCheckExtraTrustedHosts,
+  ticketSystemEnabled,
   translateCooldownMs,
   translateHourlyMax,
+  WELCOME_TICKET_CHANNEL_ID,
 } from '../config.ts'
-import { chunkText } from '../utils/chunk.ts'
-import { ndEmbed, refusalEmbed } from '../utils/embed.ts'
+import { setAfk } from '../services/afk-store.ts'
+import {
+  type AiProviderMode,
+  getAiProviderState,
+  setAiProviderMode,
+} from '../services/ai-provider.ts'
+import { getEntriesLastMs } from '../services/analytics-store.ts'
+import { checkClaudeAvailability } from '../services/claude-client.ts'
 import { buildAugmentedUserContentAsync } from '../services/context-bundle.ts'
+import { searchFaq } from '../services/faq.ts'
 import {
   checkOpenAiAvailability,
   generateOnce,
   getModel,
   getPublicAiErrorMessage,
 } from '../services/gemini.ts'
-import { searchFaq } from '../services/faq.ts'
+import { buildHealthSummary } from '../services/health.ts'
+import { buildLeaderboardEmbed, buildRankEmbed } from '../services/levels.ts'
+import { reportUserReport } from '../services/logging.ts'
+import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.ts'
 import { clearChannel } from '../services/memory.ts'
-import { containsProfanity } from '../services/profanity.ts'
 import {
+  cmdBan,
+  cmdClearwarns,
+  cmdKick,
+  cmdLockdown,
+  cmdPurge,
+  cmdTimeout,
+  cmdUnlock,
   cmdWarn,
   cmdWarnings,
-  cmdClearwarns,
-  cmdTimeout,
-  cmdKick,
-  cmdBan,
-  cmdPurge,
-  cmdLockdown,
-  cmdUnlock,
 } from '../services/mod-actions.ts'
-import { handleExtraPrefix } from './prefix-extra.ts'
-import { buildHelpEmbed } from '../utils/help-text.ts'
-import { isGuildMod } from '../utils/permissions.ts'
-import { getEntriesLastMs } from '../services/analytics-store.ts'
-import { isComingSoonTopic, randomComingSoonReply } from '../utils/coming-soon.ts'
-import { formatModAutomodStatus } from '../utils/automod-status-text.ts'
-import { rollDiceSpec } from '../utils/dice.ts'
-import { formatSupportLinksMarkdown } from '../utils/support-links.ts'
-import { takeReportSlot } from '../utils/report-cooldown.ts'
-import { reportUserReport } from '../services/logging.ts'
+import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
+import { containsProfanity } from '../services/profanity.ts'
+import { formatProductLookupReply } from '../services/store-catalog.ts'
+import {
+  buildStoreCommandBody,
+  formatStoreHealthOneLiner,
+  lookupProductsFromSnapshot,
+} from '../services/store-snapshot.ts'
 import { listOpenTickets } from '../services/ticket-store.ts'
 import {
   formatOpenTicketsList,
   formatTicketStatsLine,
+  formatTicketTagSearch,
+  handleTicketTagCommand,
+  parseOpenTicketsListPrefixArgs,
+  setTicketStaffNote,
   ticketAddUser,
   ticketRemoveUser,
 } from '../services/ticket-system.ts'
-import {
-  getAiProviderState,
-  setAiProviderMode,
-  type AiProviderMode,
-} from '../services/ai-provider.ts'
-import { buildHealthSummary } from '../services/health.ts'
-import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.ts'
-import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
+import { formatModAutomodStatus } from '../utils/automod-status-text.ts'
+import { chunkText } from '../utils/chunk.ts'
+import { isComingSoonTopic, randomComingSoonReply } from '../utils/coming-soon.ts'
+import { rollDiceSpec } from '../utils/dice.ts'
+import { ndEmbed, refusalEmbed } from '../utils/embed.ts'
+import { buildHelpEmbed } from '../utils/help-text.ts'
+import { isGuildMod } from '../utils/permissions.ts'
+import { takeReportSlot } from '../utils/report-cooldown.ts'
+import { formatSupportLinksMarkdown } from '../utils/support-links.ts'
+import { handleEconomyPrefix } from './prefix-economy.ts'
+import { handleExtraPrefix } from './prefix-extra.ts'
 
 const PREFIX = 'nd!'
 
@@ -86,7 +98,7 @@ const translateHourBuckets = new Map<string, number[]>()
 
 export function consumeTranslateSlot(userId: string): string | null {
   const now = Date.now()
-  let bucket = (translateHourBuckets.get(userId) ?? []).filter((t) => now - t < 3_600_000)
+  const bucket = (translateHourBuckets.get(userId) ?? []).filter((t) => now - t < 3_600_000)
   if (bucket.length >= translateHourlyMax) {
     return 'You have reached the hourly translation limit. Try again later.'
   }
@@ -135,28 +147,125 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   const extra = await handleExtraPrefix(msg, cmd, args)
   if (extra) return
 
+  const economyHandled = await handleEconomyPrefix(msg, cmd, args)
+  if (economyHandled) return
+
   if (cmd === 'help') {
     await msg.reply({ embeds: [buildHelpEmbed()] })
     return
   }
 
+  if (cmd === 'rank' || cmd === 'level') {
+    if (!msg.guild) {
+      await msg.reply('Use this in a server.')
+      return
+    }
+    const target = msg.mentions.users.first() ?? msg.author
+
+    try {
+      const { getLevelRecord, xpForLevel } = await import('../services/levels-store.ts')
+      const levelRec = await getLevelRecord(msg.guild.id, target.id)
+      const { getProfile } = await import('../services/member-profile.ts')
+      const { getUserBadges } = await import('../services/achievements.ts')
+      const profile = await getProfile(target.id)
+      const badges = await getUserBadges(target.id)
+
+      const repPoints = profile?.stats.reputation ?? 0
+      const totalMessages = levelRec.messageCount ?? profile?.stats.messages ?? 0
+      const currentLevel = levelRec.level ?? profile?.stats.level ?? 0
+      const currentXp = levelRec.xp ?? 0
+      const nextLevel = currentLevel + 1
+      const nextLevelXp = xpForLevel(nextLevel)
+
+      const avatarUrl = target.displayAvatarURL({ extension: 'png', size: 256 })
+
+      const { generateProfileCard } = await import('../services/profile-card.ts')
+      const buffer = await generateProfileCard({
+        userId: target.id,
+        username: target.username,
+        avatarUrl,
+        level: currentLevel,
+        xp: currentXp,
+        nextLevelXp,
+        messages: totalMessages,
+        reputation: repPoints,
+        bio: profile?.bio || 'Nightz Development Associate',
+        badges: badges.map((b) => ({ name: b.name, icon: b.icon })),
+      })
+
+      const { AttachmentBuilder } = await import('discord.js')
+      const file = new AttachmentBuilder(buffer, { name: `profile-${target.id}.png` })
+
+      await msg.reply({ files: [file] })
+    } catch (err) {
+      console.error('[prefix rank] Error rendering card, falling back to embed:', err)
+      await msg.reply({ embeds: [await buildRankEmbed(msg.guild.id, target.id, target.tag)] })
+    }
+    return
+  }
+
+  if (cmd === 'leaderboard' || cmd === 'levels') {
+    if (!msg.guild) {
+      await msg.reply('Use this in a server.')
+      return
+    }
+    await msg.reply({ embeds: [await buildLeaderboardEmbed(msg.guild.id)] })
+    return
+  }
+
+  if (cmd === 'afk') {
+    if (!msg.guild) {
+      await msg.reply('Use this in a server.')
+      return
+    }
+    const reason = args || 'AFK'
+    await setAfk(msg.guild.id, msg.author.id, reason.slice(0, 200))
+    await msg.reply({
+      embeds: [
+        ndEmbed()
+          .setTitle('AFK set')
+          .setDescription(`Reason: **${reason.slice(0, 200)}**`),
+      ],
+    })
+    return
+  }
+
   if (cmd === 'model' || cmd === 'aimodel' || cmd === 'aiprovider') {
     const state = await getAiProviderState()
-    const openaiHealth = openaiEnabled
-      ? await checkOpenAiAvailability()
-      : {
-          ok: false,
-          reason: 'disabled' as const,
-          detail: 'OpenAI is disabled (`OPENAI_API_KEY` is not set).',
-        }
+    const [openaiHealth, claudeHealth] = await Promise.all([
+      openaiEnabled
+        ? checkOpenAiAvailability()
+        : Promise.resolve({
+            ok: false,
+            reason: 'disabled' as const,
+            detail: 'OpenAI is disabled (`OPENAI_API_KEY` is not set).',
+          }),
+      claudeEnabled
+        ? checkClaudeAvailability()
+        : Promise.resolve({
+            ok: false,
+            detail: 'Claude is disabled (`CLAUDE_API_KEY` is not set).',
+          }),
+    ])
+
     const details = [
       `Current mode: **${state.mode}**`,
-      `Gemini primary: \`${MODEL_ID}\``,
-      `Gemini fallbacks: ${geminiFallbackModels.length ? geminiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
-      `OpenAI provider: ${openaiEnabled ? `enabled (\`${openaiModel}\`)` : 'disabled'}`,
-      `OpenAI fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
-      `OpenAI status: ${openaiHealth.ok ? 'online' : 'offline'}`,
-      `OpenAI details: ${openaiHealth.detail}`,
+      ``,
+      `**Gemini**`,
+      `Primary: \`${MODEL_ID}\``,
+      `Fallbacks: ${geminiFallbackModels.length ? geminiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+      ``,
+      `**Claude**`,
+      `Provider: ${claudeEnabled ? `enabled (\`${claudeModel}\`)` : 'disabled'}`,
+      `Fallbacks: ${claudeEnabled && claudeFallbackModels.length ? claudeFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+      `Status: ${claudeHealth.ok ? 'online' : claudeEnabled ? 'offline' : 'disabled'}`,
+      `Details: ${claudeHealth.detail}`,
+      ``,
+      `**OpenAI**`,
+      `Provider: ${openaiEnabled ? `enabled (\`${openaiModel}\`)` : 'disabled'}`,
+      `Fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
+      `Status: ${openaiHealth.ok ? 'online' : openaiEnabled ? 'offline' : 'disabled'}`,
+      `Details: ${openaiHealth.detail}`,
     ].join('\n')
 
     const wanted = args.split(/\s+/)[0]?.trim().toLowerCase()
@@ -164,9 +273,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       await msg.reply(details.slice(0, 1900))
       return
     }
-    if (!['auto', 'gemini', 'openai'].includes(wanted)) {
+    if (!['auto', 'gemini', 'openai', 'claude'].includes(wanted)) {
       await msg.reply(
-        'Usage: `nd!model <auto|gemini|openai>` (or no arg to view current mode).',
+        'Usage: `nd!model <auto|gemini|openai|claude>` (or no arg to view current mode).',
       )
       return
     }
@@ -189,16 +298,22 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       )
       return
     }
+    if (wanted === 'claude' && !claudeEnabled) {
+      await msg.reply('Claude provider is disabled in `.env` (`CLAUDE_API_KEY` not set).')
+      return
+    }
+    if (wanted === 'claude' && !claudeHealth.ok) {
+      await msg.reply(
+        `Cannot switch to **claude** right now.\n${claudeHealth.detail}`.slice(0, 1900),
+      )
+      return
+    }
     const next = await setAiProviderMode(wanted as AiProviderMode, msg.author.id)
-    const after = [
-      `Current mode: **${next.mode}**`,
-      `Gemini primary: \`${MODEL_ID}\``,
-      `Gemini fallbacks: ${geminiFallbackModels.length ? geminiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
-      `OpenAI provider: ${openaiEnabled ? `enabled (\`${openaiModel}\`)` : 'disabled'}`,
-      `OpenAI fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
-    ].join('\n')
     await msg.reply(
-      `AI provider mode set to **${next.mode}**.\n\n${after}`.slice(0, 1900),
+      `AI provider mode set to **${next.mode}**.\n\nUse \`nd!model\` to see full status.`.slice(
+        0,
+        1900,
+      ),
     )
     return
   }
@@ -220,7 +335,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       return
     }
     const body = matches.slice(0, 10).join('\n\n---\n\n').slice(0, 3500)
-    const embed = ndEmbed().setTitle('FAQ').setDescription(body || '(empty)')
+    const embed = ndEmbed()
+      .setTitle('FAQ')
+      .setDescription(body || '(empty)')
     await msg.reply({ embeds: [embed] })
     return
   }
@@ -329,8 +446,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
 
     const prompt = await buildAugmentedUserContentAsync(args, args, 'Question')
 
-    const model =
-      msg.channel.type === ChannelType.DM ? modelDm : modelGuild
+    const model = msg.channel.type === ChannelType.DM ? modelDm : modelGuild
 
     try {
       const text = await generateOnce(model, prompt)
@@ -351,9 +467,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     const t0 = Date.now()
     const m = await msg.reply('Pong…')
     const ms = Date.now() - t0
-    await m.edit(
-      `Pong. ~${ms}ms · gateway ${msg.client.ws.ping}ms`,
-    )
+    await m.edit(`Pong. ~${ms}ms · gateway ${msg.client.ws.ping}ms\n${formatStoreHealthOneLiner()}`)
     return
   }
 
@@ -373,7 +487,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     if (sub === 'list' || !sub) {
       const keys = await listMacroKeys()
       await msg.reply(
-        keys.length ? `**Macros:** ${keys.map((k) => `\`${k}\``).join(', ')}` : 'No macros yet. `nd!macro set <key> <text>`',
+        keys.length
+          ? `**Macros:** ${keys.map((k) => `\`${k}\``).join(', ')}`
+          : 'No macros yet. `nd!macro set <key> <text>`',
       )
       return
     }
@@ -470,7 +586,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     } else if (plain) {
       seconds = parseInt(plain[1]!, 10)
     } else {
-      await msg.reply('Usage: `nd!slowmode <seconds>` or `nd!slowmode #channel <seconds>` (0–21600)')
+      await msg.reply(
+        'Usage: `nd!slowmode <seconds>` or `nd!slowmode #channel <seconds>` (0–21600)',
+      )
       return
     }
     if (!Number.isFinite(seconds) || seconds < 0 || seconds > 21600) {
@@ -488,11 +606,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
 
   if (cmd === 'links') {
     await msg.reply({
-      embeds: [
-        ndEmbed()
-          .setTitle('Support links')
-          .setDescription(formatSupportLinksMarkdown()),
-      ],
+      embeds: [ndEmbed().setTitle('Support links').setDescription(formatSupportLinksMarkdown())],
     })
     return
   }
@@ -507,7 +621,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
         )
         return
       }
-      const body = await formatOpenTicketsList(msg.guild.id)
+      const listArgs = args.replace(/^\S+\s*/, '').trim()
+      const listOpts = parseOpenTicketsListPrefixArgs(listArgs)
+      const body = await formatOpenTicketsList(msg.guild.id, listOpts)
       await msg.reply(body.slice(0, 2000))
       return
     }
@@ -540,12 +656,11 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (cmd === 'tickets' || cmd === 'ticket-list' || cmd === 'ticketlist') {
     const member = await guildMemberForModCheck(msg)
     if (!msg.guild || !member || !isGuildMod(member)) {
-      await msg.reply(
-        'Moderator only. This is the prefix for `/tickets` (list open tickets).',
-      )
+      await msg.reply('Moderator only. This is the prefix for `/tickets` (list open tickets).')
       return
     }
-    const body = await formatOpenTicketsList(msg.guild.id)
+    const listOpts = parseOpenTicketsListPrefixArgs(args)
+    const body = await formatOpenTicketsList(msg.guild.id, listOpts)
     await msg.reply(body.slice(0, 2000))
     return
   }
@@ -553,13 +668,85 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (cmd === 'ticketstats') {
     const member = await guildMemberForModCheck(msg)
     if (!msg.guild || !member || !isGuildMod(member)) {
-      await msg.reply(
-        'Moderator only. This is the prefix for `/ticketstats`.',
-      )
+      await msg.reply('Moderator only. This is the prefix for `/ticketstats`.')
       return
     }
     const line = await formatTicketStatsLine(msg.guild.id)
     await msg.reply(line.slice(0, 2000))
+    return
+  }
+
+  if (cmd === 'ticketnote') {
+    if (!msg.guild || !msg.channel.isTextBased() || msg.channel.isDMBased()) {
+      await msg.reply('Use this in a **ticket channel**.')
+      return
+    }
+    const member = await guildMemberForModCheck(msg)
+    if (!member || !isGuildMod(member)) {
+      await msg.reply('Moderator only. Usage: `nd!ticketnote <text>` (empty to clear).')
+      return
+    }
+    const out = await setTicketStaffNote(msg.channel as TextChannel, member, args.trim())
+    await msg.reply(out.slice(0, 2000))
+    return
+  }
+
+  if (cmd === 'tickettag') {
+    if (!msg.guild || !msg.channel.isTextBased() || msg.channel.isDMBased()) {
+      await msg.reply('Use this in a **ticket channel**.')
+      return
+    }
+    const member = await guildMemberForModCheck(msg)
+    if (!member) {
+      await msg.reply('Moderator only. Usage: `nd!tickettag add|remove|list <tags>`')
+      return
+    }
+    const out = await handleTicketTagCommand(msg.channel as TextChannel, member, args.trim())
+    await msg.reply(out.slice(0, 2000))
+    return
+  }
+
+  if (cmd === 'ticketsearch') {
+    if (!msg.guild) {
+      await msg.reply('Use this in a server.')
+      return
+    }
+    const member = await guildMemberForModCheck(msg)
+    if (!member || !isGuildMod(member)) {
+      await msg.reply('Moderator only. Usage: `nd!ticketsearch <tag>`')
+      return
+    }
+    const out = await formatTicketTagSearch(msg.guild.id, args.trim())
+    await msg.reply(out.slice(0, 3900))
+    return
+  }
+
+  if (cmd === 'copilotdrafts' || cmd === 'aidrafts') {
+    const member = await guildMemberForModCheck(msg)
+    if (!member || !isGuildMod(member)) {
+      await msg.reply('Moderator only. Usage: `nd!copilotdrafts on|off|status`')
+      return
+    }
+    const { getCopilotDraftsEnabled, setCopilotDraftsEnabled } = await import(
+      '../services/ticket-copilot.ts'
+    )
+    const sub = args.trim().toLowerCase()
+    if (sub === 'on' || sub === 'enable') {
+      await setCopilotDraftsEnabled(true, msg.author.tag)
+      await msg.reply('AI Draft Suggestions are now **ON**. Staff will see draft-for-approval posts.')
+      return
+    }
+    if (sub === 'off' || sub === 'disable' || sub === 'stop') {
+      await setCopilotDraftsEnabled(false, msg.author.tag)
+      await msg.reply(
+        'AI Draft Suggestions are now **OFF**. The bot will only send its normal in-ticket messages.',
+      )
+      return
+    }
+    const on = await getCopilotDraftsEnabled()
+    await msg.reply(
+      `AI Draft Suggestions are currently **${on ? 'ON' : 'OFF'}**. Use \`nd!copilotdrafts on\` or \`nd!copilotdrafts off\`.`,
+    )
     return
   }
 
@@ -573,11 +760,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       return
     }
     const uid =
-      msg.mentions.users.first()?.id ??
-      args
-        .split(/\s+/)[0]
-        ?.replace(/\D/g, '')
-        ?.slice(0, 20)
+      msg.mentions.users.first()?.id ?? args.split(/\s+/)[0]?.replace(/\D/g, '')?.slice(0, 20)
     if (!uid || uid.length < 17) {
       await msg.reply('Usage: `nd!adduser @user` or `nd!removeuser @user`')
       return
@@ -595,11 +778,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (cmd === 'search' || cmd === 'searchfaq') {
     const matches = searchFaq(args || null)
     if (matches.length === 0) {
-      await msg.reply(
-        args
-          ? `No FAQ entries matching "${args}".`
-          : 'No FAQ loaded.',
-      )
+      await msg.reply(args ? `No FAQ entries matching "${args}".` : 'No FAQ loaded.')
       return
     }
     const body = matches.slice(0, 10).join('\n\n---\n\n').slice(0, 3500)
@@ -607,18 +786,26 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return
   }
 
+  if (cmd === 'store') {
+    await msg.reply(buildStoreCommandBody().slice(0, 3900))
+    return
+  }
+
   if (cmd === 'product') {
     if (!args) {
-      await msg.reply('Usage: `nd!product <name>`')
+      await msg.reply(
+        'Usage: `nd!product <name>` — matches the cached FaxStore listing, or manual aliases in `PRODUCT_ALIAS_URLS`.',
+      )
       return
     }
     const key = args.toUpperCase().replace(/[^A-Z0-9_]/g, '')
-    const url = productAliasUrls.get(key)
-    if (!url) {
-      await msg.reply(`No link for "${args}". Set \`PRODUCT_ALIAS_URLS\` in .env.`)
+    const aliasUrl = productAliasUrls.get(key)
+    if (aliasUrl) {
+      await msg.reply(`**${args}** (manual alias) → ${aliasUrl}`)
       return
     }
-    await msg.reply(`**${args}** maps to ${url}`)
+    const hits = lookupProductsFromSnapshot(args)
+    await msg.reply(formatProductLookupReply(args, hits).slice(0, 3900))
     return
   }
 
@@ -650,7 +837,13 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       '• Staff will **never** ask for your password or 2FA.\n' +
       '• https://discord.com/safety'
     const extra = safetyExtraMarkdown ? `\n\n${safetyExtraMarkdown.slice(0, 1500)}` : ''
-    await msg.reply({ embeds: [ndEmbed().setTitle('Safety').setDescription(base + extra)] })
+    await msg.reply({
+      embeds: [
+        ndEmbed()
+          .setTitle('Safety')
+          .setDescription(base + extra),
+      ],
+    })
     return
   }
 
@@ -738,9 +931,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     if (hostMatch) {
       const host = hostMatch[1]!.toLowerCase().split(':')[0]!
       if (scamCheckExtraTrustedHosts.has(host)) {
-        await msg.reply(
-          'That hostname is on **SCAM_CHECK_EXTRA_TRUSTED_HOSTS** for this bot.',
-        )
+        await msg.reply('That hostname is on **SCAM_CHECK_EXTRA_TRUSTED_HOSTS** for this bot.')
         return
       }
     }
@@ -750,9 +941,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       mini,
       `Is this message likely a scam or safe? 2-4 sentences. Not legal advice.\n\n${args.slice(0, 2000)}`,
     )
-    await msg.reply(
-      `${out.slice(0, 3500)}\n\n_When in doubt, don’t click; ask staff._`,
-    )
+    await msg.reply(`${out.slice(0, 3500)}\n\n_When in doubt, don’t click; ask staff._`)
     return
   }
 
@@ -767,24 +956,15 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     }
     if ('sendTyping' in msg.channel) await msg.channel.sendTyping()
     const mini = getModel('You write short neutral summaries.')
-    const out = await generateOnce(
-      mini,
-      `One short paragraph summary:\n\n${args.slice(0, 4000)}`,
-    )
+    const out = await generateOnce(mini, `One short paragraph summary:\n\n${args.slice(0, 4000)}`)
     await msg.reply(out.slice(0, 3900))
     return
   }
 
-  await msg.reply(
-    `Unknown command: \`nd!${cmd}\`. Type \`nd!help\` for a list.`,
-  )
+  await msg.reply(`Unknown command: \`nd!${cmd}\`. Type \`nd!help\` for a list.`)
 }
 
-async function handleModPrefix(
-  msg: Message,
-  cmd: string,
-  args: string,
-): Promise<boolean> {
+async function handleModPrefix(msg: Message, cmd: string, args: string): Promise<boolean> {
   switch (cmd) {
     case 'warn':
       await cmdWarn(msg, args)

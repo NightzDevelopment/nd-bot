@@ -1,4 +1,4 @@
-import { EmbedBuilder } from 'discord.js'
+import type { EmbedBuilder } from 'discord.js'
 import { ndEmbed } from './embed.ts'
 
 /**
@@ -15,15 +15,15 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'General',
         value:
-          '**Prefix:** `nd!help` · `nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en` · `nd!ping` · `nd!status` · `nd!links` · `nd!search` · `nd!product` · `nd!roll` · `nd!choose`\n' +
-          '**Slash:** `/help` · `/faq` · `/ask` · `/clear` · `/translate` · `/ping` · `/status` · `/links` · `/search` · `/product` · `/roll` · `/choose`',
+          '**Prefix:** `nd!help` · `nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en` · `nd!ping` · `nd!status` · `nd!links` · `nd!store` · `nd!search` · `nd!product` · `nd!roll` · `nd!choose`\n' +
+          '**Slash:** `/help` · `/faq` · `/ask` · `/clear` · `/translate` · `/ping` · `/status` · `/links` · `/store` · `/search` · `/product` · `/roll` · `/choose`',
         inline: false,
       },
       {
         name: 'Moderation (staff)',
         value:
           '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode`\n' +
-          '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode`',
+          '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode` · `/counters` (ServerStats-style stat channel names — add · remove · list · refresh)',
         inline: false,
       },
       {
@@ -36,8 +36,8 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'Community',
         value:
-          '**Prefix:** `nd!poll` (reaction poll, emoji votes) · **native polls:** `nd!polls` / `nd!polls list` · `nd!polls create` · `nd!polls end` · `nd!polls pin` · `nd!polls stats` · `nd!announce` · `nd!reminder` · `nd!rolereact` · `nd!giveaway` · `nd!giveaway-end` · `nd!giveaway-list` · `nd!suggest` · `nd!approve` · `nd!deny` · `nd!suggestions` · `nd!schedule` · `nd!schedule-list` · `nd!schedule-cancel`\n' +
-          '**Slash:** `/polls` (list · create · end · pin · unpin · stats) — native Discord polls in your configured Polls channel',
+          '**Prefix:** `nd!rank` · `nd!leaderboard` · `nd!afk` · `nd!poll` (reaction poll, emoji votes) · **native polls:** `nd!polls` / `nd!polls list` · `nd!polls create` · `nd!polls end` · `nd!polls pin` · `nd!polls stats` · `nd!announce` · `nd!reminder` · `nd!rolereact` · `nd!giveaway` · `nd!giveaway-end` · `nd!giveaway-list` · `nd!suggest` · `nd!approve` · `nd!deny` · `nd!suggestions` · `nd!schedule` · `nd!schedule-list` · `nd!schedule-cancel`\n' +
+          '**Slash:** `/rank` · `/leaderboard` · `/afk` · `/polls` (list · create · end · pin · unpin · stats) — native Discord polls in your configured Polls channel',
         inline: false,
       },
       {
@@ -50,8 +50,8 @@ export function buildHelpEmbed(): EmbedBuilder {
         name: 'Tickets',
         value:
           '**Panel:** pick a category → **Open Ticket** (private channel).\n' +
-          '**Prefix:** `nd!ticket` · `nd!tickets` / `nd!ticket list` (= `/tickets`) · `nd!ticketstats` · `nd!adduser` / `nd!removeuser` (inside a ticket)\n' +
-          '**Slash:** `/ticket` · `/tickets` · `/ticketstats`',
+          '**Prefix:** `nd!ticket` · `nd!tickets` / `nd!ticket list` (= `/tickets`) · `nd!ticketstats` · `nd!ticketnote` · `nd!adduser` / `nd!removeuser` (inside a ticket)\n' +
+          '**Slash:** `/ticket` · `/tickets` · `/ticketstats` · `/ticketnote`',
         inline: false,
       },
       {

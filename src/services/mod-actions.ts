@@ -1,12 +1,16 @@
-import { ChannelType, type GuildMember, type Message, type TextChannel, type User } from 'discord.js'
 import {
-  WARN_KICK_THRESHOLD,
-  WARN_TIMEOUT_THRESHOLD,
-} from '../config.ts'
-import { addWarning, clearWarnings, getWarnings } from './moderation.ts'
-import { reportAutomod } from './logging.ts'
+  ChannelType,
+  EmbedBuilder,
+  type GuildMember,
+  type Message,
+  type TextChannel,
+  type User,
+} from 'discord.js'
+import { WARN_KICK_THRESHOLD, WARN_TIMEOUT_THRESHOLD } from '../config.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { parseDuration } from '../utils/time.ts'
+import { reportAutomod } from './logging.ts'
+import { addWarning, clearWarnings, getWarnings } from './moderation.ts'
 
 function modReply(msg: Message, text: string): Promise<Message> {
   return msg.reply(text.slice(0, 1900))
@@ -63,14 +67,9 @@ export async function cmdWarn(msg: Message, args: string): Promise<void> {
     reason,
     moderatorId: msg.author.id,
   })
-  await modReply(
-    msg,
-    `Warned **${user.tag}** (${list.length} total warns). Reason: ${reason}`,
-  )
+  await modReply(msg, `Warned **${user.tag}** (${list.length} total warns). Reason: ${reason}`)
   try {
-    await user.send(
-      `You received a warning in **${guild.name}**: ${reason}`,
-    )
+    await user.send(`You received a warning in **${guild.name}**: ${reason}`)
   } catch {
     /* ignore */
   }
@@ -82,10 +81,7 @@ export async function cmdWarn(msg: Message, args: string): Promise<void> {
       } catch {
         /* ignore */
       }
-    } else if (
-      list.length >= WARN_TIMEOUT_THRESHOLD &&
-      member.moderatable
-    ) {
+    } else if (list.length >= WARN_TIMEOUT_THRESHOLD && member.moderatable) {
       try {
         await member.timeout(60 * 60 * 1000, `AutoMod: ${list.length} warnings`)
         await modReply(msg, 'User timed out automatically (warning threshold).')
@@ -111,8 +107,7 @@ export async function cmdWarnings(msg: Message, args: string): Promise<void> {
   }
   const body = list
     .map(
-      (w, i) =>
-        `${i + 1}. <t:${Math.floor(w.at / 1000)}:f>, ${w.reason} (by <@${w.moderatorId}>)`,
+      (w, i) => `${i + 1}. <t:${Math.floor(w.at / 1000)}:f>, ${w.reason} (by <@${w.moderatorId}>)`,
     )
     .join('\n')
   await modReply(msg, `Warnings for **${user.tag}**:\n${body.slice(0, 1800)}`)
@@ -199,8 +194,57 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
     await modReply(msg, 'User not found.')
     return
   }
-  await guild.members.ban(user, { reason })
-  await modReply(msg, `Banned **${user.tag}**.`)
+  try {
+    await guild.members.ban(user, { reason: reason.slice(0, 512) })
+  } catch (e) {
+    const hint =
+      typeof e === 'object' &&
+      e !== null &&
+      'message' in e &&
+      typeof (e as { message: unknown }).message === 'string'
+        ? (e as { message: string }).message
+        : String(e)
+    await modReply(
+      msg,
+      `**Ban failed** for **${user.tag}** (\`${user.id}\`). ${hint.slice(0, 300)}`,
+    )
+    return
+  }
+
+  const ch = msg.channel
+  const channelLine =
+    ch.isTextBased() && !ch.isDMBased() ? `<#${ch.id}> · \`${ch.id}\`` : `\`${ch.id}\``
+
+  const embed = new EmbedBuilder()
+    .setColor(0xed4245)
+    .setTitle('User banned')
+    .setDescription(`**${user.tag}** (\`${user.id}\`) was banned from **${guild.name}**.`)
+    .addFields(
+      {
+        name: 'Reason',
+        value: reason.slice(0, 1024) || '*(none)*',
+        inline: false,
+      },
+      {
+        name: 'Moderator',
+        value: `${msg.author.tag}\n\`${msg.author.id}\``,
+        inline: true,
+      },
+      {
+        name: 'User ID',
+        value: `\`${user.id}\``,
+        inline: true,
+      },
+      {
+        name: 'Channel',
+        value: channelLine,
+        inline: true,
+      },
+    )
+    .setFooter({ text: `${guild.name} · ${guild.id}` })
+    .setTimestamp()
+
+  await msg.reply({ embeds: [embed], allowedMentions: { repliedUser: false } })
 }
 
 export async function cmdPurge(msg: Message, args: string): Promise<void> {
@@ -229,10 +273,7 @@ export async function cmdLockdown(msg: Message): Promise<void> {
   if (!(await requireMod(msg))) return
   const { lockdownGuilds } = await import('./lockdown.ts')
   lockdownGuilds.add(msg.guild!.id)
-  await modReply(
-    msg,
-    'Lockdown enabled, non-moderator messages will be deleted. Use `nd!unlock`.',
-  )
+  await modReply(msg, 'Lockdown enabled, non-moderator messages will be deleted. Use `nd!unlock`.')
   await reportAutomod(msg, 'Lockdown enabled', 'manual')
 }
 

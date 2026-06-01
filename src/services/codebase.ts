@@ -6,10 +6,10 @@ import { basename, join, relative } from 'path'
 import {
   CODEBASE_MAX_FILE_BYTES,
   CODEBASE_REFRESH_MINUTES,
-  devBuildPaths,
   codebaseExcludePathSubstrings,
   codebaseMaxFiles,
   codebaseSingleResourceMode,
+  devBuildPaths,
 } from '../config.ts'
 
 const EXT = new Set(['.lua', '.js', '.ts', '.sql', '.cfg', '.json', '.md', '.txt'])
@@ -65,8 +65,7 @@ export async function refreshCodebaseIndex(): Promise<void> {
   const labelUse = new Map<string, number>()
   for (let i = 0; i < devBuildPaths.length; i++) {
     const rootPath = devBuildPaths[i]!
-    const base =
-      basename(rootPath.replace(/[/\\]+$/, '')) || `root${i}`
+    const base = basename(rootPath.replace(/[/\\]+$/, '')) || `root${i}`
     const n = (labelUse.get(base) ?? 0) + 1
     labelUse.set(base, n)
     const keyPrefix = n > 1 ? `${base}~${n}` : base
@@ -77,15 +76,16 @@ export async function refreshCodebaseIndex(): Promise<void> {
   console.log(
     `[codebase] indexed ${index.size} files across ${devBuildPaths.length} root(s): ${devBuildPaths.join(' | ')}`,
   )
-  void import('./embeddings.ts')
-    .then((m) => m.scheduleEmbeddingRebuild())
-    .catch(() => {})
+  void import('./embeddings.ts').then((m) => m.scheduleEmbeddingRebuild()).catch(() => {})
 }
 
 export function startCodebaseRefreshLoop(): void {
-  setInterval(() => {
-    void refreshCodebaseIndex()
-  }, CODEBASE_REFRESH_MINUTES * 60 * 1000).unref()
+  setInterval(
+    () => {
+      void refreshCodebaseIndex()
+    },
+    CODEBASE_REFRESH_MINUTES * 60 * 1000,
+  ).unref()
 }
 
 function isExcludedPath(rel: string): boolean {
@@ -122,7 +122,9 @@ function scoreFile(rel: string, content: string, kws: string[]): number {
   for (const w of kws) {
     if (low.includes(w)) s += rel.toLowerCase().includes(w) ? 3 : 1
   }
-  const root = resourceRoot(rel).toLowerCase().replace(/[^a-z0-9]/g, '')
+  const root = resourceRoot(rel)
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
   const blob = textBlobForPathBoost(rel, content)
   for (const w of kws) {
     if (w.length < 4) continue
@@ -133,10 +135,11 @@ function scoreFile(rel: string, content: string, kws: string[]): number {
 
 function textBlobForPathBoost(rel: string, content: string): string {
   return (
-    rel
+    rel.toLowerCase().replace(/[^a-z0-9]+/g, '') +
+    content
+      .slice(0, 2000)
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '') +
-    content.slice(0, 2000).toLowerCase().replace(/[^a-z0-9]+/g, '')
+      .replace(/[^a-z0-9]+/g, '')
   )
 }
 
@@ -190,7 +193,8 @@ export function buildRelevantContext(keywordSource: string): string {
     'Here is relevant context from the Nightz Development indexed dev trees (for your reasoning only, do NOT paste raw code in Discord replies). Paths are prefixed by the indexed root folder name; files are from one product subfolder when possible:',
   ]
   for (const { rel, content } of top) {
-    const snippet = content.length > SNIPPET ? content.slice(0, SNIPPET) + '\n…[truncated]' : content
+    const snippet =
+      content.length > SNIPPET ? content.slice(0, SNIPPET) + '\n…[truncated]' : content
     parts.push(`\n--- File: ${rel} ---\n${snippet}`)
   }
   return parts.join('\n')

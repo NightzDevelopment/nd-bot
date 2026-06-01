@@ -6,7 +6,7 @@ import {
   type Client,
   type Message,
   type TextChannel,
-  ThreadChannel,
+  type ThreadChannel,
 } from 'discord.js'
 import {
   aiAutomodBatchIntervalMs,
@@ -14,6 +14,10 @@ import {
   aiAutomodCryptoScam,
   aiAutomodDoxxing,
   aiAutomodEnabled,
+  aiAutomodEscalationBanAt,
+  aiAutomodEscalationEnabled,
+  aiAutomodEscalationKickAt,
+  aiAutomodEscalationWarnAt,
   aiAutomodHate,
   aiAutomodImpersonation,
   aiAutomodIncludeChannelSnippet,
@@ -36,27 +40,30 @@ import {
   raidJoinWindowSec,
   raidNewAccountAlertEnabled,
   raidNewAccountDays,
+  TICKET_CLOSED_CATEGORY_ID,
+  TICKET_OPEN_CATEGORY_ID,
 } from '../config.ts'
-import { generateRaw, generateRawWithImage } from './gemini.ts'
-import { reportAiAutomod, reportNewAccountJoin, reportRaidAlert } from './logging.ts'
-import { isModMessage } from '../utils/permissions.ts'
-import { isIgnoredChannelOrCategory } from '../utils/channel-ignore.ts'
-import { lockdownGuilds } from './lockdown.ts'
 import { resolveAiAutomodAction } from '../utils/automod-actions.ts'
-import {
-  fetchAttachmentAsBase64,
-  pickFirstImageAttachment,
-} from '../utils/image-attachment.ts'
+import { markBotMessageDelete } from '../utils/bot-delete-attribution.ts'
+import { isIgnoredChannelOrCategory } from '../utils/channel-ignore.ts'
+import { fetchAttachmentAsBase64, pickFirstImageAttachment } from '../utils/image-attachment.ts'
+import { isModMessage } from '../utils/permissions.ts'
+import { maybeAutomodEscalation } from './ai-automod-escalation.ts'
+import { generateRaw, generateRawWithImage } from './gemini.ts'
+import { lockdownGuilds } from './lockdown.ts'
+import { reportAiAutomod, reportNewAccountJoin, reportRaidAlert } from './logging.ts'
 
 type Queued = {
   msg: Message
   queuedAt: number
   /** Prior channel lines (before current message was pushed to LRU) */
-  channelSnippet?: string
+  channelSnippet?: string | undefined
 }
 
 const queue: Queued[] = []
 const visionQueue: Queued[] = []
+/** Same message queued only once until a batch/vision run finishes (stops duplicate strikes/logs). */
+const pendingAiAutomodMessageIds = new Set<string>()
 let processing = false
 let interval: ReturnType<typeof setInterval> | null = null
 
@@ -103,19 +110,13 @@ export function registerRaidTracking(client: Client): void {
     arr.push(now)
     joinTimestamps.set(gid, arr)
     if (arr.length >= raidJoinThreshold) {
-      void reportRaidAlert(
-        member.guild.name,
-        member.guild.id,
-        arr.length,
-        raidJoinWindowSec,
-      )
+      void reportRaidAlert(member.guild.name, member.guild.id, arr.length, raidJoinWindowSec)
       lockdownGuilds.add(gid)
       console.warn(`[ai-automod] raid mode: lockdown enabled for guild ${gid}`)
     }
 
     if (raidNewAccountAlertEnabled && member.user.createdAt) {
-      const ageDays =
-        (Date.now() - member.user.createdTimestamp) / (24 * 60 * 60 * 1000)
+      const ageDays = (Date.now() - member.user.createdTimestamp) / (24 * 60 * 60 * 1000)
       if (ageDays < raidNewAccountDays) {
         void reportNewAccountJoin(member, ageDays)
       }
@@ -170,9 +171,7 @@ function verdictCategoryEnabled(verdict: string): boolean {
   }
 }
 
-function buildAutomodPrompt(
-  items: { id: string; content: string; author: string }[],
-): string {
+function buildAutomodPrompt(items: { id: string; content: string; author: string }[]): string {
   const flags: string[] = []
   if (aiAutomodToxicity) flags.push('toxicity/threats/harassment')
   if (aiAutomodHate) flags.push('hate/harassment toward protected groups')
@@ -197,6 +196,17 @@ Categories to consider: ${flags.join(', ') || 'general safety'}.${rulesExtra}
 For each message output one object:
 {"messageId":"...","verdict":"${verdictEnum}","confidence":0.0-1.0,"reason":"brief"}
 
+**Confidence (required — use varied scores, do not default to 0.9):**
+- Output a number between **0.0** and **1.0** with **two decimal places** when helpful (e.g. \`0.73\`, \`0.81\`, \`0.66\`).
+- **Do not** output the same confidence for every flagged message. Match strength to evidence.
+- Guideline scale (non-SAFE verdicts):
+  - **~0.55–0.69**: weak / ambiguous / could be joke or missing context; borderline — use only when you still believe a rule is broken.
+  - **~0.70–0.79**: plausible violation, some doubt or soft wording.
+  - **~0.80–0.88**: likely violation, clear enough for moderation.
+  - **~0.89–0.95**: strong / explicit evidence.
+  - **~0.96–1.0**: unambiguous (obvious slur, clear scam URL pattern, blatant NSFW).
+- If you would have picked **0.90** out of habit, choose **0.74**, **0.82**, or **0.87** instead when the case is weaker or stronger.
+
 Verdict meanings:
 - SAFE: ok to leave
 - TOXICITY_LOW: mild insults; staff review usually
@@ -213,16 +223,18 @@ Verdict meanings:
 - SPAM_AD: repeated ads / shilling
 
 Rules:
-- verdict SAFE unless clearly harmful; confidence must be >= ${aiAutomodMinConfidence} to flag non-SAFE.
+- verdict SAFE unless clearly harmful; for non-SAFE verdicts, **confidence** must be **>= ${aiAutomodMinConfidence}** or the bot ignores the flag (treat as SAFE for automation). More ambiguous cases should use **lower** confidences in the 0.65–0.82 range when still above the threshold.
 - When unsure, use SAFE.
 - TOXICITY_HIGH for credible threats.
+- **Leetspeak / obfuscation:** Treat character substitutions as the underlying word (e.g. 0→o, 3→e, 1→i, @→a). Flag NSFW/scam meaning even if spelling is distorted.
+- **EVASION:** Use for deliberate filter bypass (leetspeak of sexual/scam terms, zalgo, zero-width chars, split words). Pair with the underlying category (often NSFW or SCAM) in reason.
+- **Bio / profile / link solicitation:** Messages telling people to "check my bio", "link in profile", off-server adult content, or similar → **NSFW** or **SCAM** as appropriate; say so in \`reason\`.
+- **Extremist / Nazi:** Glorification of fascism, Hitler/Nazi memes, Holocaust denial or trivialization, swastika-adjacent shock content, white-supremacist framing → **HATE** (not SAFE). High confidence when symbols or slogans are clear.
+- **NSFW shock memes:** Sexual or explicit **Minecraft/block-game** memes, "gooner" / sexual filename innuendo, or edgy shock GIFs that are primarily sexual or bigoted → **NSFW** or **HATE** as appropriate; name the theme in \`reason\`.
 
 Messages:
 ${items
-  .map(
-    (m) =>
-      `ID:${m.id} AUTHOR:${m.author} CONTENT:${JSON.stringify(m.content.slice(0, 500))}`,
-  )
+  .map((m) => `ID:${m.id} AUTHOR:${m.author} CONTENT:${JSON.stringify(m.content.slice(0, 500))}`)
   .join('\n')}
 
 Return a JSON array only.`
@@ -235,8 +247,20 @@ type Verdict = {
   reason?: string
 }
 
+function parseConfidence(raw: unknown): number {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  if (typeof raw === 'string') {
+    const n = parseFloat(raw.trim())
+    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 0
+  }
+  return 0
+}
+
 function parseJsonArray(text: string): Verdict[] {
-  const t = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '')
+  const t = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
   try {
     const parsed = JSON.parse(t)
     return Array.isArray(parsed) ? parsed : []
@@ -252,6 +276,23 @@ function parseJsonArray(text: string): Verdict[] {
     }
     return []
   }
+}
+
+/** If the model returns duplicate messageIds in one response, keep the highest-confidence row. */
+function mergeVerdictsForBatch(verdicts: Verdict[], batchIds: Set<string>): Verdict[] {
+  const merged = new Map<string, Verdict>()
+  for (const v of verdicts) {
+    const mid = v.messageId
+    if (!mid || !batchIds.has(mid)) continue
+    const verdict = (v.verdict ?? 'SAFE').toUpperCase()
+    const conf = parseConfidence(v.confidence)
+    if (verdict === 'SAFE' || conf < aiAutomodMinConfidence) continue
+    const prev = merged.get(mid)
+    if (!prev || conf > parseConfidence(prev.confidence)) {
+      merged.set(mid, v)
+    }
+  }
+  return [...merged.values()]
 }
 
 async function buildContentForClassifier(msg: Message, channelSnippet?: string): Promise<string> {
@@ -282,36 +323,104 @@ async function applyVerdictActions(
   if (!verdictCategoryEnabled(verdict)) return
 
   const actions = resolveAiAutomodAction(verdict)
+  let reported = false
+  let deletedMessage = false
+  let timedOut = false
+
+  // Broadcast automod flag to dashboard activity feed
+  try {
+    const { broadcastActivity } = await import('../dashboard/websocket.ts')
+    broadcastActivity('automod_flag', {
+      userId: msg.author.id,
+      username: msg.author.username,
+      displayName: msg.member?.displayName || msg.author.username,
+      verdict,
+      reason: reason.slice(0, 120),
+      confidence: conf,
+      channelName: 'name' in msg.channel ? (msg.channel as any).name : undefined,
+    })
+  } catch {
+    /* ignore */
+  }
+
+  const runEscalation = async () => {
+    await maybeAutomodEscalation(msg, verdict, {
+      reported,
+      deletedMessage,
+      timedOut,
+    })
+  }
 
   if (verdict === 'HEATED') {
-    if (actions.report) await reportAiAutomod(msg, verdict, reason, conf)
+    if (actions.report) {
+      try {
+        await reportAiAutomod(msg, verdict, reason, conf)
+        reported = true
+      } catch (e) {
+        console.warn('[ai-automod] staff report failed:', e)
+      }
+    }
     void applyHeatedSlowmode(msg.channel)
+    await runEscalation()
     return
   }
 
   if (verdict === 'TOXICITY_LOW' || verdict === 'IMPERSONATION') {
-    if (actions.report) await reportAiAutomod(msg, verdict, reason, conf)
+    if (actions.report) {
+      try {
+        await reportAiAutomod(msg, verdict, reason, conf)
+        reported = true
+      } catch (e) {
+        console.warn('[ai-automod] staff report failed:', e)
+      }
+    }
+    await runEscalation()
     return
   }
 
-  if (actions.report) {
-    await reportAiAutomod(msg, verdict, reason, conf)
-  }
-
+  // Delete before staff log so a failing report embed cannot leave harmful messages up.
   if (actions.deleteMessage) {
     try {
+      markBotMessageDelete({
+        guildId: msg.guild?.id,
+        channelId: msg.channel.id,
+        messageId: msg.id,
+        actor: 'ND Bot · AI AutoMod',
+        reason: `AI verdict ${verdict}`,
+      })
       await msg.delete()
-    } catch {
-      /* ignore */
+      deletedMessage = true
+    } catch (e) {
+      console.warn(
+        '[ai-automod] message delete failed — grant bot **Manage Messages** in this channel (and check hierarchy):',
+        msg.channel.id,
+        e,
+      )
     }
   }
+
+  if (actions.report) {
+    try {
+      await reportAiAutomod(msg, verdict, reason, conf)
+      reported = true
+    } catch (e) {
+      console.warn('[ai-automod] staff report failed:', e)
+    }
+  }
+
   if (actions.timeoutMs > 0 && msg.member) {
     try {
       await msg.member.timeout(actions.timeoutMs, `AI AutoMod: ${verdict}`)
-    } catch {
-      /* ignore */
+      timedOut = true
+    } catch (e) {
+      console.warn(
+        '[ai-automod] member timeout failed — need **Moderate Members** and role below bot:',
+        msg.author.id,
+        e,
+      )
     }
   }
+  await runEscalation()
 }
 
 type QueueDrain = 'empty' | 'rate_limited' | 'done'
@@ -328,33 +437,43 @@ async function processTextQueue(): Promise<QueueDrain> {
   }
   if (batch.length === 0) return 'empty'
 
-  const items = await Promise.all(
-    batch.map(async (q) => ({
-      id: q.msg.id,
-      content: await buildContentForClassifier(q.msg, q.channelSnippet),
-      author: q.msg.author.tag,
-    })),
-  )
+  const batchIds = new Set(batch.map((b) => b.msg.id))
+  try {
+    const items = await Promise.all(
+      batch.map(async (q) => ({
+        id: q.msg.id,
+        content: await buildContentForClassifier(q.msg, q.channelSnippet),
+        author: q.msg.author.tag,
+      })),
+    )
 
-  callsThisMinute++
-  const promptStr = buildAutomodPrompt(items)
-  const text = await generateRaw(promptStr)
-  const verdicts = parseJsonArray(text)
+    callsThisMinute++
+    const promptStr = buildAutomodPrompt(items)
+    const text = await generateRaw(promptStr)
+    const verdicts = mergeVerdictsForBatch(parseJsonArray(text), batchIds)
 
-  for (const v of verdicts) {
-    const id = v.messageId
-    if (!id) continue
-    const q = batch.find((b) => b.msg.id === id)
-    if (!q) continue
-    const verdict = (v.verdict ?? 'SAFE').toUpperCase()
-    const conf = typeof v.confidence === 'number' ? v.confidence : 0
-    const reason = v.reason ?? ''
+    for (const v of verdicts) {
+      const id = v.messageId
+      if (!id) continue
+      const q = batch.find((b) => b.msg.id === id)
+      if (!q) continue
+      const verdict = (v.verdict ?? 'SAFE').toUpperCase()
+      const conf = parseConfidence(v.confidence)
+      const reason = v.reason ?? ''
 
-    if (verdict === 'SAFE' || conf < aiAutomodMinConfidence) continue
+      if (verdict === 'SAFE' || conf < aiAutomodMinConfidence) continue
 
-    await applyVerdictActions(q.msg, verdict, reason, conf)
+      await applyVerdictActions(q.msg, verdict, reason, conf)
+    }
+    return 'done'
+  } catch (e) {
+    console.error('[ai-automod] processTextQueue error:', e)
+    return 'done'
+  } finally {
+    for (const q of batch) {
+      pendingAiAutomodMessageIds.delete(q.msg.id)
+    }
   }
-  return 'done'
 }
 
 async function processVisionQueue(): Promise<QueueDrain> {
@@ -368,31 +487,39 @@ async function processVisionQueue(): Promise<QueueDrain> {
   const q = visionQueue.shift()
   if (!q) return 'empty'
 
-  const att = pickFirstImageAttachment(q.msg.attachments)
-  if (!att) return 'done'
+  const batchIds = new Set([q.msg.id])
+  try {
+    const att = pickFirstImageAttachment(q.msg.attachments)
+    if (!att) return 'done'
 
-  visionCallsThisMinute++
-  const image = await fetchAttachmentAsBase64(att)
-  const content = await buildContentForClassifier(q.msg, q.channelSnippet)
-  const prompt = `${buildAutomodPrompt([
-    {
-      id: q.msg.id,
-      content: `[image attachment: ${att.name}] ${content}`,
-      author: q.msg.author.tag,
-    },
-  ])}\n\nNote: First message includes an image; classify text+image for NSFW/gore/scams.`
+    visionCallsThisMinute++
+    const image = await fetchAttachmentAsBase64(att)
+    const content = await buildContentForClassifier(q.msg, q.channelSnippet)
+    const prompt = `${buildAutomodPrompt([
+      {
+        id: q.msg.id,
+        content: `[image attachment: ${att.name}] ${content}`,
+        author: q.msg.author.tag,
+      },
+    ])}\n\nNote: This message includes an image — classify text+image together (NSFW/gore/hate/scams). **Vary confidence** per the scale above; do not always use 0.9.`
 
-  const raw = await generateRawWithImage(prompt, image)
-  const verdicts = parseJsonArray(raw)
-  for (const v of verdicts) {
-    if (v.messageId !== q.msg.id) continue
-    const verdict = (v.verdict ?? 'SAFE').toUpperCase()
-    const conf = typeof v.confidence === 'number' ? v.confidence : 0
-    const reason = v.reason ?? ''
-    if (verdict === 'SAFE' || conf < aiAutomodMinConfidence) continue
-    await applyVerdictActions(q.msg, verdict, reason, conf)
+    const raw = await generateRawWithImage(prompt, image)
+    const verdicts = mergeVerdictsForBatch(parseJsonArray(raw), batchIds)
+    for (const v of verdicts) {
+      if (v.messageId !== q.msg.id) continue
+      const verdict = (v.verdict ?? 'SAFE').toUpperCase()
+      const conf = parseConfidence(v.confidence)
+      const reason = v.reason ?? ''
+      if (verdict === 'SAFE' || conf < aiAutomodMinConfidence) continue
+      await applyVerdictActions(q.msg, verdict, reason, conf)
+    }
+    return 'done'
+  } catch (e) {
+    console.error('[ai-automod] processVisionQueue error:', e)
+    return 'done'
+  } finally {
+    pendingAiAutomodMessageIds.delete(q.msg.id)
   }
-  return 'done'
 }
 
 const RATE_LIMIT_RETRY_MS = 5000
@@ -422,24 +549,33 @@ async function processQueue(): Promise<void> {
       (textDrain === 'rate_limited' || callsThisMinute >= aiAutomodMaxCallsPerMinute)
     const visionStuck =
       visionQueue.length > 0 &&
-      (visionDrain === 'rate_limited' ||
-        visionCallsThisMinute >= aiAutomodVisionMaxPerMinute)
+      (visionDrain === 'rate_limited' || visionCallsThisMinute >= aiAutomodVisionMaxPerMinute)
     const delay = textStuck || visionStuck ? RATE_LIMIT_RETRY_MS : 0
     setTimeout(() => void processQueue(), delay)
   }
 }
 
-export function enqueueAiAutomod(
-  msg: Message,
-  channelSnippet?: string,
-): void {
+export function enqueueAiAutomod(msg: Message, channelSnippet?: string): void {
   if (!aiAutomodEnabled) return
   if (msg.channel.type === ChannelType.DM) return
   if (msg.author.bot) return
   if (isModMessage(msg)) return
   if (isIgnoredChannelOrCategory(msg.channel)) return
+  // Skip AI automod in ticket channels (all content allowed)
+  if ('parentId' in msg.channel) {
+    const parentId = (msg.channel as { parentId?: string | null }).parentId
+    if (
+      (TICKET_OPEN_CATEGORY_ID && parentId === TICKET_OPEN_CATEGORY_ID) ||
+      (TICKET_CLOSED_CATEGORY_ID && parentId === TICKET_CLOSED_CATEGORY_ID)
+    ) {
+      return
+    }
+  }
   const c = msg.content?.trim() ?? ''
   if (c.length < 5 && msg.attachments.size === 0) return
+
+  if (pendingAiAutomodMessageIds.has(msg.id)) return
+  pendingAiAutomodMessageIds.add(msg.id)
 
   const img = pickFirstImageAttachment(msg.attachments)
   if (aiAutomodVisionEnabled && img && c.length < 5) {
@@ -455,6 +591,15 @@ export function enqueueAiAutomod(
 export function startAiAutomodProcessor(_client: Client): void {
   if (!aiAutomodEnabled) return
   if (interval) return
+  if (!aiAutomodEscalationEnabled) {
+    console.info(
+      '[ai-automod] Strike escalation is off (no auto warn/kick/ban). Set AI_AUTOMOD_ESCALATION_ENABLED=1. Per-verdict actions only support log/delete/timeout; kick and ban use strike thresholds.',
+    )
+  } else {
+    console.info(
+      `[ai-automod] Escalation on: warn@${aiAutomodEscalationWarnAt} kick@${aiAutomodEscalationKickAt} ban@${aiAutomodEscalationBanAt} strikes (per qualifying flag)`,
+    )
+  }
   interval = setInterval(() => {
     void processQueue()
   }, aiAutomodBatchIntervalMs)

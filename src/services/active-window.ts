@@ -17,8 +17,5 @@ export function isActiveWindow(userId: string, channelId: string): boolean {
 }
 
 export function touchActiveWindow(userId: string, channelId: string): void {
-  activeWindows.set(
-    key(userId, channelId),
-    Date.now() + ACTIVE_CONVERSATION_MS,
-  )
+  activeWindows.set(key(userId, channelId), Date.now() + ACTIVE_CONVERSATION_MS)
 }

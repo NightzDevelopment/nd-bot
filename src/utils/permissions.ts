@@ -1,9 +1,4 @@
-import {
-  ChannelType,
-  PermissionFlagsBits,
-  type GuildMember,
-  type Message,
-} from 'discord.js'
+import { ChannelType, type GuildMember, type Message, PermissionFlagsBits } from 'discord.js'
 import { modRoleIds } from '../config.ts'
 
 export function isGuildMod(member: GuildMember | null): boolean {

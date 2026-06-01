@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-NetTCPConnection -LocalPort 3852 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep -Milliseconds 500; Remove-Item -Path \"C:\\\\Users\\\\jsitz\\\\Projects\\\\nd-discord-gemini-bot\\\\data\\\\nd-bot-instance.lock\" -ErrorAction SilentlyContinue; cd \"C:\\\\Users\\\\jsitz\\\\Projects\\\\nd-discord-gemini-bot\"; Start-Process -NoNewWindow -FilePath \"bun\" -ArgumentList \"run\", \"src/bot.ts\" -RedirectStandardOutput \"bot-out.log\" -RedirectStandardError \"bot-err.log\"; Start-Sleep -Seconds 5; Get-Content \"bot-err.log\" -Tail 5; Write-Host \"---\"; Get-Content \"bot-out.log\" | Select-String \"Logged in|error|Error\" -CaseSensitive:$false | Select-Object -First 5)",
+      "Bash(bun run *)",
+      "Bash(echo \"Bot starting with PID $!\")",
+      "Bash(sleep 5 && tail -20 /tmp/bot-restart.log 2>/dev/null || echo \"Log not ready yet\")"
+    ]
+  }
+}

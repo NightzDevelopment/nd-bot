@@ -4,13 +4,15 @@
 import {
   ActionRowBuilder,
   ButtonBuilder,
+  type ButtonInteraction,
   ButtonStyle,
   ChannelType,
-  type ButtonInteraction,
   type Client,
   type Message,
+  MessageFlags,
 } from 'discord.js'
 import {
+  TICKET_CLOSED_CATEGORY_ID,
   TICKET_OPEN_CATEGORY_ID,
   ticketAutoCreate,
   ticketAutoCreateChannelIds,
@@ -22,12 +24,21 @@ import {
   WELCOME_TICKET_CHANNEL_ID,
 } from '../config.ts'
 import { ndTicketEmbedOpen } from '../utils/embed.ts'
-import { createTicketChannel } from './ticket-system.ts'
 import { isTicketCueBotReply } from './analytics-store.ts'
 import { reportTicketIntake } from './logging.ts'
+import { createTicketChannel } from './ticket-system.ts'
 
 const PREFIX = 'ndtkt'
 const lastOfferByUser = new Map<string, number>()
+
+function isTicketChannel(msg: Message): boolean {
+  if (!('parentId' in msg.channel)) return false
+  const parentId = (msg.channel as { parentId?: string | null }).parentId
+  return (
+    (!!TICKET_OPEN_CATEGORY_ID && parentId === TICKET_OPEN_CATEGORY_ID) ||
+    (!!TICKET_CLOSED_CATEGORY_ID && parentId === TICKET_CLOSED_CATEGORY_ID)
+  )
+}
 
 const HOW_TICKET_RE =
   /\b(how\s+(do|can)\s+i\s+open|how\s+to\s+open\s+a?\s*ticket|create\s+a?\s*ticket|open\s+a?\s*ticket)\b/i
@@ -50,19 +61,15 @@ export function shouldOfferTicketFromBotReply(botReply: string): boolean {
   return isTicketCueBotReply(botReply)
 }
 
-export async function maybeSendTicketOffer(
-  msg: Message,
-  botReplyFullText: string,
-): Promise<void> {
+export async function maybeSendTicketOffer(msg: Message, botReplyFullText: string): Promise<void> {
   if (!ticketOfferEnabled || !msg.guild) return
   if (!shouldOfferTicketFromBotReply(botReplyFullText)) return
   if (!canOffer(msg.author.id)) return
+  if (isTicketChannel(msg)) return
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(
-        `${PREFIX}:open:${msg.channel.id}:${msg.id}:${msg.author.id}`,
-      )
+      .setCustomId(`${PREFIX}:open:${msg.channel.id}:${msg.id}:${msg.author.id}`)
       .setLabel('Open support ticket')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
@@ -78,15 +85,8 @@ export async function maybeSendTicketOffer(
   })
 }
 
-export async function maybeAutoCreateTicket(
-  msg: Message,
-  botReplyFullText: string,
-): Promise<void> {
-  if (
-    !ticketAutoCreate ||
-    !msg.guild ||
-    !ticketAutoCreateChannelIds.has(msg.channel.id)
-  ) {
+export async function maybeAutoCreateTicket(msg: Message, botReplyFullText: string): Promise<void> {
+  if (!ticketAutoCreate || !msg.guild || !ticketAutoCreateChannelIds.has(msg.channel.id)) {
     return
   }
   if (!shouldOfferTicketFromBotReply(botReplyFullText)) return
@@ -101,9 +101,7 @@ export async function maybeOfferTicketFromHowQuestion(msg: Message): Promise<voi
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId(
-        `${PREFIX}:open:${msg.channel.id}:${msg.id}:${msg.author.id}`,
-      )
+      .setCustomId(`${PREFIX}:open:${msg.channel.id}:${msg.id}:${msg.author.id}`)
       .setLabel('Open support ticket')
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
@@ -119,9 +117,7 @@ export async function maybeOfferTicketFromHowQuestion(msg: Message): Promise<voi
   })
 }
 
-export async function tryHandleTicketButton(
-  interaction: ButtonInteraction,
-): Promise<boolean> {
+export async function tryHandleTicketButton(interaction: ButtonInteraction): Promise<boolean> {
   const id = interaction.customId
   if (!id.startsWith(`${PREFIX}:`)) return false
 
@@ -131,7 +127,7 @@ export async function tryHandleTicketButton(
     if (!userId || interaction.user.id !== userId) {
       await interaction.reply({
         content: 'These buttons are for the person who asked.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
       return true
     }
@@ -146,7 +142,7 @@ export async function tryHandleTicketButton(
     if (!userId || interaction.user.id !== userId) {
       await interaction.reply({
         content: 'Only the person who asked can use this button.',
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       })
       return true
     }
@@ -156,7 +152,7 @@ export async function tryHandleTicketButton(
       if (!ch?.isTextBased()) {
         await interaction.followUp({
           content: 'Could not load channel.',
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         })
         return true
       }
@@ -166,10 +162,12 @@ export async function tryHandleTicketButton(
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
       console.error('[ticket button open]', err)
-      await interaction.followUp({
-        content: "I can't help with this request right now.",
-        ephemeral: true,
-      }).catch(() => {})
+      await interaction
+        .followUp({
+          content: "I can't help with this request right now.",
+          flags: MessageFlags.Ephemeral,
+        })
+        .catch(() => {})
     }
     return true
   }
@@ -192,14 +190,11 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
   const snippet = triggerMsg.content?.slice(0, 1500) || '(no text)'
   const jump = `https://discord.com/channels/${guild.id}/${triggerMsg.channel.id}/${triggerMsg.id}`
   const chName =
-    'name' in triggerMsg.channel && triggerMsg.channel.name
-      ? triggerMsg.channel.name
-      : 'channel'
+    'name' in triggerMsg.channel && triggerMsg.channel.name ? triggerMsg.channel.name : 'channel'
 
   if (ticketSystemEnabled && TICKET_OPEN_CATEGORY_ID) {
     try {
-      const member =
-        triggerMsg.member ?? (await guild.members.fetch(userId))
+      const member = triggerMsg.member ?? (await guild.members.fetch(userId))
       const ch = await createTicketChannel(guild, member, 'Support (from chat)', {
         contextSnippet: snippet,
         contextJumpUrl: jump,
@@ -215,15 +210,7 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
         content:
           '**Could not open a ticket channel** (permissions or limits). Staff were **pinged** with your message — watch for a reply here.',
       })
-      await reportTicketIntake(
-        tag,
-        userId,
-        chName,
-        triggerMsg.channel.id,
-        guild.id,
-        snippet,
-        jump,
-      )
+      await reportTicketIntake(tag, userId, chName, triggerMsg.channel.id, guild.id, snippet, jump)
       return
     }
   }
@@ -264,15 +251,7 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
   })
 
   const threadUrl = thread.url
-  await reportTicketIntake(
-    tag,
-    userId,
-    chName,
-    triggerMsg.channel.id,
-    guild.id,
-    snippet,
-    threadUrl,
-  )
+  await reportTicketIntake(tag, userId, chName, triggerMsg.channel.id, guild.id, snippet, threadUrl)
 
   await triggerMsg.reply({
     content: `**Forum thread created:** ${thread}${threadUrl ? `\n${threadUrl}` : ''}`,

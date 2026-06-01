@@ -28,13 +28,8 @@ export async function addReactionRole(entry: ReactionRoleEntry): Promise<void> {
   await writeJson('roles.json', cache)
 }
 
-export async function removeReactionRole(
-  messageId: string,
-  emoji: string,
-): Promise<void> {
+export async function removeReactionRole(messageId: string, emoji: string): Promise<void> {
   await load()
-  cache = cache.filter(
-    (e) => !(e.messageId === messageId && e.emoji === emoji),
-  )
+  cache = cache.filter((e) => !(e.messageId === messageId && e.emoji === emoji))
   await writeJson('roles.json', cache)
 }

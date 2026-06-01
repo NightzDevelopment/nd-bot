@@ -1,41 +1,27 @@
-import {
-  ChannelType,
-  EmbedBuilder,
-  PermissionFlagsBits,
-  type Message,
-} from 'discord.js'
 import { randomBytes } from 'node:crypto'
+import { ChannelType, EmbedBuilder, type Message, PermissionFlagsBits } from 'discord.js'
+import { SUGGESTION_CHANNEL_ID, TEMPVC_CATEGORY_ID, TEMPVC_LOBBY_ID } from '../config.ts'
 import {
-  SUGGESTION_CHANNEL_ID,
-  TEMPVC_CATEGORY_ID,
-  TEMPVC_LOBBY_ID,
-} from '../config.ts'
-import { ndEmbed } from '../utils/embed.ts'
-import { buildServerInfoEmbed } from '../utils/server-info.ts'
-import { buildUserInfoEmbed } from '../utils/user-info.ts'
-import { parseDuration, parseScheduleDelay } from '../utils/time.ts'
-import { isGuildMod } from '../utils/permissions.ts'
-import { addReactionRole } from '../services/roles-config.ts'
-import {
-  saveGiveaway,
-  listGiveaways,
+  type GiveawayEntry,
   getByMessageId,
   getGiveawayById,
-  type GiveawayEntry,
+  listGiveaways,
+  saveGiveaway,
 } from '../services/giveaways-store.ts'
-import {
-  addSuggestion,
-  findById,
-  listOpen,
-  setStatus,
-} from '../services/suggestions-store.ts'
+import { handlePollsPrefix } from '../services/polls-slash.ts'
+import { addReactionRole } from '../services/roles-config.ts'
 import {
   addSchedule,
   listSchedules,
   removeSchedule,
   updateSchedule,
 } from '../services/scheduler-store.ts'
-import { handlePollsPrefix } from '../services/polls-slash.ts'
+import { addSuggestion, findById, listOpen, setStatus } from '../services/suggestions-store.ts'
+import { ndEmbed } from '../utils/embed.ts'
+import { isGuildMod } from '../utils/permissions.ts'
+import { buildServerInfoEmbed } from '../utils/server-info.ts'
+import { parseDuration, parseScheduleDelay } from '../utils/time.ts'
+import { buildUserInfoEmbed } from '../utils/user-info.ts'
 
 /** Discord reaction emojis as Unicode escapes (no emoji literals in source). */
 const E_PARTY = '\u{1F389}'
@@ -65,11 +51,7 @@ const POLL_REACTS: readonly string[] = [
 
 const tempVcOwners = new Map<string, string>()
 
-export async function handleExtraPrefix(
-  msg: Message,
-  cmd: string,
-  args: string,
-): Promise<boolean> {
+export async function handleExtraPrefix(msg: Message, cmd: string, args: string): Promise<boolean> {
   if (cmd === 'polls') {
     return handlePollsPrefix(msg, args)
   }
@@ -84,9 +66,7 @@ export async function handleExtraPrefix(
   if (cmd === 'userinfo') {
     const user =
       msg.mentions.users.first() ??
-      (args.trim()
-        ? await msg.client.users.fetch(args.trim()).catch(() => null)
-        : msg.author)
+      (args.trim() ? await msg.client.users.fetch(args.trim()).catch(() => null) : msg.author)
     if (!user) {
       await msg.reply('User not found.')
       return true
@@ -107,7 +87,10 @@ export async function handleExtraPrefix(
   }
 
   if (cmd === 'poll') {
-    const parts = args.split('|').map((s) => s.trim()).filter(Boolean)
+    const parts = args
+      .split('|')
+      .map((s) => s.trim())
+      .filter(Boolean)
     if (parts.length < 2) {
       await msg.reply('Usage: `nd!poll question | option1 | option2`')
       return true
@@ -191,9 +174,7 @@ export async function handleExtraPrefix(
     const roleId = parts[2]?.match(/^<@&(\d+)>$/)?.[1]
     const emoji = parts[3]
     if (!chId || !messageId || !roleId || !emoji) {
-      await msg.reply(
-        'Usage: `nd!rolereact #channel messageId @Role emoji`',
-      )
+      await msg.reply('Usage: `nd!rolereact #channel messageId @Role emoji`')
       return true
     }
     const ch = await msg.guild.channels.fetch(chId).catch(() => null)
@@ -225,9 +206,7 @@ export async function handleExtraPrefix(
     }
     const m = args.match(/^<#(\d+)>\s+(\S+)\s+(\d+)\s+([\s\S]+)/)
     if (!m) {
-      await msg.reply(
-        'Usage: `nd!giveaway #channel 24h 1 Prize name`',
-      )
+      await msg.reply('Usage: `nd!giveaway #channel 24h 1 Prize name`')
       return true
     }
     const ms = parseDuration(m[2]!)
@@ -273,8 +252,7 @@ export async function handleExtraPrefix(
       return true
     }
     const raw = args.trim()
-    const g =
-      (await getGiveawayById(raw)) ?? (await getByMessageId(raw))
+    const g = (await getGiveawayById(raw)) ?? (await getByMessageId(raw))
     if (!g) {
       await msg.reply('Giveaway not found (use message ID or giveaway ID).')
       return true
@@ -287,7 +265,10 @@ export async function handleExtraPrefix(
     const list = await listGiveaways()
     await msg.reply(
       list.length
-        ? list.map((g) => `• ${g.prize}, <t:${Math.floor(g.endsAt / 1000)}:R>`).join('\n').slice(0, 1900)
+        ? list
+            .map((g) => `• ${g.prize}, <t:${Math.floor(g.endsAt / 1000)}:R>`)
+            .join('\n')
+            .slice(0, 1900)
         : 'No active giveaways.',
     )
     return true
@@ -372,7 +353,10 @@ export async function handleExtraPrefix(
     const open = await listOpen(msg.guild.id)
     await msg.reply(
       open.length
-        ? open.map((s) => `• \`${s.id}\`, ${s.content.slice(0, 80)}`).join('\n').slice(0, 1900)
+        ? open
+            .map((s) => `• \`${s.id}\`, ${s.content.slice(0, 80)}`)
+            .join('\n')
+            .slice(0, 1900)
         : 'No open suggestions.',
     )
     return true
@@ -412,7 +396,10 @@ export async function handleExtraPrefix(
     const list = await listSchedules()
     await msg.reply(
       list.length
-        ? list.map((s) => `• \`${s.id}\` <#${s.channelId}> <t:${Math.floor(s.runAt / 1000)}:R>`).join('\n').slice(0, 1900)
+        ? list
+            .map((s) => `• \`${s.id}\` <#${s.channelId}> <t:${Math.floor(s.runAt / 1000)}:R>`)
+            .join('\n')
+            .slice(0, 1900)
         : 'No schedules.',
     )
     return true
@@ -451,9 +438,7 @@ export async function handleExtraPrefix(
       await vch.setName(args.trim().slice(0, 90)).catch(() => {})
       await msg.reply('Renamed.')
     } else if (cmd === 'vc-lock') {
-      await vch.permissionOverwrites
-        .edit(msg.guild.id, { Connect: false })
-        .catch(() => {})
+      await vch.permissionOverwrites.edit(msg.guild.id, { Connect: false }).catch(() => {})
       await msg.reply('Locked.')
     } else {
       await vch.permissionOverwrites.edit(msg.guild.id, { Connect: null }).catch(() => {})
@@ -465,29 +450,73 @@ export async function handleExtraPrefix(
   return false
 }
 
-async function endGiveawayDraw(
+/**
+ * Create a giveaway from the dashboard. Posts the announcement, saves the entry,
+ * and schedules the draw.
+ */
+export async function createGiveawayFromDashboard(
+  client: import('discord.js').Client,
+  opts: {
+    guildId: string
+    channelId: string
+    prize: string
+    durationMs: number
+    winnerCount: number
+    hostId: string
+  },
+): Promise<{ ok: boolean; data?: GiveawayEntry; error?: string }> {
+  const guild = await client.guilds.fetch(opts.guildId).catch(() => null)
+  if (!guild) return { ok: false, error: 'Guild not found' }
+  const ch = await guild.channels.fetch(opts.channelId).catch(() => null)
+  if (!ch?.isTextBased()) return { ok: false, error: 'Channel not text-based' }
+  const id = randomBytes(8).toString('hex')
+  const endsAt = Date.now() + opts.durationMs
+  const embed = ndEmbed()
+    .setTitle('Giveaway')
+    .setDescription(
+      `**Prize:** ${opts.prize}\n**Winners:** ${opts.winnerCount}\n**Ends:** <t:${Math.floor(endsAt / 1000)}:R>\n\nUse the reaction on this message to enter.`,
+    )
+    .setFooter({ text: `ID: ${id}` })
+  const gMsg = await ch.send({ embeds: [embed] })
+  await gMsg.react(E_PARTY)
+  const entry: GiveawayEntry = {
+    id,
+    guildId: guild.id,
+    channelId: ch.id,
+    messageId: gMsg.id,
+    prize: opts.prize,
+    endsAt,
+    winnerCount: opts.winnerCount,
+    hostId: opts.hostId,
+    ended: false,
+  }
+  await saveGiveaway(entry)
+  setTimeout(() => void endGiveawayDraw(client, id), opts.durationMs)
+  return { ok: true, data: entry }
+}
+
+export async function endGiveawayDraw(
   client: import('discord.js').Client,
   id: string,
-): Promise<void> {
-  const { getGiveawayById, getByMessageId, endGiveaway: endG } = await import(
-    '../services/giveaways-store.ts',
-  )
-  const g =
-    (await getGiveawayById(id)) ?? (await getByMessageId(id))
-  if (!g || g.ended) return
+): Promise<{ ok: boolean; winners: string[]; prize?: string }> {
+  const {
+    getGiveawayById,
+    getByMessageId,
+    endGiveaway: endG,
+  } = await import('../services/giveaways-store.ts')
+  const g = (await getGiveawayById(id)) ?? (await getByMessageId(id))
+  if (!g || g.ended) return { ok: false, winners: [] }
   const ch = await client.channels.fetch(g.channelId).catch(() => null)
-  if (!ch?.isTextBased()) return
+  if (!ch?.isTextBased()) return { ok: false, winners: [] }
   const message = await ch.messages.fetch(g.messageId).catch(() => null)
-  if (!message) return
+  if (!message) return { ok: false, winners: [] }
   let react = message.reactions.cache.get(E_PARTY)
   if (!react) {
     await message.reactions.fetch().catch(() => {})
     react = message.reactions.cache.get(E_PARTY)
   }
   const users = react ? await react.users.fetch().catch(() => null) : null
-  const entrants = users
-    ? [...users.values()].filter((u) => !u.bot)
-    : []
+  const entrants = users ? [...users.values()].filter((u) => !u.bot) : []
   const winners: string[] = []
   for (let i = 0; i < g.winnerCount && entrants.length > 0; i++) {
     const idx = Math.floor(Math.random() * entrants.length)
@@ -500,6 +529,52 @@ async function endGiveawayDraw(
       `\n\n**Ended.** Winners: ${winners.length ? winners.join(', ') : 'none'}`,
   )
   await message.edit({ embeds: [embed] })
+
+  // Broadcast to dashboard
+  try {
+    const { broadcastActivity } = await import('../dashboard/websocket.ts')
+    broadcastActivity('giveaway_ended', {
+      giveawayId: g.id,
+      prize: g.prize,
+      winnerCount: winners.length,
+      winners: winners.slice(0, 5),
+    })
+  } catch {
+    /* ignore */
+  }
+
+  return { ok: true, winners, prize: g.prize }
+}
+
+export async function rerollGiveawayDraw(
+  client: import('discord.js').Client,
+  id: string,
+): Promise<{ ok: boolean; winners: string[]; error?: string }> {
+  const { getGiveawayById } = await import('../services/giveaways-store.ts')
+  const g = await getGiveawayById(id)
+  if (!g) return { ok: false, winners: [], error: 'Not found' }
+  if (!g.ended) return { ok: false, winners: [], error: 'Giveaway is still active — end it first' }
+  const ch = await client.channels.fetch(g.channelId).catch(() => null)
+  if (!ch?.isTextBased()) return { ok: false, winners: [], error: 'Channel not accessible' }
+  const message = await ch.messages.fetch(g.messageId).catch(() => null)
+  if (!message) return { ok: false, winners: [], error: 'Original message gone' }
+  let react = message.reactions.cache.get(E_PARTY)
+  if (!react) {
+    await message.reactions.fetch().catch(() => {})
+    react = message.reactions.cache.get(E_PARTY)
+  }
+  const users = react ? await react.users.fetch().catch(() => null) : null
+  const entrants = users ? [...users.values()].filter((u) => !u.bot) : []
+  const winners: string[] = []
+  for (let i = 0; i < g.winnerCount && entrants.length > 0; i++) {
+    const idx = Math.floor(Math.random() * entrants.length)
+    const w = entrants.splice(idx, 1)[0]!
+    winners.push(w.toString())
+  }
+  if (winners.length > 0) {
+    await ch.send(`🎉 **Reroll for ${g.prize}**: ${winners.join(', ')}`).catch(() => {})
+  }
+  return { ok: true, winners }
 }
 
 export function registerTempVc(client: import('discord.js').Client): void {
@@ -536,11 +611,7 @@ export function registerTempVc(client: import('discord.js').Client): void {
       }
       if (oldS.channelId && oldS.channelId !== lobbyId) {
         const ch = guild.channels.cache.get(oldS.channelId)
-        if (
-          ch?.isVoiceBased() &&
-          tempVcOwners.has(ch.id) &&
-          ch.members.size === 0
-        ) {
+        if (ch?.isVoiceBased() && tempVcOwners.has(ch.id) && ch.members.size === 0) {
           setTimeout(async () => {
             const c = guild.channels.cache.get(oldS.channelId!)
             if (c?.isVoiceBased() && c.members.size === 0) {
@@ -559,7 +630,7 @@ export function registerTempVc(client: import('discord.js').Client): void {
 export function startScheduleLoop(client: import('discord.js').Client): void {
   setInterval(async () => {
     const { listSchedules, updateSchedule, removeSchedule } = await import(
-      '../services/scheduler-store.ts',
+      '../services/scheduler-store.ts'
     )
     const list = await listSchedules()
     const now = Date.now()

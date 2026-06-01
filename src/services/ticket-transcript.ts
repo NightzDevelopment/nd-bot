@@ -21,10 +21,7 @@ function nl2br(s: string): string {
 }
 
 /** Fetch up to `max` messages, oldest-first. */
-export async function fetchTicketMessages(
-  channel: TextChannel,
-  max: number,
-): Promise<Message[]> {
+export async function fetchTicketMessages(channel: TextChannel, max: number): Promise<Message[]> {
   const cap = Math.max(1, Math.min(max, 5000))
   const collected: Message[] = []
   let lastId: string | undefined

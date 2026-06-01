@@ -5,6 +5,7 @@ node_modules/
 logs/
 dist/
 nul
+.backup/
 data/
 !data/nd-knowledge.md
 !data/products/

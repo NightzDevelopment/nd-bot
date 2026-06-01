@@ -142,7 +142,11 @@ export function scoreMessageUrls(content: string): UrlRiskResult {
       }
     }
 
-    if (hNorm.includes('steam') && hNorm.includes('community') && !hNorm.endsWith('steamcommunity.com')) {
+    if (
+      hNorm.includes('steam') &&
+      hNorm.includes('community') &&
+      !hNorm.endsWith('steamcommunity.com')
+    ) {
       score += 40
       reasons.push(`Possible Steam phishing host (${host})`)
     }

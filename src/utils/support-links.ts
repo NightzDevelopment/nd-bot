@@ -1,8 +1,8 @@
 import {
   FAQ_CHANNEL_ID,
+  supportLinksJson,
   WELCOME_RULES_CHANNEL_ID,
   WELCOME_TICKET_CHANNEL_ID,
-  supportLinksJson,
 } from '../config.ts'
 
 export function formatSupportLinksMarkdown(): string {

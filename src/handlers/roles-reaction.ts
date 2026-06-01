@@ -1,4 +1,4 @@
-import { Events, type Client } from 'discord.js'
+import { type Client, Events } from 'discord.js'
 import { getAllReactionRoles } from '../services/roles-config.ts'
 
 export function registerReactionRoles(client: Client): void {
@@ -13,7 +13,7 @@ export function registerReactionRoles(client: Client): void {
     if (!msg.guild) return
     const emoji = reaction.emoji.id
       ? `<:${reaction.emoji.name}:${reaction.emoji.id}>`
-      : reaction.emoji.name ?? ''
+      : (reaction.emoji.name ?? '')
     const entries = await getAllReactionRoles()
     const match = entries.find(
       (e) =>
@@ -42,7 +42,7 @@ export function registerReactionRoles(client: Client): void {
     if (!msg.guild) return
     const emoji = reaction.emoji.id
       ? `<:${reaction.emoji.name}:${reaction.emoji.id}>`
-      : reaction.emoji.name ?? ''
+      : (reaction.emoji.name ?? '')
     const entries = await getAllReactionRoles()
     const match = entries.find(
       (e) =>

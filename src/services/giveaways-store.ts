@@ -34,16 +34,12 @@ export async function saveGiveaway(g: GiveawayEntry): Promise<void> {
   await writeJson('giveaways.json', cache)
 }
 
-export async function getByMessageId(
-  messageId: string,
-): Promise<GiveawayEntry | undefined> {
+export async function getByMessageId(messageId: string): Promise<GiveawayEntry | undefined> {
   await load()
   return cache.find((g) => g.messageId === messageId)
 }
 
-export async function getGiveawayById(
-  id: string,
-): Promise<GiveawayEntry | undefined> {
+export async function getGiveawayById(id: string): Promise<GiveawayEntry | undefined> {
   await load()
   return cache.find((g) => g.id === id)
 }
@@ -55,4 +51,18 @@ export async function endGiveaway(id: string): Promise<void> {
     g.ended = true
     await writeJson('giveaways.json', cache)
   }
+}
+
+export async function listAllGiveaways(): Promise<GiveawayEntry[]> {
+  await load()
+  return cache.slice()
+}
+
+export async function deleteGiveaway(id: string): Promise<boolean> {
+  await load()
+  const before = cache.length
+  cache = cache.filter((g) => g.id !== id)
+  if (cache.length === before) return false
+  await writeJson('giveaways.json', cache)
+  return true
 }

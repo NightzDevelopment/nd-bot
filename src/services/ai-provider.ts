@@ -1,6 +1,6 @@
 import { readJson, writeJson } from './data-store.ts'
 
-export type AiProviderMode = 'auto' | 'gemini' | 'openai'
+export type AiProviderMode = 'auto' | 'gemini' | 'openai' | 'claude'
 
 export type AiProviderState = {
   mode: AiProviderMode
@@ -20,7 +20,7 @@ function normalizeMode(v: string | undefined): AiProviderMode | null {
   const x = v?.trim().toLowerCase()
   // Legacy migration: qwen mode was removed; map to auto.
   if (x === 'qwen') return 'auto'
-  if (x === 'auto' || x === 'gemini' || x === 'openai') return x
+  if (x === 'auto' || x === 'gemini' || x === 'openai' || x === 'claude') return x
   return null
 }
 

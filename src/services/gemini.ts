@@ -1,9 +1,10 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
 import type { GenerativeModel, Part } from '@google/generative-ai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import {
+  claudeEnabled,
   GOOGLE_KEY,
-  MODEL_ID,
   geminiFallbackModels,
+  MODEL_ID,
   openaiApiKey,
   openaiBaseUrl,
   openaiEnabled,
@@ -12,8 +13,15 @@ import {
   openaiRequestTimeoutMs,
 } from '../config.ts'
 import { getAiProviderMode } from './ai-provider.ts'
+import {
+  checkClaudeAvailability,
+  claudeChatReply,
+  claudeChatReplyWithImage,
+  claudeGenerate,
+} from './claude-client.ts'
 import type { Turn } from './memory.ts'
 import { toGeminiHistory } from './memory.ts'
+import { sanitizeAiText } from '../utils/text-style.ts'
 
 const genAI = new GoogleGenerativeAI(GOOGLE_KEY)
 
@@ -36,7 +44,54 @@ export function getModel(systemInstruction: string): GeminiModelRef {
 
 const NO_CODE_SUFFIX = `
 
-CRITICAL: Never include raw source code, long code blocks, or full file contents in your reply. Explain in plain language only. Reference file names when helpful.`
+CRITICAL: Never include raw source code, long code blocks, or full file contents in your reply. Explain in plain language only. Reference file names when helpful.
+
+WRITING STYLE (always follow):
+- Keep replies SHORT. Default to 2 to 4 sentences. Stop once the question is answered.
+- Hard limit: never write more than two short paragraphs. If the answer needs more, use a few short bullet points instead of a long block of text.
+- Do not write walls of text or multi-section essays unless the user explicitly asks for full detail or a step-by-step guide.
+- Get to the point. Lead with the answer, then add only the most important context. Do not repeat yourself or restate the question back.
+- Ask at most one clarifying question at a time, never a long questionnaire.
+- Use normal English punctuation only. Never use em dashes or en dashes ("—", "–"). Use commas, periods, colons, or parentheses instead.
+- Plain, natural wording. Avoid corporate filler and repetition.`
+
+/**
+ * Deterministic cleanup applied to every user-facing AI reply. The system
+ * prompt asks the model to avoid em/en dashes and stay concise, but models
+ * ignore that often enough that we enforce the dash rule in code.
+ *
+ * Only em dash (U+2014) and en dash (U+2013) are touched. Regular hyphens
+ * (U+002D) in words like "drop-in" or "ND-DiscordUnified" are left alone.
+ *
+ * Replacement strategy: a dash acting as a clause break becomes the closest
+ * natural English punctuation.
+ *   "great — really great"  -> "great, really great"
+ *   "word—word"             -> "word, word"
+ *   "ND_Scenes – the scene" -> "ND_Scenes, the scene"
+ * Then we tidy any doubled or misplaced punctuation the swap may create.
+ */
+export function sanitizeReply(text: string): string {
+  if (!text) return text
+  return (
+    text
+      // Dash directly between two letters/numbers with no spaces -> comma + space.
+      .replace(/(\w)[—–](\w)/g, '$1, $2')
+      // Dash with surrounding whitespace (the "— like this —" case) -> comma + space.
+      .replace(/\s*[—–]\s*/g, ', ')
+      // Any remaining stray dash -> comma.
+      .replace(/[—–]/g, ', ')
+      // Cleanup: collapse doubled commas the swap may produce.
+      .replace(/,\s*,+/g, ',')
+      // Cleanup: remove space before a comma.
+      .replace(/\s+,/g, ',')
+      // Cleanup: comma immediately before sentence-ending punctuation -> drop comma.
+      .replace(/,\s*([.!?;:])/g, '$1')
+      // Cleanup: ensure a single space after the comma where text follows.
+      .replace(/,(?=\S)/g, ', ')
+      // Cleanup: trim trailing comma at end of a line.
+      .replace(/,\s*$/gm, '')
+  )
+}
 
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
@@ -162,9 +217,7 @@ function extractOpenAiText(content: unknown): string {
   return text
 }
 
-async function withOpenAiFallback<T>(
-  run: (modelId: string) => Promise<T>,
-): Promise<T> {
+async function withOpenAiFallback<T>(run: (modelId: string) => Promise<T>): Promise<T> {
   let lastError: unknown = null
   for (const modelId of openAiModelChain()) {
     try {
@@ -181,10 +234,7 @@ async function withOpenAiFallback<T>(
   throw lastError ?? new Error('No OpenAI model could produce a response.')
 }
 
-async function openAiChatCompletion(
-  modelId: string,
-  messages: OpenAiMessage[],
-): Promise<string> {
+async function openAiChatCompletion(modelId: string, messages: OpenAiMessage[]): Promise<string> {
   if (!openaiApiKey) throw new Error('OPENAI_API_KEY is not set.')
   const data = await fetchJsonWithTimeout<{
     choices?: Array<{ message?: { content?: unknown } }>
@@ -229,7 +279,9 @@ export async function checkOpenAiAvailability(): Promise<{
       return {
         ok: false,
         reason: 'model_missing',
-        detail: `OpenAI is reachable, but none of the configured models are available: ${openAiModelChain().map((m) => `\`${m}\``).join(', ')}.`,
+        detail: `OpenAI is reachable, but none of the configured models are available: ${openAiModelChain()
+          .map((m) => `\`${m}\``)
+          .join(', ')}.`,
       }
     }
     if (available !== openaiModel) {
@@ -338,10 +390,7 @@ async function openAiChatReplyWithImage(
   return withOpenAiFallback((modelId) => openAiChatCompletion(modelId, messages))
 }
 
-async function openAiGenerate(
-  modelRef: GeminiModelRef,
-  prompt: string,
-): Promise<string> {
+async function openAiGenerate(modelRef: GeminiModelRef, prompt: string): Promise<string> {
   return openAiChatReply(modelRef, [], prompt)
 }
 
@@ -350,7 +399,18 @@ export async function chatReply(
   prior: Turn[],
   latestUserContent: string,
 ): Promise<string> {
+  return sanitizeReply(await chatReplyImpl(modelRef, prior, latestUserContent))
+}
+
+async function chatReplyImpl(
+  modelRef: GeminiModelRef,
+  prior: Turn[],
+  latestUserContent: string,
+): Promise<string> {
   const provider = await getAiProviderMode()
+  if (provider === 'claude') {
+    return claudeChatReply(modelRef.systemInstruction, prior, latestUserContent + NO_CODE_SUFFIX)
+  }
   if (provider === 'openai') {
     return openAiChatReply(modelRef, prior, latestUserContent)
   }
@@ -358,24 +418,37 @@ export async function chatReply(
     return withModelFallback(modelRef, async (model) => {
       const history = toGeminiHistory(prior)
       const chat = model.startChat({
-        history: history.length > 0 ? history : undefined,
+        ...(history.length > 0 ? { history } : {}),
       })
       const result = await chat.sendMessage(latestUserContent + NO_CODE_SUFFIX)
       return result.response.text()
     })
   }
+  // Auto: try Gemini first, then Claude, then OpenAI
   try {
     return await withModelFallback(modelRef, async (model) => {
       const history = toGeminiHistory(prior)
       const chat = model.startChat({
-        history: history.length > 0 ? history : undefined,
+        ...(history.length > 0 ? { history } : {}),
       })
       const result = await chat.sendMessage(latestUserContent + NO_CODE_SUFFIX)
       return result.response.text()
     })
   } catch (e) {
+    if (claudeEnabled) {
+      console.warn('[gemini] all Gemini models failed; trying Claude fallback')
+      try {
+        return await claudeChatReply(
+          modelRef.systemInstruction,
+          prior,
+          latestUserContent + NO_CODE_SUFFIX,
+        )
+      } catch (claudeErr) {
+        console.warn('[claude] fallback failed; trying OpenAI')
+      }
+    }
     if (!openaiEnabled) throw e
-    console.warn('[gemini] all Gemini models failed; using OpenAI fallback')
+    console.warn('[auto] Gemini/Claude failed; using OpenAI fallback')
     return openAiChatReply(modelRef, prior, latestUserContent)
   }
 }
@@ -387,49 +460,83 @@ export async function chatReplyWithImage(
   textBlock: string,
   image: { mimeType: string; dataBase64: string },
 ): Promise<string> {
-  const provider = await getAiProviderMode()
-  if (provider === 'openai') {
-    return openAiChatReplyWithImage(modelRef, prior, textBlock, image)
-  }
-  if (provider === 'gemini') {
-    return withModelFallback(modelRef, async (model) => {
-      const history = toGeminiHistory(prior)
-      const chat = model.startChat({
-        history: history.length > 0 ? history : undefined,
-      })
-      const parts: Part[] = [
-        { text: textBlock + NO_CODE_SUFFIX },
-        { inlineData: { mimeType: image.mimeType, data: image.dataBase64 } },
-      ]
-      const result = await chat.sendMessage(parts)
-      return result.response.text()
-    })
-  }
-  try {
-    return await withModelFallback(modelRef, async (model) => {
-      const history = toGeminiHistory(prior)
-      const chat = model.startChat({
-        history: history.length > 0 ? history : undefined,
-      })
-      const parts: Part[] = [
-        { text: textBlock + NO_CODE_SUFFIX },
-        { inlineData: { mimeType: image.mimeType, data: image.dataBase64 } },
-      ]
-      const result = await chat.sendMessage(parts)
-      return result.response.text()
-    })
-  } catch (e) {
-    if (!openaiEnabled) throw e
-    console.warn('[gemini] image request failed across Gemini models; using OpenAI fallback')
-    return openAiChatReplyWithImage(modelRef, prior, textBlock, image)
-  }
+  return sanitizeReply(await chatReplyWithImageImpl(modelRef, prior, textBlock, image))
 }
 
-export async function generateOnce(
+async function chatReplyWithImageImpl(
   modelRef: GeminiModelRef,
-  prompt: string,
+  prior: Turn[],
+  textBlock: string,
+  image: { mimeType: string; dataBase64: string },
 ): Promise<string> {
   const provider = await getAiProviderMode()
+  if (provider === 'claude') {
+    return claudeChatReplyWithImage(
+      modelRef.systemInstruction,
+      prior,
+      textBlock + NO_CODE_SUFFIX,
+      image,
+    )
+  }
+  if (provider === 'openai') {
+    return openAiChatReplyWithImage(modelRef, prior, textBlock, image)
+  }
+  if (provider === 'gemini') {
+    return withModelFallback(modelRef, async (model) => {
+      const history = toGeminiHistory(prior)
+      const chat = model.startChat({
+        ...(history.length > 0 ? { history } : {}),
+      })
+      const parts: Part[] = [
+        { text: textBlock + NO_CODE_SUFFIX },
+        { inlineData: { mimeType: image.mimeType, data: image.dataBase64 } },
+      ]
+      const result = await chat.sendMessage(parts)
+      return result.response.text()
+    })
+  }
+  try {
+    return await withModelFallback(modelRef, async (model) => {
+      const history = toGeminiHistory(prior)
+      const chat = model.startChat({
+        ...(history.length > 0 ? { history } : {}),
+      })
+      const parts: Part[] = [
+        { text: textBlock + NO_CODE_SUFFIX },
+        { inlineData: { mimeType: image.mimeType, data: image.dataBase64 } },
+      ]
+      const result = await chat.sendMessage(parts)
+      return result.response.text()
+    })
+  } catch (e) {
+    if (claudeEnabled) {
+      console.warn('[gemini] image request failed; trying Claude fallback')
+      try {
+        return await claudeChatReplyWithImage(
+          modelRef.systemInstruction,
+          prior,
+          textBlock + NO_CODE_SUFFIX,
+          image,
+        )
+      } catch (claudeErr) {
+        console.warn('[claude] image fallback failed; trying OpenAI')
+      }
+    }
+    if (!openaiEnabled) throw e
+    console.warn('[auto] Gemini/Claude image request failed; using OpenAI fallback')
+    return openAiChatReplyWithImage(modelRef, prior, textBlock, image)
+  }
+}
+
+export async function generateOnce(modelRef: GeminiModelRef, prompt: string): Promise<string> {
+  return sanitizeReply(await generateOnceImpl(modelRef, prompt))
+}
+
+async function generateOnceImpl(modelRef: GeminiModelRef, prompt: string): Promise<string> {
+  const provider = await getAiProviderMode()
+  if (provider === 'claude') {
+    return claudeGenerate(modelRef.systemInstruction, prompt + NO_CODE_SUFFIX)
+  }
   if (provider === 'openai') {
     return openAiGenerate(modelRef, prompt)
   }
@@ -439,51 +546,151 @@ export async function generateOnce(
       return result.response.text()
     })
   }
+  // Auto: try Gemini first, then Claude, then OpenAI
   try {
     return await withModelFallback(modelRef, async (model) => {
       const result = await model.generateContent(prompt + NO_CODE_SUFFIX)
       return result.response.text()
     })
   } catch (e) {
+    if (claudeEnabled) {
+      console.warn('[gemini] generateOnce failed; trying Claude fallback')
+      try {
+        return await claudeGenerate(modelRef.systemInstruction, prompt + NO_CODE_SUFFIX)
+      } catch (claudeErr) {
+        console.warn('[claude] fallback failed; trying OpenAI')
+      }
+    }
     if (!openaiEnabled) throw e
-    console.warn('[gemini] generateOnce failed across Gemini models; using OpenAI fallback')
+    console.warn('[auto] Gemini/Claude generateOnce failed; using OpenAI fallback')
     return openAiGenerate(modelRef, prompt)
   }
 }
 
-/** Raw generation (no support suffix), for AI AutoMod JSON output */
+/** Raw JSON-style generation for AI AutoMod; respects AI provider mode like chat (`auto` = Gemini then Claude then OpenAI fallback). */
 export async function generateRaw(prompt: string): Promise<string> {
   const modelRef = getModel('')
-  return withModelFallback(modelRef, async (model) => {
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: {
-        maxOutputTokens: 1024,
-        temperature: 0.2,
-      },
+  const runGemini = () =>
+    withModelFallback(modelRef, async (model) => {
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 1024,
+          temperature: 0.2,
+        },
+      })
+      return result.response.text()
     })
-    return result.response.text()
-  })
+
+  const provider = await getAiProviderMode()
+  if (provider === 'claude') {
+    if (!claudeEnabled) {
+      throw new Error('AI provider is Claude but CLAUDE_API_KEY is not set.')
+    }
+    return claudeGenerate('', prompt)
+  }
+  if (provider === 'openai') {
+    if (!openaiEnabled) {
+      throw new Error('AI provider is OpenAI but OPENAI_API_KEY is not set.')
+    }
+    return openAiGenerate(modelRef, prompt)
+  }
+  if (provider === 'gemini') {
+    return runGemini()
+  }
+  // Auto: try Gemini first, then Claude, then OpenAI
+  try {
+    return await runGemini()
+  } catch (e) {
+    if (claudeEnabled) {
+      console.warn('[gemini] generateRaw failed; trying Claude fallback for AI AutoMod')
+      try {
+        return await claudeGenerate('', prompt)
+      } catch (claudeErr) {
+        console.warn('[claude] fallback failed; trying OpenAI')
+      }
+    }
+    if (!openaiEnabled) throw e
+    console.warn('[auto] Gemini/Claude generateRaw failed; using OpenAI fallback for AI AutoMod')
+    return openAiGenerate(modelRef, prompt)
+  }
 }
 
-/** Vision + text for AI AutoMod (single image, JSON output expected in prompt) */
+/** Vision + text for AI AutoMod; respects provider mode (`auto` = Gemini then Claude then OpenAI fallback). */
 export async function generateRawWithImage(
   prompt: string,
   image: { mimeType: string; dataBase64: string },
 ): Promise<string> {
   const modelRef = getModel('')
-  return withModelFallback(modelRef, async (model) => {
-    const parts: Part[] = [
-      { text: prompt },
-      { inlineData: { mimeType: image.mimeType, data: image.dataBase64 } },
-    ]
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts }],
-      generationConfig: {
-        maxOutputTokens: 1024,
-        temperature: 0.2,
-      },
+  const runGemini = () =>
+    withModelFallback(modelRef, async (model) => {
+      const parts: Part[] = [
+        { text: prompt },
+        { inlineData: { mimeType: image.mimeType, data: image.dataBase64 } },
+      ]
+      const result = await model.generateContent({
+        contents: [{ role: 'user', parts }],
+        generationConfig: {
+          maxOutputTokens: 1024,
+          temperature: 0.2,
+        },
+      })
+      return result.response.text()
     })
-    return result.response.text()
-  })
+
+  const provider = await getAiProviderMode()
+  if (provider === 'claude') {
+    if (!claudeEnabled) {
+      throw new Error('AI provider is Claude but CLAUDE_API_KEY is not set.')
+    }
+    return claudeChatReplyWithImage('', [], prompt, image)
+  }
+  if (provider === 'openai') {
+    if (!openaiEnabled) {
+      throw new Error('AI provider is OpenAI but OPENAI_API_KEY is not set.')
+    }
+    return openAiChatReplyWithImage(modelRef, [], prompt, image)
+  }
+  if (provider === 'gemini') {
+    return runGemini()
+  }
+  // Auto: try Gemini first, then Claude, then OpenAI
+  try {
+    return await runGemini()
+  } catch (e) {
+    if (claudeEnabled) {
+      console.warn(
+        '[gemini] generateRawWithImage failed; trying Claude fallback for AI AutoMod vision',
+      )
+      try {
+        return await claudeChatReplyWithImage('', [], prompt, image)
+      } catch (claudeErr) {
+        console.warn('[claude] image fallback failed; trying OpenAI')
+      }
+    }
+    if (!openaiEnabled) throw e
+    console.warn(
+      '[auto] Gemini/Claude generateRawWithImage failed; using OpenAI fallback for AI AutoMod vision',
+    )
+    return openAiChatReplyWithImage(modelRef, [], prompt, image)
+  }
+}
+
+export async function performOcr(image: { mimeType: string; dataBase64: string }): Promise<string> {
+  try {
+    const model = genAI.getGenerativeModel({ model: MODEL_ID })
+    const res = await model.generateContent([
+      {
+        inlineData: {
+          mimeType: image.mimeType,
+          data: image.dataBase64,
+        },
+      },
+      'Extract and transcribe all text, particularly source code, compiler errors, log files, stack traces, and relevant text from this image. Output only the extracted code/logs exactly as they appear without any introductory or concluding text, and strictly without any emojis.',
+    ])
+    return res.response.text()
+  } catch (e) {
+    console.warn('[gemini] OCR failed:', e)
+    return ''
+  }
 }

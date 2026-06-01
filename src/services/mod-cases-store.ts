@@ -42,10 +42,7 @@ export async function addCase(c: Omit<ModCase, 'id'>): Promise<ModCase> {
   return rec
 }
 
-export async function listCasesForGuild(
-  guildId: string,
-  limit = 15,
-): Promise<ModCase[]> {
+export async function listCasesForGuild(guildId: string, limit = 15): Promise<ModCase[]> {
   const data = await load()
   return data.cases
     .filter((c) => c.guildId === guildId)

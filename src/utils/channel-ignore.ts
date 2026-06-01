@@ -1,4 +1,4 @@
-import { ChannelType, type Channel, type Guild, type PartialMessage } from 'discord.js'
+import { type Channel, ChannelType, type Guild, type PartialMessage } from 'discord.js'
 import { auditIgnoredCategories, auditIgnoredChannels } from '../config.ts'
 
 /** Category ID for a guild channel (text / voice / forum / thread’s parent text channel). */
@@ -21,10 +21,7 @@ export function isIgnoredChannelOrCategory(ch: Channel): boolean {
 }
 
 /** For message audit / automod: guild channel by id, using cache for category resolution. */
-export function isIgnoredChannelOrCategoryById(
-  guild: Guild | null,
-  channelId: string,
-): boolean {
+export function isIgnoredChannelOrCategoryById(guild: Guild | null, channelId: string): boolean {
   if (auditIgnoredChannels.has(channelId)) return true
   if (!guild) return false
   const full = guild.channels.cache.get(channelId)

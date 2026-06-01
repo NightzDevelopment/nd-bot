@@ -14,8 +14,7 @@ export async function getGuildChannelCategoryId(
   if (channel.isThread()) {
     let parent = channel.parent
     if (!parent && channel.parentId) {
-      parent =
-        (await channel.guild.channels.fetch(channel.parentId).catch(() => null)) ?? null
+      parent = (await channel.guild.channels.fetch(channel.parentId).catch(() => null)) ?? null
     }
     if (!parent) return null
     if ('parentId' in parent && parent.parentId) {
@@ -39,9 +38,7 @@ export async function getGuildChannelCategoryId(
 /**
  * True if this message is the first in this channel from this user (no older messages from them).
  */
-export async function isFirstMessageFromUserInChannel(
-  msg: Message,
-): Promise<boolean> {
+export async function isFirstMessageFromUserInChannel(msg: Message): Promise<boolean> {
   const authorId = msg.author.id
   let before: string | undefined = msg.id
   let rounds = 0
