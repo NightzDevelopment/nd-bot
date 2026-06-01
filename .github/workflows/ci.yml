@@ -23,18 +23,17 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Test
+        # Blocking: the unit suite must stay green.
+        run: bun test
+
       - name: Typecheck
         run: bun run typecheck
-        # Strict mode is being rolled out across 128 files (Phase 1 of the
-        # overhaul). Until the audit is complete, typecheck is non-blocking.
-        # Remove `continue-on-error` once the error count hits 0.
+        # Non-blocking: strict-mode rollout is in progress (~82 errors remain,
+        # down from 250). Flip to blocking once the count hits 0.
         continue-on-error: true
 
       - name: Lint
         run: bun run lint
-        continue-on-error: true
-
-      - name: Test
-        run: bun test
-        # Test suite is being introduced in Phase 7; tolerate no tests for now.
+        # Non-blocking: Biome style cleanup is ongoing. Flip to blocking once clean.
         continue-on-error: true
