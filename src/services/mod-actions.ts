@@ -224,6 +224,14 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
     return
   }
 
+  // DM the banned user an appeal button (best-effort; no-op if appeals off).
+  try {
+    const { dmBanAppealPrompt } = await import('./appeals.ts')
+    await dmBanAppealPrompt(user, guild.id, guild.name)
+  } catch (e) {
+    console.warn('[ban] appeal DM failed:', e)
+  }
+
   // Temp-ban: schedule an automatic unban when the duration elapses.
   let unbanAt = 0
   if (durationMs) {

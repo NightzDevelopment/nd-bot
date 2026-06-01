@@ -260,6 +260,18 @@ export function registerInteractionHandler(client: Client): void {
       if (handled) return
     }
 
+    if (interaction.isButton() || interaction.isModalSubmit()) {
+      const { tryHandleAppealInteraction } = await import('../services/appeals.ts')
+      const handled = await tryHandleAppealInteraction(interaction)
+      if (handled) return
+    }
+
+    if (interaction.isButton()) {
+      const { tryHandleModmailInteraction } = await import('../services/modmail.ts')
+      const handled = await tryHandleModmailInteraction(interaction)
+      if (handled) return
+    }
+
     if (interaction.isButton()) {
       const handled = await tryHandleTicketButton(interaction)
       if (handled) return

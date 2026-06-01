@@ -835,6 +835,20 @@ export const ticketLogChannelId =
 export const auditAlertChannelId =
   process.env.AUDIT_ALERT_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID || undefined
 
+/** Channel where ban appeals are posted for staff review. Defaults to staff log. */
+export const appealsChannelId =
+  process.env.APPEALS_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID || undefined
+
+/** When true, DM banned users an appeal button on ban. */
+export const appealsEnabled = !isEnvOff(process.env.APPEALS_ENABLED ?? '1')
+
+/** Modmail: relay user DMs to a private staff channel and back. */
+export const modmailEnabled = !isEnvOff(process.env.MODMAIL_ENABLED ?? '0')
+/** Category under which per-user modmail channels are created. */
+export const modmailCategoryId = process.env.MODMAIL_CATEGORY_ID?.trim() || undefined
+/** Extra role IDs (beyond MOD_ROLE_ID) that can see + reply in modmail channels. */
+export const modmailStaffRoleIds = parseIdSet(process.env.MODMAIL_STAFF_ROLE_IDS)
+
 /** How often (ms) to poll Discord audit logs for suspicious activity (default 5 min). */
 export const auditAlertPollMs = Math.max(
   30_000,

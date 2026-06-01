@@ -7,6 +7,7 @@ import {
   enableDmSupport,
   guildAiTicketCategoryIds,
   guildChannelIds,
+  modmailEnabled,
   SYSTEM_PROMPT_DM,
   SYSTEM_PROMPT_GUILD,
   staffDraftSourceChannelIds,
@@ -306,6 +307,14 @@ export function registerMessageHandler(client: Client): void {
             console.error('[copilot] failed to import ticket copilot:', err)
           })
       }
+
+      // Relay a staff reply in a modmail channel back to the user's DMs.
+      if (modmailEnabled) {
+        const relayed = await import('../services/modmail.ts')
+          .then(({ relayStaffMessage }) => relayStaffMessage(msg))
+          .catch(() => false)
+        if (relayed) return
+      }
     }
     if (msg.channel.type === ChannelType.DM && !msg.author.bot) {
       console.log(`[DM] received from ${msg.author.tag}: "${msg.content?.slice(0, 80)}"`)
@@ -334,6 +343,14 @@ export function registerMessageHandler(client: Client): void {
           console.error('[prefix]', e)
         }
         return
+      }
+
+      // Modmail: if this DM user has an open session, relay to staff (skip AI).
+      if (modmailEnabled && msg.channel.type === ChannelType.DM) {
+        const relayed = await import('../services/modmail.ts')
+          .then(({ relayUserDm }) => relayUserDm(client, msg))
+          .catch(() => false)
+        if (relayed) return
       }
 
       // Handle custom commands (e.g., !hello, !mycommand)

@@ -721,6 +721,22 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return
   }
 
+  if (cmd === 'modmail') {
+    if (msg.channel.type !== ChannelType.DM) {
+      await msg.reply('DM me `nd!modmail <your message>` to start a private conversation with staff.')
+      return
+    }
+    const { modmailEnabled } = await import('../config.ts')
+    if (!modmailEnabled) {
+      await msg.reply('Modmail is not enabled on this bot.')
+      return
+    }
+    const { startModmail } = await import('../services/modmail.ts')
+    const res = await startModmail(msg.client, msg.author, args.trim())
+    await msg.reply(res.msg)
+    return
+  }
+
   if (cmd === 'copilotdrafts' || cmd === 'aidrafts') {
     const member = await guildMemberForModCheck(msg)
     if (!member || !isGuildMod(member)) {
