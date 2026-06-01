@@ -981,6 +981,12 @@ export const automodPublicBlurb =
   process.env.AUTOMOD_PUBLIC_BLURB?.trim() ||
   `${aiMonitoringNotice}\n\nWe may use automated filters (spam, scam patterns, risky links, and AI-assisted review). False positives happen; open a support ticket if something looks wrong.`
 
+/** Warning disclaimer appended (as subtext) to AI chat replies. */
+export const aiReplyDisclaimerEnabled = !isEnvOff(process.env.AI_REPLY_DISCLAIMER_ENABLED ?? '1')
+export const aiReplyDisclaimer =
+  process.env.AI_REPLY_DISCLAIMER?.trim() ||
+  'Warning: I am an AI and can be wrong. Do not treat this as official. Always confirm anything important (bans, purchases, rules, or account changes) with a real staff member before acting.'
+
 /** Optional comma aliases: ND_DU:https://..., keyed by uppercase normalized name */
 export const productAliasUrls = parseProductAliases(process.env.PRODUCT_ALIAS_URLS)
 

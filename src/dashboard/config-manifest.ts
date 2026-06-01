@@ -83,6 +83,8 @@ const ALL_KEYS: readonly string[] = [
   'AI_FEEDBACK_POSITIVE_EMOJI',
   'AI_FEEDBACK_REACTIONS_ENABLED',
   'AI_MONITORING_NOTICE',
+  'AI_REPLY_DISCLAIMER',
+  'AI_REPLY_DISCLAIMER_ENABLED',
   'ALLOWED_DM_USER_IDS',
   'AUDIT_IGNORED_CATEGORY_IDS',
   'AUDIT_IGNORED_CHANNELS',
@@ -213,18 +215,25 @@ const ALL_KEYS: readonly string[] = [
   'STORE_SNAPSHOT_STALE_MINUTES',
   'STAFF_DRAFT_SOURCE_CHANNEL_IDS',
   'STAFF_LOG_CHANNEL_ID',
+  'APPEALS_ENABLED',
   'APPEALS_CHANNEL_ID',
+  'MODMAIL_ENABLED',
   'MODMAIL_CATEGORY_ID',
   'MODMAIL_STAFF_ROLE_IDS',
+  'VERIFY_ENABLED',
   'VERIFY_CHANNEL_ID',
   'VERIFY_ROLE_ID',
   'VERIFY_UNVERIFIED_ROLE_ID',
   'VERIFY_KICK_AFTER_MS',
+  'STARBOARD_ENABLED',
   'STARBOARD_CHANNEL_ID',
   'STARBOARD_EMOJI',
   'STARBOARD_THRESHOLD',
+  'RAID_AUTOLOCK_ENABLED',
   'RAID_AUTOLOCK_DURATION_MS',
+  'ALT_DETECTION_ENABLED',
   'ALT_ALERT_THRESHOLD',
+  'STREAMING_ALERTS_ENABLED',
   'STREAM_ANNOUNCE_CHANNEL_ID',
   'STREAM_POLL_INTERVAL_SEC',
   'TWITCH_CLIENT_ID',
@@ -294,6 +303,7 @@ const BOOL_KEYS = new Set<string>([
   'PERSISTENT_MEMORY',
   'ENABLE_DM_SUPPORT',
   'AI_FEEDBACK_REACTIONS_ENABLED',
+  'AI_REPLY_DISCLAIMER_ENABLED',
   'VECTOR_RETRIEVAL_ENABLED',
   'COMING_SOON_REPLIES_ENABLED',
   'CODEBASE_SINGLE_RESOURCE_MODE',
@@ -769,6 +779,9 @@ const HELP: Readonly<Record<string, string>> = {
 
   // Misc
   AI_MONITORING_NOTICE: 'Footer text appended to AI replies disclosing the monitoring policy.',
+  AI_REPLY_DISCLAIMER:
+    'Warning disclaimer added as small subtext under AI chat replies (e.g. "I am an AI and can be wrong...").',
+  AI_REPLY_DISCLAIMER_ENABLED: 'Append the AI reply disclaimer to chat replies (1/0).',
   CHANNEL_PROMPT_EXTRAS_JSON:
     'JSON map of channelId -> extra prompt snippet appended for that channel.',
   STAFF_DRAFT_SOURCE_CHANNEL_IDS: 'Channel IDs that feed staff-draft features.',
@@ -870,6 +883,24 @@ const TAB_RULES: readonly TabRule[] = [
     tab: 'Content and product',
   },
   { match: (k) => k.startsWith('WARN_') || k.startsWith('TRANSLATE_'), tab: 'Moderation' },
+  {
+    match: (k) =>
+      k.startsWith('APPEALS_') ||
+      k.startsWith('MODMAIL_') ||
+      k.startsWith('VERIFY_') ||
+      k.startsWith('ALT_'),
+    tab: 'Security',
+  },
+  {
+    match: (k) =>
+      k.startsWith('STARBOARD_') ||
+      k.startsWith('STREAM') ||
+      k.startsWith('YOUTUBE_') ||
+      k === 'TWITCH_CLIENT_ID' ||
+      k === 'TWITCH_CLIENT_SECRET' ||
+      k === 'TWITCH_WATCH_LOGINS',
+    tab: 'Community+',
+  },
   { match: (k) => k.startsWith('TEMPVC_'), tab: 'Temp VC' },
   {
     match: (k) => k === 'ND_BOT_TIER' || k.startsWith('TIKTOK_') || k.startsWith('TWITCH_'),

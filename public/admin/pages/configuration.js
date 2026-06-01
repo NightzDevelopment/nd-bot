@@ -32,6 +32,7 @@ const CATEGORY_GROUPS = [
     icon: '◈',
     tabs: [
       'Moderation',
+      'Security',
       'Rule AutoMod',
       'Raid',
       'URL risk',
@@ -44,7 +45,15 @@ const CATEGORY_GROUPS = [
     key: 'comm',
     label: 'Community',
     icon: '◇',
-    tabs: ['Community', 'Welcome and mod', 'Tickets', 'Polls', 'Staff and feedback', 'Temp VC'],
+    tabs: [
+      'Community',
+      'Community+',
+      'Welcome and mod',
+      'Tickets',
+      'Polls',
+      'Staff and feedback',
+      'Temp VC',
+    ],
   },
   {
     key: 'ops',

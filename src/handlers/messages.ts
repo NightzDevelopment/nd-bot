@@ -1,6 +1,8 @@
 import { ChannelType, type Client, type Message } from 'discord.js'
 import {
   aiAutomodIncludeChannelSnippet,
+  aiReplyDisclaimer,
+  aiReplyDisclaimerEnabled,
   allowedDmUsers,
   CONVERSATION_HISTORY_LIMIT,
   channelPromptExtraByChannelId,
@@ -729,6 +731,11 @@ export function registerMessageHandler(client: Client): void {
           .replace(/\n---+$/gm, '')
           .replace(/\n\n\n+/g, '\n\n')
           .trim()
+
+        // Append the AI warning disclaimer as Discord subtext (small grey line).
+        if (aiReplyDisclaimerEnabled && aiReplyDisclaimer) {
+          reply = `${reply}\n\n-# ${aiReplyDisclaimer}`
+        }
 
         const parts = chunkText(reply)
         for (let i = 0; i < parts.length; i++) {
