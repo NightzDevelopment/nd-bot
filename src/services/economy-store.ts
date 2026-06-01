@@ -712,7 +712,8 @@ async function doGather(
   }
 
   const flavors = GATHER_FLAVORS[kind]
-  const pick = flavors[Math.floor(Math.random() * flavors.length)]
+  // Bounded random index — always in range.
+  const pick = flavors[Math.floor(Math.random() * flavors.length)] as (typeof flavors)[number]
   const baseMin = cfg[minRewardKey]
   const baseMax = cfg[maxRewardKey]
   const baseAmount = baseMin + Math.floor(Math.random() * (baseMax - baseMin + 1))

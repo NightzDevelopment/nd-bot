@@ -303,8 +303,9 @@ export async function authenticatePassword(
   // Update last login
   const users = await loadUsers()
   const idx = users.findIndex((u) => u.id === user.id)
-  if (idx >= 0) {
-    users[idx].lastLogin = Date.now()
+  const existing = idx >= 0 ? users[idx] : undefined
+  if (existing) {
+    existing.lastLogin = Date.now()
     await saveUsers(users)
   }
 
@@ -327,11 +328,12 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 export async function updateUserRole(userId: string, role: UserRole): Promise<User | null> {
   const users = await loadUsers()
   const idx = users.findIndex((u) => u.id === userId)
-  if (idx < 0) return null
+  const u = idx >= 0 ? users[idx] : undefined
+  if (!u) return null
 
-  users[idx].role = role
+  u.role = role
   await saveUsers(users)
-  return users[idx]
+  return u
 }
 
 /**
@@ -340,14 +342,15 @@ export async function updateUserRole(userId: string, role: UserRole): Promise<Us
 export async function addServerToUser(userId: string, serverId: string): Promise<User | null> {
   const users = await loadUsers()
   const idx = users.findIndex((u) => u.id === userId)
-  if (idx < 0) return null
+  const u = idx >= 0 ? users[idx] : undefined
+  if (!u) return null
 
-  if (!users[idx].servers.includes(serverId)) {
-    users[idx].servers.push(serverId)
+  if (!u.servers.includes(serverId)) {
+    u.servers.push(serverId)
   }
 
   await saveUsers(users)
-  return users[idx]
+  return u
 }
 
 /**
@@ -356,9 +359,10 @@ export async function addServerToUser(userId: string, serverId: string): Promise
 export async function revokeUser(userId: string): Promise<User | null> {
   const users = await loadUsers()
   const idx = users.findIndex((u) => u.id === userId)
-  if (idx < 0) return null
+  const u = idx >= 0 ? users[idx] : undefined
+  if (!u) return null
 
-  users[idx].active = false
+  u.active = false
   await saveUsers(users)
 
   // Invalidate all sessions for this user
@@ -366,7 +370,7 @@ export async function revokeUser(userId: string): Promise<User | null> {
   const filtered = sessions.filter((s) => s.userId !== userId)
   await saveSessions(filtered)
 
-  return users[idx]
+  return u
 }
 
 /**

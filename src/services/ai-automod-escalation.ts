@@ -92,6 +92,7 @@ export async function maybeAutomodEscalation(
   const key = storeKey(guildId, userId)
 
   return runExclusive(key, async () => {
+    if (!msg.guild) return
     const store = await ensureStore()
     const now = Date.now()
     let rec = applyDecay({ ...(store[key] ?? {}) } as StrikeRecord, now)

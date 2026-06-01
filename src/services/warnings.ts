@@ -10,14 +10,14 @@ export interface Warning {
   at: number // timestamp
   moderatorId: string
   reason: string
-  caseId?: string // link to mod case if exists
+  caseId?: string | undefined // link to mod case if exists
 }
 
 export interface UserWarnings {
   userId: string
   count: number
   warnings: Warning[]
-  lastWarningAt?: number
+  lastWarningAt?: number | undefined
 }
 
 export type WarningStore = Record<string, UserWarnings>
@@ -50,29 +50,24 @@ export async function addWarning(
   moderatorId: string,
   reason: string,
   caseId?: string,
-): Promise<{ record: UserWarnings; escalateAction?: 'kick' | 'ban' }> {
+): Promise<{ record: UserWarnings; escalateAction?: 'kick' | 'ban' | undefined }> {
   const store = await load()
-  if (!store[userId]) {
-    store[userId] = {
-      userId,
-      count: 0,
-      warnings: [],
-    }
-  }
+  const rec: UserWarnings = store[userId] ?? { userId, count: 0, warnings: [] }
+  store[userId] = rec
 
-  store[userId].warnings.push({
+  rec.warnings.push({
     at: Date.now(),
     moderatorId,
     reason,
     caseId,
   })
-  store[userId].count += 1
-  store[userId].lastWarningAt = Date.now()
+  rec.count += 1
+  rec.lastWarningAt = Date.now()
 
   let escalateAction: 'kick' | 'ban' | undefined
-  if (store[userId].count >= ESCALATION_THRESHOLDS.BAN_THRESHOLD) {
+  if (rec.count >= ESCALATION_THRESHOLDS.BAN_THRESHOLD) {
     escalateAction = 'ban'
-  } else if (store[userId].count >= ESCALATION_THRESHOLDS.KICK_THRESHOLD) {
+  } else if (rec.count >= ESCALATION_THRESHOLDS.KICK_THRESHOLD) {
     escalateAction = 'kick'
   }
 
@@ -81,10 +76,10 @@ export async function addWarning(
     userId,
     moderatorId,
     reason: reason.slice(0, 120),
-    count: store[userId].count,
+    count: rec.count,
     escalateAction: escalateAction ?? null,
   })
-  return { record: store[userId], escalateAction }
+  return { record: rec, escalateAction }
 }
 
 /**
@@ -156,8 +151,8 @@ export async function getRecentWarnings(limit: number = 50): Promise<
   Array<{
     userId: string
     count: number
-    lastWarningAt?: number
-    latestReason?: string
+    lastWarningAt?: number | undefined
+    latestReason?: string | undefined
   }>
 > {
   const store = await load()
@@ -190,7 +185,7 @@ export async function getUsersNeedingAttention(): Promise<
     userId: string
     count: number
     action: 'watch' | 'warn' | 'kick' | 'ban'
-    lastWarningAt?: number
+    lastWarningAt?: number | undefined
   }>
 > {
   const store = await load()
@@ -235,6 +230,7 @@ export async function getWarningsSummary(userId: string): Promise<string> {
   const lines: string[] = [`**${record.count} warning(s)**`]
   for (let i = 0; i < Math.min(3, record.warnings.length); i++) {
     const warning = record.warnings[record.warnings.length - 1 - i]
+    if (!warning) continue
     const date = new Date(warning.at).toLocaleDateString()
     lines.push(`• ${warning.reason} (${date})`)
   }

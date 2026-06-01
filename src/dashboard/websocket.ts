@@ -30,6 +30,8 @@ export type WSEventType =
   | 'suggestion_submitted'
   | 'suggestion_state_changed'
   | 'economy_transaction'
+  | 'casino_play'
+  | 'connected'
 
 export interface WSEvent {
   type: WSEventType
@@ -46,13 +48,16 @@ export interface AuthenticatedWS extends ServerWebSocket<{ userId: string; userE
 }
 
 class WebSocketManager {
-  private clients: Map<ServerWebSocket, AuthenticatedWS> = new Map()
-  private heartbeatIntervals: Map<ServerWebSocket, NodeJS.Timer> = new Map()
+  private clients: Map<ServerWebSocket<unknown>, AuthenticatedWS> = new Map()
+  private heartbeatIntervals: Map<ServerWebSocket<unknown>, NodeJS.Timer> = new Map()
 
   /**
    * Handle WebSocket upgrade
    */
-  async handleUpgrade(request: Request, server: BunServer): Promise<Response | undefined> {
+  async handleUpgrade(
+    request: Request,
+    server: BunServer<{ userId: string; userEmail: string }>,
+  ): Promise<Response | undefined> {
     const url = new URL(request.url)
 
     // Check for token in query or header
@@ -129,7 +134,7 @@ class WebSocketManager {
   /**
    * Start heartbeat for a connection
    */
-  private startHeartbeat(ws: ServerWebSocket): void {
+  private startHeartbeat(ws: ServerWebSocket<unknown>): void {
     const interval = setInterval(() => {
       try {
         if (ws.readyState === WebSocket.OPEN) {
@@ -146,7 +151,7 @@ class WebSocketManager {
   /**
    * Send message to a single client
    */
-  sendToClient(ws: ServerWebSocket, event: WSEvent): void {
+  sendToClient(ws: ServerWebSocket<unknown>, event: WSEvent): void {
     try {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(event))
@@ -170,7 +175,7 @@ class WebSocketManager {
       }
     }
 
-    if (event.type !== 'ping') {
+    if ((event.type as string) !== 'ping') {
       console.log(`[ws] broadcast ${event.type} to ${sent} clients`)
     }
   }

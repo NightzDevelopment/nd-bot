@@ -82,7 +82,7 @@ export async function getMessageCountByDay(days: number = 30): Promise<MessageSt
       if (event.timestamp < cutoff) continue
       if (event.type !== 'message' && event.type !== 'ai_response') continue
 
-      const date = new Date(event.timestamp).toISOString().split('T')[0]
+      const date = new Date(event.timestamp).toISOString().split('T')[0] ?? ''
       byDay[date] = (byDay[date] ?? 0) + 1
     }
 
@@ -105,21 +105,19 @@ export async function getTopUsersByMessages(limit: number = 10): Promise<TopUser
     for (const event of events) {
       if (!event.userId) continue
 
-      if (!userStats[event.userId]) {
-        userStats[event.userId] = {
-          userId: event.userId,
-          messageCount: 0,
-          aiResponses: 0,
-          customCommands: 0,
-        }
-      }
+      const us = (userStats[event.userId] ??= {
+        userId: event.userId,
+        messageCount: 0,
+        aiResponses: 0,
+        customCommands: 0,
+      })
 
       if (event.type === 'message') {
-        userStats[event.userId].messageCount += 1
+        us.messageCount += 1
       } else if (event.type === 'ai_response') {
-        userStats[event.userId].aiResponses += 1
+        us.aiResponses += 1
       } else if (event.type === 'custom_command') {
-        userStats[event.userId].customCommands += 1
+        us.customCommands += 1
       }
     }
 
