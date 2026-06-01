@@ -638,6 +638,12 @@ export const slashCommands = [
         .setMaxValue(25),
     ),
   new SlashCommandBuilder()
+    .setName('dossier')
+    .setDescription('Staff: full history for a user (warnings, cases, notes, reputation, tickets)')
+    .addUserOption((o) =>
+      o.setName('user').setDescription('User to look up').setRequired(true),
+    ),
+  new SlashCommandBuilder()
     .setName('levelrole')
     .setDescription('Staff: configure role rewards for reaching certain levels')
     .addSubcommand((sc) =>

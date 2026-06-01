@@ -43,6 +43,7 @@ import { refreshCodebaseIndex, startCodebaseRefreshLoop } from './services/codeb
 import { validateConfigOrExit } from './services/config-validate.ts'
 import { startCounterChannelLoop } from './services/counter-channels.ts'
 import { ensureDataDir } from './services/data-store.ts'
+import { startScheduledActionsLoop } from './services/scheduled-actions-store.ts'
 import { rebuildEmbeddingIndex } from './services/embeddings.ts'
 import { refreshFaqOnce, startFaqLoop } from './services/faq.ts'
 import { registerLevels } from './services/levels.ts'
@@ -174,6 +175,7 @@ client.once(Events.ClientReady, async (c) => {
     console.warn('[ticket-templates] bootstrap failed:', e)
   }
   startCounterChannelLoop(c)
+  startScheduledActionsLoop(c)
 
   // Start timezone reminder background loop
   try {

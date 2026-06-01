@@ -1734,6 +1734,24 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             }
           }
 
+          // GET /api/dossier/:userId — unified user history (warnings, cases,
+          // notes, reputation, profile, ticket counts).
+          const dossierMatch = pathname.match(/^\/api\/dossier\/([^/]+)$/)
+          if (dossierMatch && req.method === 'GET') {
+            try {
+              const userId = dossierMatch[1] ?? ''
+              const { getDiscordClient } = await import('./runtime-state.ts')
+              const client = getDiscordClient<any>()
+              const guild = client?.guilds.cache.first()
+              if (!guild) return json({ ok: false, error: 'No guild' }, { status: 503 })
+              const { buildDossier } = await import('../services/user-dossier.ts')
+              const data = await buildDossier(guild.id, userId)
+              return json({ ok: true, data })
+            } catch (e) {
+              return json({ ok: false, error: String(e) }, { status: 500 })
+            }
+          }
+
           // GET /api/members/:userId/tickets — list user's open tickets for member card
           const memberTicketsMatch = pathname.match(/^\/api\/members\/([^/]+)\/tickets$/)
           if (memberTicketsMatch && req.method === 'GET') {

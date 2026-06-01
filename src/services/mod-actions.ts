@@ -184,11 +184,24 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
   const guild = msg.guild!
   const parts = args.trim().split(/\s+/)
   const userRaw = parts[0]
-  const reason = parts.slice(1).join(' ') || 'Banned by moderator'
   if (!userRaw) {
-    await modReply(msg, 'Usage: `nd!ban @user [reason]`')
+    await modReply(msg, 'Usage: `nd!ban @user [duration] [reason]` — e.g. `nd!ban @user 7d spamming`')
     return
   }
+  // Optional duration as the 2nd token (e.g. 7d, 2h) makes this a temp-ban.
+  let durationMs: number | null = null
+  let durRaw = ''
+  let reasonParts = parts.slice(1)
+  if (parts[1]) {
+    const maybe = parseDuration(parts[1])
+    if (maybe) {
+      durationMs = maybe
+      durRaw = parts[1]
+      reasonParts = parts.slice(2)
+    }
+  }
+  const reason =
+    reasonParts.join(' ') || (durationMs ? 'Temp-banned by moderator' : 'Banned by moderator')
   const user = await parseUser(msg, userRaw)
   if (!user) {
     await modReply(msg, 'User not found.')
@@ -211,14 +224,38 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
     return
   }
 
+  // Temp-ban: schedule an automatic unban when the duration elapses.
+  let unbanAt = 0
+  if (durationMs) {
+    unbanAt = Date.now() + durationMs
+    try {
+      const { scheduleAction } = await import('./scheduled-actions-store.ts')
+      await scheduleAction({
+        type: 'unban',
+        guildId: guild.id,
+        userId: user.id,
+        userTag: user.tag,
+        dueAt: unbanAt,
+        reason: `Temp-ban expired (original: ${reason.slice(0, 180)})`,
+        createdBy: msg.author.id,
+      })
+    } catch (e) {
+      console.warn('[ban] failed to schedule auto-unban:', e)
+    }
+  }
+
   const ch = msg.channel
   const channelLine =
     ch.isTextBased() && !ch.isDMBased() ? `<#${ch.id}> · \`${ch.id}\`` : `\`${ch.id}\``
 
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
-    .setTitle('User banned')
-    .setDescription(`**${user.tag}** (\`${user.id}\`) was banned from **${guild.name}**.`)
+    .setTitle(durationMs ? 'User temp-banned' : 'User banned')
+    .setDescription(
+      durationMs
+        ? `**${user.tag}** (\`${user.id}\`) was temp-banned from **${guild.name}** for **${durRaw}**.`
+        : `**${user.tag}** (\`${user.id}\`) was banned from **${guild.name}**.`,
+    )
     .addFields(
       {
         name: 'Reason',
@@ -243,6 +280,14 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
     )
     .setFooter({ text: `${guild.name} · ${guild.id}` })
     .setTimestamp()
+
+  if (durationMs) {
+    embed.addFields({
+      name: 'Auto-unban',
+      value: `<t:${Math.floor(unbanAt / 1000)}:R> (<t:${Math.floor(unbanAt / 1000)}:F>)`,
+      inline: false,
+    })
+  }
 
   await msg.reply({ embeds: [embed], allowedMentions: { repliedUser: false } })
 }

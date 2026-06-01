@@ -6,6 +6,7 @@ import {
   type Client,
   EmbedBuilder,
   Events,
+  type GuildMember,
   type Interaction,
   MessageFlags,
   type TextChannel,
@@ -1381,6 +1382,27 @@ export function registerInteractionHandler(client: Client): void {
 
       if (commandName === 'usernote') {
         if (await handleUserNoteSlash(interaction)) return
+      }
+
+      if (commandName === 'dossier') {
+        if (!interaction.isChatInputCommand()) return
+        if (!isGuildMod(interaction.member as GuildMember | null)) {
+          await interaction.reply({
+            content: 'This command is for staff only.',
+            flags: MessageFlags.Ephemeral,
+          })
+          return
+        }
+        if (!interaction.guild) {
+          await interaction.reply({ content: 'Use this in a server.', flags: MessageFlags.Ephemeral })
+          return
+        }
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+        const target = interaction.options.getUser('user', true)
+        const { buildDossier, formatDossierEmbed } = await import('../services/user-dossier.ts')
+        const dossier = await buildDossier(interaction.guild.id, target.id)
+        await interaction.editReply({ embeds: [formatDossierEmbed(dossier, target.tag)] })
+        return
       }
 
       if (commandName === 'auditlog') {

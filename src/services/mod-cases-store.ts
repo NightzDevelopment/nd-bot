@@ -49,3 +49,15 @@ export async function listCasesForGuild(guildId: string, limit = 15): Promise<Mo
     .slice(-limit)
     .reverse()
 }
+
+export async function listCasesForUser(
+  guildId: string,
+  targetId: string,
+  limit = 25,
+): Promise<ModCase[]> {
+  const data = await load()
+  return data.cases
+    .filter((c) => c.guildId === guildId && c.targetId === targetId)
+    .slice(-limit)
+    .reverse()
+}
