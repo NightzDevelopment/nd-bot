@@ -279,6 +279,12 @@ export function registerInteractionHandler(client: Client): void {
     }
 
     if (interaction.isButton()) {
+      const { tryHandleEventInteraction } = await import('../services/events.ts')
+      const handled = await tryHandleEventInteraction(interaction)
+      if (handled) return
+    }
+
+    if (interaction.isButton()) {
       const handled = await tryHandleTicketButton(interaction)
       if (handled) return
 
@@ -1420,6 +1426,79 @@ export function registerInteractionHandler(client: Client): void {
         const { buildDossier, formatDossierEmbed } = await import('../services/user-dossier.ts')
         const dossier = await buildDossier(interaction.guild.id, target.id)
         await interaction.editReply({ embeds: [formatDossierEmbed(dossier, target.tag)] })
+        return
+      }
+
+      if (commandName === 'event') {
+        if (!interaction.isChatInputCommand() || !interaction.guild) return
+        const sub = interaction.options.getSubcommand()
+        const {
+          createAndPostEvent,
+          refreshEventMessage,
+        } = await import('../services/events.ts')
+        const { listUpcomingEvents, getEvent, updateEvent } = await import(
+          '../services/events-store.ts'
+        )
+
+        if (sub === 'list') {
+          const events = await listUpcomingEvents(interaction.guild.id)
+          if (!events.length) {
+            await interaction.reply({ content: 'No upcoming events.', flags: MessageFlags.Ephemeral })
+            return
+          }
+          const lines = events.map(
+            (e) => `• **${e.title}** — <t:${Math.floor(e.startsAt / 1000)}:R> · ${e.rsvps.yes.length} going · \`${e.id}\``,
+          )
+          await interaction.reply({ content: lines.join('\n').slice(0, 1900), flags: MessageFlags.Ephemeral })
+          return
+        }
+
+        // create + cancel are staff-only
+        if (!isGuildMod(interaction.member as GuildMember | null)) {
+          await interaction.reply({ content: 'Staff only.', flags: MessageFlags.Ephemeral })
+          return
+        }
+
+        if (sub === 'create') {
+          const title = interaction.options.getString('title', true)
+          const inRaw = interaction.options.getString('in', true)
+          const description = interaction.options.getString('description', false) ?? ''
+          const { parseDuration } = await import('../utils/time.ts')
+          const offset = parseDuration(inRaw)
+          if (!offset) {
+            await interaction.reply({ content: 'Invalid time. Use e.g. `2h`, `1d`.', flags: MessageFlags.Ephemeral })
+            return
+          }
+          const chOpt = interaction.options.getChannel('channel', false)
+          const channel = (chOpt ?? interaction.channel) as TextChannel
+          if (!channel || !('send' in channel)) {
+            await interaction.reply({ content: 'Pick a text channel.', flags: MessageFlags.Ephemeral })
+            return
+          }
+          const ev = await createAndPostEvent({
+            guildId: interaction.guild.id,
+            channel,
+            title,
+            description,
+            startsAt: Date.now() + offset,
+            createdBy: interaction.user.id,
+          })
+          await interaction.reply({ content: `Event created in <#${channel.id}> (ID \`${ev.id}\`).`, flags: MessageFlags.Ephemeral })
+          return
+        }
+
+        if (sub === 'cancel') {
+          const id = interaction.options.getString('id', true)
+          const ev = await getEvent(id)
+          if (!ev) {
+            await interaction.reply({ content: 'Event not found.', flags: MessageFlags.Ephemeral })
+            return
+          }
+          const updated = await updateEvent(id, { cancelled: true })
+          if (updated) await refreshEventMessage(interaction.client, updated)
+          await interaction.reply({ content: `Event \`${id}\` cancelled.`, flags: MessageFlags.Ephemeral })
+          return
+        }
         return
       }
 

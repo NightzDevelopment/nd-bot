@@ -45,6 +45,7 @@ import { startCounterChannelLoop } from './services/counter-channels.ts'
 import { ensureDataDir } from './services/data-store.ts'
 import { registerAltDetection } from './services/alt-detection.ts'
 import { startScheduledActionsLoop } from './services/scheduled-actions-store.ts'
+import { registerStarboard } from './services/starboard.ts'
 import { registerVerification } from './services/verification.ts'
 import { rebuildEmbeddingIndex } from './services/embeddings.ts'
 import { refreshFaqOnce, startFaqLoop } from './services/faq.ts'
@@ -87,6 +88,7 @@ registerMessageHandler(client)
 registerWelcomeHandler(client)
 registerVerification(client)
 registerAltDetection(client)
+registerStarboard(client)
 registerInteractionHandler(client)
 registerAuditHandler(client)
 registerReactionRoles(client)
@@ -181,6 +183,9 @@ client.once(Events.ClientReady, async (c) => {
   startCounterChannelLoop(c)
   startScheduledActionsLoop(c)
   void import('./services/lockdown.ts').then(({ restoreLockdownState }) => restoreLockdownState())
+  void import('./services/streaming-alerts.ts').then(({ startStreamingAlertsLoop }) =>
+    startStreamingAlertsLoop(c),
+  )
 
   // Start timezone reminder background loop
   try {

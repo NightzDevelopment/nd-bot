@@ -644,6 +644,31 @@ export const slashCommands = [
       o.setName('user').setDescription('User to look up').setRequired(true),
     ),
   new SlashCommandBuilder()
+    .setName('event')
+    .setDescription('Community events with RSVP')
+    .addSubcommand((sc) =>
+      sc
+        .setName('create')
+        .setDescription('Staff: create an event')
+        .addStringOption((o) => o.setName('title').setDescription('Event title').setRequired(true))
+        .addStringOption((o) =>
+          o.setName('in').setDescription('Starts in (e.g. 2h, 1d)').setRequired(true),
+        )
+        .addStringOption((o) =>
+          o.setName('description').setDescription('Details').setRequired(false),
+        )
+        .addChannelOption((o) =>
+          o.setName('channel').setDescription('Where to post (default: here)').setRequired(false),
+        ),
+    )
+    .addSubcommand((sc) => sc.setName('list').setDescription('List upcoming events'))
+    .addSubcommand((sc) =>
+      sc
+        .setName('cancel')
+        .setDescription('Staff: cancel an event by ID')
+        .addStringOption((o) => o.setName('id').setDescription('Event ID').setRequired(true)),
+    ),
+  new SlashCommandBuilder()
     .setName('levelrole')
     .setDescription('Staff: configure role rewards for reaching certain levels')
     .addSubcommand((sc) =>

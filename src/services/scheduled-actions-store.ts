@@ -15,7 +15,7 @@ import { readJson, writeJson } from './data-store.ts'
 
 const log = childLogger('sched')
 
-export type ScheduledActionType = 'unban' | 'verify_kick' | 'raid_unlock'
+export type ScheduledActionType = 'unban' | 'verify_kick' | 'raid_unlock' | 'event_reminder'
 
 export type ScheduledAction = {
   id: number
@@ -27,6 +27,8 @@ export type ScheduledAction = {
   reason?: string
   createdAt: number
   createdBy?: string
+  /** Arbitrary payload for action types that need extra data (e.g. eventId). */
+  meta?: Record<string, unknown>
 }
 
 type Store = { nextId: number; actions: ScheduledAction[] }
@@ -131,6 +133,13 @@ export function startScheduledActionsLoop(client: Client): void {
               await setLockdown(a.guildId, false)
               log.info({ guildId: a.guildId }, 'raid auto-unlock executed')
             }
+            break
+          }
+          case 'event_reminder': {
+            const eventId = typeof a.meta?.eventId === 'string' ? a.meta.eventId : ''
+            if (!eventId) break
+            const { remindEvent } = await import('./events.ts')
+            await remindEvent(client, eventId)
             break
           }
         }

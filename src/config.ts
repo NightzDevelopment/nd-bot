@@ -849,6 +849,15 @@ export const appealsChannelId =
 /** When true, DM banned users an appeal button on ban. */
 export const appealsEnabled = !isEnvOff(process.env.APPEALS_ENABLED ?? '1')
 
+/** Starboard: repost highly-reacted messages to a highlights channel. */
+export const starboardEnabled = !isEnvOff(process.env.STARBOARD_ENABLED ?? '0')
+export const starboardChannelId = process.env.STARBOARD_CHANNEL_ID?.trim() || undefined
+export const starboardEmoji = process.env.STARBOARD_EMOJI?.trim() || '⭐'
+export const starboardThreshold = Math.max(
+  1,
+  parseInt(process.env.STARBOARD_THRESHOLD ?? '3', 10) || 3,
+)
+
 /** Alt-account detection: score new joins for ban-evasion signals and alert staff. */
 export const altDetectionEnabled = !isEnvOff(process.env.ALT_DETECTION_ENABLED ?? '0')
 /** Risk score (0-7) at or above which an alt alert is posted. */
@@ -995,6 +1004,26 @@ export const autoDeleteEnabled = !isEnvOff(process.env.AUTO_DELETE_ENABLED ?? '0
 export const autoPurgeEnabled = !isEnvOff(process.env.AUTO_PURGE_ENABLED ?? '0')
 export const tiktokNotificationsEnabled = !isEnvOff(process.env.TIKTOK_NOTIFICATIONS_ENABLED ?? '0')
 export const twitchNotificationsEnabled = !isEnvOff(process.env.TWITCH_NOTIFICATIONS_ENABLED ?? '0')
+
+/** Streaming live alerts (Twitch go-live + YouTube new uploads). */
+export const streamingAlertsEnabled = !isEnvOff(process.env.STREAMING_ALERTS_ENABLED ?? '0')
+export const streamAnnounceChannelId = process.env.STREAM_ANNOUNCE_CHANNEL_ID?.trim() || undefined
+export const streamPollIntervalSec = Math.max(
+  60,
+  parseInt(process.env.STREAM_POLL_INTERVAL_SEC ?? '300', 10) || 300,
+)
+export const twitchClientId = process.env.TWITCH_CLIENT_ID?.trim() || undefined
+export const twitchClientSecret = process.env.TWITCH_CLIENT_SECRET?.trim() || undefined
+/** Twitch login names to watch (comma-separated). */
+export const twitchWatchLogins = (process.env.TWITCH_WATCH_LOGINS ?? '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean)
+/** YouTube channel IDs to watch for new uploads (comma-separated). */
+export const youtubeWatchChannels = (process.env.YOUTUBE_WATCH_CHANNELS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
 
 /** Levels / XP */
 export const levelsXpMin = Math.max(1, parseInt(process.env.LEVELS_XP_MIN ?? '8', 10) || 8)
