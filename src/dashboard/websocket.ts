@@ -321,7 +321,8 @@ export function broadcastActivity(
     | 'giveaway_ended'
     | 'suggestion_submitted'
     | 'suggestion_state_changed'
-    | 'casino_play',
+    | 'casino_play'
+    | 'economy_transaction',
   data: Record<string, unknown>,
 ): void {
   try {

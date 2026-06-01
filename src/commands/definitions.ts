@@ -327,7 +327,18 @@ export const slashCommands = [
     .addUserOption((o) => o.setName('user').setDescription('User (optional)').setRequired(false)),
   new SlashCommandBuilder()
     .setName('leaderboard')
-    .setDescription('Show the Nightz community XP leaderboard'),
+    .setDescription('Show the Nightz community XP leaderboard')
+    .addStringOption((o) =>
+      o
+        .setName('window')
+        .setDescription('Time window')
+        .setRequired(false)
+        .addChoices(
+          { name: 'All time', value: 'all' },
+          { name: 'This week', value: 'week' },
+          { name: 'This month', value: 'month' },
+        ),
+    ),
   new SlashCommandBuilder()
     .setName('levelreset')
     .setDescription('Staff: reset a user’s level data')

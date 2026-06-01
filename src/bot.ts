@@ -186,6 +186,10 @@ client.once(Events.ClientReady, async (c) => {
   void import('./services/streaming-alerts.ts').then(({ startStreamingAlertsLoop }) =>
     startStreamingAlertsLoop(c),
   )
+  void import('./services/leaderboard-snapshots.ts').then(({ startLeaderboardSnapshotLoop }) =>
+    startLeaderboardSnapshotLoop(c),
+  )
+  void import('./services/seasonal-events.ts').then(({ initSeasonalEvents }) => initSeasonalEvents())
 
   // Start timezone reminder background loop
   try {

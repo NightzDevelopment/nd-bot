@@ -721,6 +721,66 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     return
   }
 
+  if (cmd === 'season') {
+    const { getActiveSeasonalEvent, setSeasonalEvent } = await import(
+      '../services/seasonal-events.ts'
+    )
+    const parts = args.trim().split(/\s+/).filter(Boolean)
+    const sub = (parts.shift() ?? 'status').toLowerCase()
+
+    if (sub === 'status' || sub === '') {
+      const ev = getActiveSeasonalEvent()
+      if (!ev) {
+        await msg.reply('No seasonal event is active.')
+        return
+      }
+      await msg.reply(
+        `**${ev.name}** active until <t:${Math.floor(ev.endsAt / 1000)}:R> — XP x${ev.xpMultiplier}, NDC x${ev.currencyMultiplier}.`,
+      )
+      return
+    }
+
+    const member = await guildMemberForModCheck(msg)
+    if (!member || !isGuildMod(member)) {
+      await msg.reply('Moderator only. Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>`')
+      return
+    }
+
+    if (sub === 'end' || sub === 'stop') {
+      await setSeasonalEvent(null)
+      await msg.reply('Seasonal event ended.')
+      return
+    }
+
+    if (sub === 'start') {
+      const xpMult = parseFloat(parts.shift() ?? '')
+      const ndcMult = parseFloat(parts.shift() ?? '')
+      const durRaw = parts.shift() ?? ''
+      const { parseDuration } = await import('../utils/time.ts')
+      const dur = parseDuration(durRaw)
+      const name = parts.join(' ') || 'Seasonal Event'
+      if (!isFinite(xpMult) || !isFinite(ndcMult) || !dur) {
+        await msg.reply('Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>` — e.g. `nd!season start 2 2 2d Double Weekend`')
+        return
+      }
+      const now = Date.now()
+      await setSeasonalEvent({
+        name: name.slice(0, 80),
+        startsAt: now,
+        endsAt: now + dur,
+        xpMultiplier: Math.max(0.1, Math.min(10, xpMult)),
+        currencyMultiplier: Math.max(0.1, Math.min(10, ndcMult)),
+      })
+      await msg.reply(
+        `Seasonal event **${name}** started: XP x${xpMult}, NDC x${ndcMult} for ${durRaw}.`,
+      )
+      return
+    }
+
+    await msg.reply('Usage: `nd!season start|end|status`')
+    return
+  }
+
   if (cmd === 'verifypanel') {
     if (!msg.guild || !msg.channel.isTextBased() || msg.channel.isDMBased()) {
       await msg.reply('Use this in a server text channel.')

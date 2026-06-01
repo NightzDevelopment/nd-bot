@@ -33,6 +33,7 @@ export type EconomyRecord = {
   lastMine: number
   totalEarned: number
   updatedAt: number
+  dailyStreak: number
 }
 
 export type EconomyConfig = {
@@ -122,6 +123,7 @@ function defaultRecord(): EconomyRecord {
     lastMine: 0,
     totalEarned: 0,
     updatedAt: Date.now(),
+    dailyStreak: 0,
   }
 }
 
@@ -306,27 +308,34 @@ export async function claimDaily(
       ok: false,
       amount: 0,
       msg: `Daily already claimed. Next in **${h}h ${m}m**.`,
-      streak: 0,
+      streak: rec.dailyStreak ?? 0,
     }
   }
   const cfg = await getEconomyConfig()
+  // Streak continues if the previous claim was within 48h; otherwise it resets.
+  const missWindow = 48 * 60 * 60 * 1000
+  const prevStreak = rec.dailyStreak ?? 0
+  const streak = rec.lastDaily > 0 && now - rec.lastDaily <= missWindow ? prevStreak + 1 : 1
   const base = cfg.dailyAmount
   const bonus = Math.floor(Math.random() * 200)
-  const amount = base + bonus
+  const streakBonus = Math.min(streak, 7) * 50
+  const { currentSeasonalMultipliers } = await import('./seasonal-events.ts')
+  const amount = Math.round((base + bonus + streakBonus) * currentSeasonalMultipliers().currency)
 
   db.prepare(`
     UPDATE users_economy
-    SET balance = balance + ?, totalEarned = totalEarned + ?, lastDaily = ?, updatedAt = ?
+    SET balance = balance + ?, totalEarned = totalEarned + ?, lastDaily = ?, dailyStreak = ?, updatedAt = ?
     WHERE userId = ?
-  `).run(amount, amount, now, now, userId)
+  `).run(amount, amount, now, streak, now, userId)
 
   const updated = await getBalance(userId)
   void broadcastEconomy(userId, 'daily', amount, updated.balance)
+  const streakLine = `Streak: **${streak} day${streak === 1 ? '' : 's'}** (+${streakBonus} bonus)`
   return {
     ok: true,
     amount,
-    msg: `[SUCCESS] You claimed your daily **${amount.toLocaleString()} NDC**!`,
-    streak: 0,
+    msg: `[SUCCESS] You claimed your daily **${amount.toLocaleString()} NDC**! ${streakLine}`,
+    streak,
   }
 }
 
@@ -357,7 +366,9 @@ export async function claimWork(
   ]
   // Bounded random — index is always within range.
   const pick = jobs[Math.floor(Math.random() * jobs.length)] as { job: string }
-  const amount = cfg.workMin + Math.floor(Math.random() * (cfg.workMax - cfg.workMin + 1))
+  const baseWork = cfg.workMin + Math.floor(Math.random() * (cfg.workMax - cfg.workMin + 1))
+  const { currentSeasonalMultipliers } = await import('./seasonal-events.ts')
+  const amount = Math.round(baseWork * currentSeasonalMultipliers().currency)
 
   db.prepare(`
     UPDATE users_economy

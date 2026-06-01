@@ -142,7 +142,9 @@ export function registerLevels(client: Client): void {
     const now = Date.now()
     if (now - current.lastXpAt < levelsCooldownMs) return
 
-    const { after, leveledUp } = await addLevelXp(msg.guild!.id, msg.author.id, randomXp(), now)
+    const { currentSeasonalMultipliers } = await import('./seasonal-events.ts')
+    const xpAward = Math.round(randomXp() * currentSeasonalMultipliers().xp)
+    const { after, leveledUp } = await addLevelXp(msg.guild!.id, msg.author.id, xpAward, now)
     if (!leveledUp) return
     await maybeApplyLevelRoles(msg, after.level)
     // Also apply roles from the command-configured store
@@ -177,19 +179,33 @@ export async function buildRankEmbed(guildId: string, userId: string, tag: strin
     )
 }
 
-export async function buildLeaderboardEmbed(guildId: string) {
-  const rows = await topLevelRecords(guildId, 10)
+export async function buildLeaderboardEmbed(guildId: string, window: 'all' | 'week' | 'month' = 'all') {
+  if (window === 'all') {
+    const rows = await topLevelRecords(guildId, 10)
+    return ndEmbed()
+      .setTitle('Community leaderboard · all time')
+      .setDescription(
+        rows.length
+          ? rows
+              .map(
+                (x, i) =>
+                  `**${i + 1}.** <@${x.userId}> — Level **${x.record.level}**, ${x.record.xp} XP`,
+              )
+              .join('\n')
+          : 'No XP has been recorded yet.',
+      )
+  }
+  const days = window === 'week' ? 7 : 30
+  const { getXpWindowLeaderboard } = await import('./leaderboard-snapshots.ts')
+  const rows = await getXpWindowLeaderboard(guildId, days, 10)
   return ndEmbed()
-    .setTitle('Community leaderboard')
+    .setTitle(`Community leaderboard · ${window === 'week' ? 'this week' : 'this month'}`)
     .setDescription(
       rows.length
         ? rows
-            .map(
-              (x, i) =>
-                `**${i + 1}.** <@${x.userId}> — Level **${x.record.level}**, ${x.record.xp} XP`,
-            )
+            .map((x, i) => `**${i + 1}.** <@${x.userId}> — +${x.gained.toLocaleString()} XP`)
             .join('\n')
-        : 'No XP has been recorded yet.',
+        : 'Not enough history yet for this window. XP snapshots are still building up — check back in a few days.',
     )
 }
 
@@ -259,7 +275,8 @@ export async function handleLeaderboardSlash(
     await interaction.reply({ content: 'Use this in a server.', flags: MessageFlags.Ephemeral })
     return true
   }
-  await interaction.reply({ embeds: [await buildLeaderboardEmbed(interaction.guild.id)] })
+  const window = (interaction.options.getString('window', false) ?? 'all') as 'all' | 'week' | 'month'
+  await interaction.reply({ embeds: [await buildLeaderboardEmbed(interaction.guild.id, window)] })
   return true
 }
 

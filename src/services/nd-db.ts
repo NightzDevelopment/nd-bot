@@ -198,6 +198,13 @@ function initSchema(db: Database): void {
       updatedAt INTEGER NOT NULL
     );
   `)
+
+  // Idempotent column additions for databases created before a column existed.
+  const ensureColumn = (table: string, col: string, ddl: string): void => {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`)
+  }
+  ensureColumn('users_economy', 'dailyStreak', 'dailyStreak INTEGER DEFAULT 0')
 }
 
 function runMigrations(db: Database): void {
