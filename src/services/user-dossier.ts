@@ -29,6 +29,22 @@ export type Dossier = {
   } | null
   openTickets: number
   totalTickets: number
+  /** Combined moderation risk from warnings, cases, and high-severity notes. */
+  riskScore: number
+  riskLevel: 'low' | 'medium' | 'high'
+  repeatOffender: boolean
+}
+
+/** Transparent risk weighting: warnings x2, cases x3, high-severity notes x2. */
+export function computeRisk(
+  warningCount: number,
+  caseCount: number,
+  highSeverityNotes: number,
+): { riskScore: number; riskLevel: 'low' | 'medium' | 'high'; repeatOffender: boolean } {
+  const riskScore = warningCount * 2 + caseCount * 3 + highSeverityNotes * 2
+  const riskLevel = riskScore >= 8 ? 'high' : riskScore >= 4 ? 'medium' : 'low'
+  const repeatOffender = warningCount >= 5 || caseCount >= 3
+  return { riskScore, riskLevel, repeatOffender }
 }
 
 export async function buildDossier(guildId: string, userId: string): Promise<Dossier> {
@@ -70,6 +86,11 @@ export async function buildDossier(guildId: string, userId: string): Promise<Dos
       : null,
     openTickets: open.length,
     totalTickets,
+    ...computeRisk(
+      w?.count ?? 0,
+      cases.length,
+      (notes?.notes ?? []).filter((n) => n.severity === 'high').length,
+    ),
   }
 }
 
@@ -98,11 +119,16 @@ export function formatDossierEmbed(d: Dossier, userTag: string): EmbedBuilder {
         .join('\n')
     : '*none*'
 
-  const color = d.warningCount >= 3 || d.cases.length >= 3 ? 0xef4444 : 0x60a5fa
+  const color =
+    d.riskLevel === 'high' ? 0xef4444 : d.riskLevel === 'medium' ? 0xfbbf24 : 0x60a5fa
+  const riskLabel =
+    d.riskLevel === 'high' ? 'HIGH' : d.riskLevel === 'medium' ? 'MEDIUM' : 'low'
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(`Dossier: ${userTag}`)
-    .setDescription(`<@${d.userId}> · \`${d.userId}\``)
+    .setDescription(
+      `<@${d.userId}> · \`${d.userId}\`\n**Risk: ${riskLabel}** (score ${d.riskScore})${d.repeatOffender ? ' · repeat offender' : ''}`,
+    )
     .addFields(
       {
         name: 'Summary',

@@ -20,6 +20,8 @@ import {
   altActionEnabled,
   altAlertThreshold,
   altAutobanMaxPerMin,
+  altAvatarAiCheck,
+  altAvatarAiMinConfidence,
   altBanAt,
   altDetectionEnabled,
   altDryRun,
@@ -32,6 +34,7 @@ import {
 } from '../config.ts'
 import { childLogger } from '../lib/logger.ts'
 import { readJson, writeJson } from './data-store.ts'
+import { generateRawWithImage } from './gemini.ts'
 
 const log = childLogger('alt-detect')
 
@@ -150,6 +153,35 @@ function scoreNameAndProfile(member: GuildMember): AltScore {
   return { score, reasons }
 }
 
+/**
+ * Ask Gemini vision whether an avatar looks AI-generated / stock / bot-like.
+ * Returns confidence in [0,1] or null on failure. Best-effort; failures score 0.
+ */
+async function avatarLooksBot(member: GuildMember): Promise<{ confidence: number } | null> {
+  try {
+    const url = member.user.displayAvatarURL({ extension: 'png', size: 128 })
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const dataBase64 = Buffer.from(await res.arrayBuffer()).toString('base64')
+    const prompt =
+      'You are screening Discord profile avatars for likely bot/spam accounts. ' +
+      'Does this avatar look AI-generated (GAN/this-person-does-not-exist style), a generic stock photo, ' +
+      'or a low-effort placeholder commonly used by bot/spam accounts? A normal personal photo, meme, ' +
+      'game art, or anime pfp is NOT suspicious. Reply ONLY compact JSON: ' +
+      '{"botAvatar": true|false, "confidence": 0.0-1.0}.'
+    const raw = await generateRawWithImage(prompt, { mimeType: 'image/png', dataBase64 })
+    const m = raw.match(/\{[\s\S]*\}/)
+    if (!m) return null
+    const parsed = JSON.parse(m[0]) as { botAvatar?: boolean; confidence?: number }
+    if (!parsed.botAvatar) return null
+    const confidence = typeof parsed.confidence === 'number' ? parsed.confidence : 0
+    return { confidence }
+  } catch (e) {
+    log.warn({ err: e, userId: member.id }, 'avatar AI check failed')
+    return null
+  }
+}
+
 async function scoreMember(member: GuildMember): Promise<AltScore> {
   const base = scoreNameAndProfile(member)
   const name = member.user.username.toLowerCase()
@@ -169,12 +201,29 @@ async function scoreMember(member: GuildMember): Promise<AltScore> {
     }
   }
   if (best && (bestDist <= 2 || (name.length >= 4 && best.username.includes(name)))) {
-    return {
-      score: base.score + 3,
-      reasons: [...base.reasons, `name resembles recently-banned **${best.tag}** (distance ${bestDist})`],
-      matchedBan: best,
+    base.score += 3
+    base.reasons.push(`name resembles recently-banned **${best.tag}** (distance ${bestDist})`)
+    base.matchedBan = best
+  }
+
+  // AI-avatar check (vision). Only for borderline-suspicious joiners WITH a custom
+  // avatar, to limit cost. The +3 alone cannot reach the ban tier, so a
+  // misclassified photo at worst quarantines/kicks, never bans on its own.
+  if (
+    altAvatarAiCheck &&
+    member.user.avatar &&
+    base.score >= altAlertThreshold - 1 &&
+    base.score < altBanAt
+  ) {
+    const verdict = await avatarLooksBot(member)
+    if (verdict && verdict.confidence >= altAvatarAiMinConfidence) {
+      base.score += 3
+      base.reasons.push(
+        `avatar looks AI-generated/bot-like (${Math.round(verdict.confidence * 100)}%)`,
+      )
     }
   }
+
   return base
 }
 

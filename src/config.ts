@@ -882,6 +882,12 @@ export const altAutobanMaxPerMin = Math.max(
   1,
   parseInt(process.env.ALT_AUTOBAN_MAX_PER_MIN ?? '5', 10) || 5,
 )
+/** Use Gemini vision to check borderline joiners' avatars for AI-generated/bot looks. */
+export const altAvatarAiCheck = !isEnvOff(process.env.ALT_AVATAR_AI_CHECK ?? '1')
+export const altAvatarAiMinConfidence = Math.min(
+  0.99,
+  Math.max(0.5, parseFloat(process.env.ALT_AVATAR_AI_MIN_CONFIDENCE ?? '0.75') || 0.75),
+)
 
 /** Verification gate: new members must click a button before gaining access. */
 export const verifyEnabled = !isEnvOff(process.env.VERIFY_ENABLED ?? '0')
