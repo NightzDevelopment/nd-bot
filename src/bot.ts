@@ -44,6 +44,7 @@ import { validateConfigOrExit } from './services/config-validate.ts'
 import { startCounterChannelLoop } from './services/counter-channels.ts'
 import { ensureDataDir } from './services/data-store.ts'
 import { registerAltDetection } from './services/alt-detection.ts'
+import { registerQuarantineRoleSwap } from './services/quarantine-roleswap.ts'
 import { startScheduledActionsLoop } from './services/scheduled-actions-store.ts'
 import { registerStarboard } from './services/starboard.ts'
 import { registerVerification } from './services/verification.ts'
@@ -88,6 +89,7 @@ registerMessageHandler(client)
 registerWelcomeHandler(client)
 registerVerification(client)
 registerAltDetection(client)
+registerQuarantineRoleSwap(client)
 registerStarboard(client)
 registerInteractionHandler(client)
 registerAuditHandler(client)

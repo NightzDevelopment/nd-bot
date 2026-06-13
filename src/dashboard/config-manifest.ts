@@ -240,6 +240,9 @@ const ALL_KEYS: readonly string[] = [
   'ALT_BAN_AT',
   'ALT_QUARANTINE_ROLE_ID',
   'ALT_AUTOBAN_MAX_PER_MIN',
+  'QUARANTINE_ROLESWAP_ENABLED',
+  'QUARANTINE_ROLE_ID',
+  'QUARANTINE_TOGGLE_ROLE_ID',
   'STREAMING_ALERTS_ENABLED',
   'STREAM_ANNOUNCE_CHANNEL_ID',
   'STREAM_POLL_INTERVAL_SEC',
@@ -362,6 +365,7 @@ const BOOL_KEYS = new Set<string>([
   'ALT_DETECTION_ENABLED',
   'ALT_ACTION_ENABLED',
   'ALT_DRY_RUN',
+  'QUARANTINE_ROLESWAP_ENABLED',
   'STARBOARD_ENABLED',
   'STREAMING_ALERTS_ENABLED',
   'LEVELS_ENABLED',
@@ -597,6 +601,9 @@ const HELP: Readonly<Record<string, string>> = {
   ALT_BAN_AT: 'Risk score at or above which to ban. Default 8.',
   ALT_QUARANTINE_ROLE_ID: 'Role added on quarantine. Falls back to VERIFY_UNVERIFIED_ROLE_ID.',
   ALT_AUTOBAN_MAX_PER_MIN: 'Cap auto-bans per 60s to avoid mass false positives. Default 5.',
+  QUARANTINE_ROLESWAP_ENABLED: 'When the quarantine role is added, remove the member role; restore it when quarantine is lifted (1/0).',
+  QUARANTINE_ROLE_ID: 'The quarantine role to watch.',
+  QUARANTINE_TOGGLE_ROLE_ID: 'The member role removed on quarantine and restored when it is lifted.',
   STARBOARD_ENABLED: 'Repost highly-reacted messages to a highlights channel (1/0).',
   STARBOARD_CHANNEL_ID: 'Highlights channel where starred messages are reposted.',
   STARBOARD_EMOJI: 'Reaction emoji that counts toward the starboard (default star).',
@@ -904,7 +911,8 @@ const TAB_RULES: readonly TabRule[] = [
       k.startsWith('APPEALS_') ||
       k.startsWith('MODMAIL_') ||
       k.startsWith('VERIFY_') ||
-      k.startsWith('ALT_'),
+      k.startsWith('ALT_') ||
+      k.startsWith('QUARANTINE_'),
     tab: 'Security',
   },
   {

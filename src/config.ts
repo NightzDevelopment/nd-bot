@@ -875,6 +875,8 @@ export const altKickAt = Math.max(1, parseInt(process.env.ALT_KICK_AT ?? '6', 10
 export const altBanAt = Math.max(1, parseInt(process.env.ALT_BAN_AT ?? '8', 10) || 8)
 /** Role added on quarantine. Falls back to VERIFY_UNVERIFIED_ROLE_ID. */
 export const altQuarantineRoleId = process.env.ALT_QUARANTINE_ROLE_ID?.trim() || undefined
+/** Member/access role removed while quarantined and restored when quarantine is lifted. */
+export const quarantineMemberRoleId = process.env.QUARANTINE_MEMBER_ROLE_ID?.trim() || undefined
 /** Cap auto-bans per 60s to avoid mass false positives during a flood. */
 export const altAutobanMaxPerMin = Math.max(
   1,
@@ -888,6 +890,15 @@ export const verifyChannelId = process.env.VERIFY_CHANNEL_ID?.trim() || undefine
 export const verifyRoleId = process.env.VERIFY_ROLE_ID?.trim() || undefined
 /** Optional holding role assigned on join, removed on verify. */
 export const verifyUnverifiedRoleId = process.env.VERIFY_UNVERIFIED_ROLE_ID?.trim() || undefined
+
+/**
+ * Quarantine role-swap: when QUARANTINE_ROLE_ID is added to a member, remove
+ * QUARANTINE_TOGGLE_ROLE_ID (the normal member role); when the quarantine role
+ * is removed, add the toggle role back. Inert unless both IDs are set.
+ */
+export const quarantineRoleSwapEnabled = !isEnvOff(process.env.QUARANTINE_ROLESWAP_ENABLED ?? '1')
+export const quarantineRoleId = process.env.QUARANTINE_ROLE_ID?.trim() || undefined
+export const quarantineToggleRoleId = process.env.QUARANTINE_TOGGLE_ROLE_ID?.trim() || undefined
 /** Kick members who never verify after this many ms (0 = never kick). */
 export const verifyKickAfterMs = Math.max(
   0,
