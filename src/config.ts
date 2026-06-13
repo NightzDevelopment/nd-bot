@@ -274,7 +274,7 @@ export const storeSnapshotStaleMinutes = Math.max(
 
 /** Gemini embedding retrieval over chunked FAQ + product docs + dev index (optional). */
 export const vectorRetrievalEnabled = !isEnvOff(process.env.VECTOR_RETRIEVAL_ENABLED ?? '0')
-export const embeddingModel = process.env.EMBEDDING_MODEL?.trim() || 'text-embedding-004'
+export const embeddingModel = process.env.EMBEDDING_MODEL?.trim() || 'gemini-embedding-001'
 export const vectorTopK = Math.min(
   12,
   Math.max(1, parseInt(process.env.VECTOR_TOP_K ?? '5', 10) || 5),

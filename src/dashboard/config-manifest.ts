@@ -542,7 +542,7 @@ const HELP: Readonly<Record<string, string>> = {
   // Embeddings / vector
   VECTOR_RETRIEVAL_ENABLED: 'Embed indexed corpora and inject top-K matches per query.',
   VECTOR_TOP_K: 'How many top embedding hits to inject per request.',
-  EMBEDDING_MODEL: 'Google embedding model ID. Default: text-embedding-004.',
+  EMBEDDING_MODEL: 'Google embedding model ID. Default: gemini-embedding-001.',
   EMBEDDING_REFRESH_MINUTES: 'How often to rebuild the embedding index.',
   EMBEDDING_MAX_CHUNK_CHARS: 'Max characters per chunk before splitting (min 200).',
   EMBEDDING_MAX_CORPUS_CHUNKS: 'Cap the total chunk count to keep memory bounded.',
