@@ -848,6 +848,8 @@ export const appealsChannelId =
 
 /** When true, DM banned users an appeal button on ban. */
 export const appealsEnabled = !isEnvOff(process.env.APPEALS_ENABLED ?? '1')
+/** AI pre-assessment of submitted appeals, shown to staff in the review embed. */
+export const appealAiTriageEnabled = !isEnvOff(process.env.APPEALS_AI_TRIAGE_ENABLED ?? '1')
 
 /** Starboard: repost highly-reacted messages to a highlights channel. */
 export const starboardEnabled = !isEnvOff(process.env.STARBOARD_ENABLED ?? '0')

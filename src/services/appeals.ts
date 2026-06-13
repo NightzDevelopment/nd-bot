@@ -24,8 +24,9 @@ import {
   TextInputStyle,
   type User,
 } from 'discord.js'
-import { appealsChannelId, appealsEnabled } from '../config.ts'
+import { appealAiTriageEnabled, appealsChannelId, appealsEnabled } from '../config.ts'
 import { childLogger } from '../lib/logger.ts'
+import { generateRaw } from './gemini.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { addAppeal, getAppeal, hasOpenAppeal, updateAppeal } from './appeals-store.ts'
 import { cancelActions } from './scheduled-actions-store.ts'
@@ -33,6 +34,23 @@ import { cancelActions } from './scheduled-actions-store.ts'
 const log = childLogger('appeals')
 
 const PREFIX = 'ndappeal'
+
+/** Best-effort AI pre-assessment of an appeal for staff (advisory only). */
+async function assessAppeal(body: string): Promise<string | null> {
+  if (!appealAiTriageEnabled) return null
+  try {
+    const prompt =
+      'A banned Discord user submitted this ban appeal. As a moderation assistant, give a ONE-line ' +
+      'advisory for staff: a recommendation (lean approve / needs review / lean deny) and a brief why. ' +
+      'Do not decide; staff decide. No preamble, just the one line.\n\nAppeal:\n' +
+      body.slice(0, 1200)
+    const raw = await generateRaw(prompt)
+    return raw.trim().split('\n')[0]?.slice(0, 300) ?? null
+  } catch (e) {
+    log.warn({ err: e }, 'appeal triage failed')
+    return null
+  }
+}
 
 /** DM a just-banned user an appeal button. Best-effort (DMs may be closed). */
 export async function dmBanAppealPrompt(
@@ -184,6 +202,7 @@ export async function tryHandleAppealInteraction(interaction: Interaction): Prom
       try {
         const ch = await interaction.client.channels.fetch(appealsChannelId)
         if (ch?.isTextBased() && 'send' in ch) {
+          const triage = await assessAppeal(body)
           const embed = new EmbedBuilder()
             .setColor(0xfbbf24)
             .setTitle(`Ban appeal #${appeal.id}`)
@@ -193,6 +212,9 @@ export async function tryHandleAppealInteraction(interaction: Interaction): Prom
               { name: 'Tag', value: appeal.userTag, inline: true },
             )
             .setTimestamp()
+          if (triage) {
+            embed.addFields({ name: 'AI triage (advisory)', value: triage.slice(0, 1024), inline: false })
+          }
           const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
               .setCustomId(`${PREFIX}:approve:${appeal.id}`)
