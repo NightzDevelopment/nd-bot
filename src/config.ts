@@ -851,6 +851,12 @@ export const appealsEnabled = !isEnvOff(process.env.APPEALS_ENABLED ?? '1')
 /** AI pre-assessment of submitted appeals, shown to staff in the review embed. */
 export const appealAiTriageEnabled = !isEnvOff(process.env.APPEALS_AI_TRIAGE_ENABLED ?? '1')
 
+/** Weekly AI-summarized moderation digest posted to staff. */
+export const weeklyModReportEnabled = !isEnvOff(process.env.WEEKLY_MOD_REPORT_ENABLED ?? '1')
+/** Channel for the weekly mod report. Defaults to STAFF_LOG_CHANNEL_ID. */
+export const weeklyModReportChannelId =
+  process.env.WEEKLY_MOD_REPORT_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID
+
 /** Starboard: repost highly-reacted messages to a highlights channel. */
 export const starboardEnabled = !isEnvOff(process.env.STARBOARD_ENABLED ?? '0')
 export const starboardChannelId = process.env.STARBOARD_CHANNEL_ID?.trim() || undefined

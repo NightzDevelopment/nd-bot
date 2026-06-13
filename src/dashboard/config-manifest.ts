@@ -222,6 +222,8 @@ const ALL_KEYS: readonly string[] = [
   'APPEALS_ENABLED',
   'APPEALS_AI_TRIAGE_ENABLED',
   'APPEALS_CHANNEL_ID',
+  'WEEKLY_MOD_REPORT_ENABLED',
+  'WEEKLY_MOD_REPORT_CHANNEL_ID',
   'MODMAIL_ENABLED',
   'MODMAIL_CATEGORY_ID',
   'MODMAIL_STAFF_ROLE_IDS',
@@ -367,6 +369,7 @@ const BOOL_KEYS = new Set<string>([
   'TICKET_DM_ON_CLOSE',
   'APPEALS_ENABLED',
   'APPEALS_AI_TRIAGE_ENABLED',
+  'WEEKLY_MOD_REPORT_ENABLED',
   'MODMAIL_ENABLED',
   'VERIFY_ENABLED',
   'RAID_AUTOLOCK_ENABLED',
@@ -595,6 +598,10 @@ const HELP: Readonly<Record<string, string>> = {
   APPEALS_ENABLED: 'DM banned users an appeal button so they can request a review (1/0).',
   APPEALS_AI_TRIAGE_ENABLED:
     'AI pre-assesses each submitted appeal and adds a one-line advisory to the staff review embed. Advisory only; staff still decide (1/0).',
+  WEEKLY_MOD_REPORT_ENABLED:
+    'Post an AI-summarized moderation digest (cases and warnings from the past 7 days) to staff once a week (1/0).',
+  WEEKLY_MOD_REPORT_CHANNEL_ID:
+    'Channel for the weekly mod report. Defaults to STAFF_LOG_CHANNEL_ID.',
   MODMAIL_ENABLED: 'Let users DM the bot `nd!modmail <msg>` to open a private staff relay (1/0).',
   MODMAIL_CATEGORY_ID: 'Category under which per-user modmail channels are created.',
   MODMAIL_STAFF_ROLE_IDS: 'Extra role IDs (comma-separated) that can see/reply in modmail, beyond MOD_ROLE_ID.',
@@ -924,7 +931,11 @@ const TAB_RULES: readonly TabRule[] = [
       k.startsWith('COMING_SOON_'),
     tab: 'Content and product',
   },
-  { match: (k) => k.startsWith('WARN_') || k.startsWith('TRANSLATE_'), tab: 'Moderation' },
+  {
+    match: (k) =>
+      k.startsWith('WARN_') || k.startsWith('TRANSLATE_') || k.startsWith('WEEKLY_MOD_REPORT_'),
+    tab: 'Moderation',
+  },
   {
     match: (k) =>
       k.startsWith('APPEALS_') ||

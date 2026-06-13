@@ -192,6 +192,9 @@ client.once(Events.ClientReady, async (c) => {
     startLeaderboardSnapshotLoop(c),
   )
   void import('./services/seasonal-events.ts').then(({ initSeasonalEvents }) => initSeasonalEvents())
+  void import('./services/weekly-mod-report.ts').then(({ startWeeklyModReportLoop }) =>
+    startWeeklyModReportLoop(c),
+  )
 
   // Start timezone reminder background loop
   try {

@@ -50,6 +50,12 @@ export async function listCasesForGuild(guildId: string, limit = 15): Promise<Mo
     .reverse()
 }
 
+/** All cases with `at >= sinceMs`, newest first. Used by the weekly mod report. */
+export async function listCasesSince(sinceMs: number): Promise<ModCase[]> {
+  const data = await load()
+  return data.cases.filter((c) => c.at >= sinceMs).sort((a, b) => b.at - a.at)
+}
+
 export async function listCasesForUser(
   guildId: string,
   targetId: string,
