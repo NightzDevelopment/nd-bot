@@ -1,6 +1,7 @@
 import type { GenerativeModel, Part } from '@google/generative-ai'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import {
+  aiResponseCacheEnabled,
   claudeEnabled,
   GOOGLE_KEY,
   geminiFallbackModels,
@@ -13,6 +14,8 @@ import {
   openaiRequestTimeoutMs,
 } from '../config.ts'
 import { getAiProviderMode } from './ai-provider.ts'
+import { getCached, setCached } from './ai-cache.ts'
+import { recordAiCall, recordAiError, recordCacheHit, recordCacheMiss } from './ai-telemetry.ts'
 import {
   checkClaudeAvailability,
   claudeChatReply,
@@ -144,13 +147,16 @@ async function withModelFallback<T>(
       if (modelId !== MODEL_ID) {
         console.warn(`[gemini] trying fallback model: ${modelId}`)
       }
-      return await withRetry(`gemini:${modelId}`, () => run(model, modelId))
+      const out = await withRetry(`gemini:${modelId}`, () => run(model, modelId))
+      recordAiCall('gemini')
+      return out
     } catch (e) {
       lastError = e
       const msg = e instanceof Error ? e.message : String(e)
       console.warn(`[gemini] model ${modelId} failed: ${msg.slice(0, 180)}`)
     }
   }
+  recordAiError('gemini')
   throw lastError ?? new Error('No Gemini model could produce a response.')
 }
 
@@ -224,13 +230,16 @@ async function withOpenAiFallback<T>(run: (modelId: string) => Promise<T>): Prom
       if (modelId !== openaiModel) {
         console.warn(`[openai] trying fallback model: ${modelId}`)
       }
-      return await withRetry(`openai:${modelId}`, () => run(modelId))
+      const out = await withRetry(`openai:${modelId}`, () => run(modelId))
+      recordAiCall('openai')
+      return out
     } catch (e) {
       lastError = e
       const msg = e instanceof Error ? e.message : String(e)
       console.warn(`[openai] model ${modelId} failed: ${msg.slice(0, 180)}`)
     }
   }
+  recordAiError('openai')
   throw lastError ?? new Error('No OpenAI model could produce a response.')
 }
 
@@ -569,6 +578,19 @@ async function generateOnceImpl(modelRef: GeminiModelRef, prompt: string): Promi
 
 /** Raw JSON-style generation for AI AutoMod; respects AI provider mode like chat (`auto` = Gemini then Claude then OpenAI fallback). */
 export async function generateRaw(prompt: string): Promise<string> {
+  if (!aiResponseCacheEnabled) return generateRawUncached(prompt)
+  const cached = getCached(prompt)
+  if (cached !== null) {
+    recordCacheHit()
+    return cached
+  }
+  recordCacheMiss()
+  const out = await generateRawUncached(prompt)
+  if (out) setCached(prompt, out)
+  return out
+}
+
+async function generateRawUncached(prompt: string): Promise<string> {
   const modelRef = getModel('')
   const runGemini = () =>
     withModelFallback(modelRef, async (model) => {

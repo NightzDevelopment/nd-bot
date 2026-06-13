@@ -40,6 +40,7 @@ import {
   getAiProviderState,
   setAiProviderMode,
 } from '../services/ai-provider.ts'
+import { getAiTelemetry } from '../services/ai-telemetry.ts'
 import { checkClaudeAvailability } from '../services/claude-client.ts'
 import { buildAugmentedUserContentAsync } from '../services/context-bundle.ts'
 import { handleCountersSlash } from '../services/counter-channels.ts'
@@ -1077,6 +1078,7 @@ export function registerInteractionHandler(client: Client): void {
       if (commandName === 'ai_model') {
         const selected = options.getString('provider') as AiProviderMode | null
         const state = await getAiProviderState()
+        const telem = await getAiTelemetry()
         const [openaiHealth, claudeHealth] = await Promise.all([
           openaiEnabled
             ? checkOpenAiAvailability()
@@ -1112,6 +1114,11 @@ export function registerInteractionHandler(client: Client): void {
           `Fallbacks: ${openaiFallbackModels.length ? openaiFallbackModels.map((m) => `\`${m}\``).join(', ') : '(none)'}`,
           `Status: ${openaiHealth.ok ? 'online' : openaiEnabled ? 'offline' : 'disabled'}`,
           `Details: ${openaiHealth.detail}`,
+          ``,
+          `**Usage** (since <t:${Math.floor(telem.since / 1000)}:R>)`,
+          `Calls: ${telem.totalCalls} (gemini ${telem.providers.gemini.calls}, claude ${telem.providers.claude.calls}, openai ${telem.providers.openai.calls})`,
+          `Errors: ${telem.totalErrors} · Fallbacks (claude+openai): ${telem.fallbackCalls}`,
+          `Cache: ${telem.cache.hits} hit / ${telem.cache.misses} miss (${Math.round(telem.cacheHitRate * 100)}% hit rate)`,
         ].join('\n')
 
         if (!selected) {

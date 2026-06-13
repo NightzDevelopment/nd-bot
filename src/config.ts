@@ -857,6 +857,14 @@ export const weeklyModReportEnabled = !isEnvOff(process.env.WEEKLY_MOD_REPORT_EN
 export const weeklyModReportChannelId =
   process.env.WEEKLY_MOD_REPORT_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID
 
+/** Cache identical classifier prompts (generateRaw) for a short time to cut cost. */
+export const aiResponseCacheEnabled = !isEnvOff(process.env.AI_RESPONSE_CACHE_ENABLED ?? '1')
+/** TTL for cached classifier responses, in seconds. */
+export const aiResponseCacheTtlSec =
+  parseInt(process.env.AI_RESPONSE_CACHE_TTL_SEC ?? '300', 10) || 300
+/** Maximum number of cached classifier responses (oldest evicted). */
+export const aiResponseCacheMax = parseInt(process.env.AI_RESPONSE_CACHE_MAX ?? '500', 10) || 500
+
 /** Starboard: repost highly-reacted messages to a highlights channel. */
 export const starboardEnabled = !isEnvOff(process.env.STARBOARD_ENABLED ?? '0')
 export const starboardChannelId = process.env.STARBOARD_CHANNEL_ID?.trim() || undefined

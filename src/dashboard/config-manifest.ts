@@ -175,6 +175,9 @@ const ALL_KEYS: readonly string[] = [
   'OPENAI_FALLBACK_MODELS',
   'OPENAI_MODEL',
   'OPENAI_TIMEOUT_MS',
+  'AI_RESPONSE_CACHE_ENABLED',
+  'AI_RESPONSE_CACHE_TTL_SEC',
+  'AI_RESPONSE_CACHE_MAX',
   'PERSISTENT_MEMORY',
   'POLL_CREATE_ANNOUNCEMENT_PING_EVERYONE',
   'POLL_CREATE_ANNOUNCEMENT_TEMPLATE',
@@ -323,6 +326,7 @@ const BOOL_KEYS = new Set<string>([
   'ENABLE_DM_SUPPORT',
   'AI_FEEDBACK_REACTIONS_ENABLED',
   'AI_REPLY_DISCLAIMER_ENABLED',
+  'AI_RESPONSE_CACHE_ENABLED',
   'VECTOR_RETRIEVAL_ENABLED',
   'COMING_SOON_REPLIES_ENABLED',
   'CODEBASE_SINGLE_RESOURCE_MODE',
@@ -514,6 +518,10 @@ const HELP: Readonly<Record<string, string>> = {
   OPENAI_FALLBACK_MODELS: 'Comma-separated OpenAI model IDs tried after the primary.',
   GEMINI_MODEL: 'Primary Gemini model ID (see Google AI Studio for valid names).',
   GEMINI_FALLBACK_MODELS: 'Comma-separated Gemini model IDs tried in order if the primary fails.',
+  AI_RESPONSE_CACHE_ENABLED:
+    'Cache identical AI classifier prompts (AutoMod, scam-link, appeal triage) for a short time to cut API cost and latency. Chat replies are never cached (1/0).',
+  AI_RESPONSE_CACHE_TTL_SEC: 'How long a cached classifier response is reused, in seconds. Default 300.',
+  AI_RESPONSE_CACHE_MAX: 'Maximum cached classifier responses kept in memory (oldest evicted). Default 500.',
   DATA_DIR: 'On-disk directory for JSON state (memory, levels, afk, overrides). Default: ./data.',
 
   // Dashboard
@@ -865,7 +873,11 @@ const TAB_RULES: readonly TabRule[] = [
   { match: (k) => k.startsWith('DASHBOARD_'), tab: 'Dashboard' },
   { match: (k) => k === 'DISCORD_BOT_TOKEN' || k === 'DATA_DIR', tab: 'General' },
   {
-    match: (k) => k === 'GOOGLE_API_KEY' || k.startsWith('GEMINI_') || k.startsWith('OPENAI_'),
+    match: (k) =>
+      k === 'GOOGLE_API_KEY' ||
+      k.startsWith('GEMINI_') ||
+      k.startsWith('OPENAI_') ||
+      k.startsWith('AI_RESPONSE_CACHE_'),
     tab: 'API keys and models',
   },
   { match: (k) => k.startsWith('AI_AUTOMOD_') || k.startsWith('SCAM_LINK_'), tab: 'AI AutoMod' },

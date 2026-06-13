@@ -11,6 +11,7 @@ import {
   claudeRequestTimeoutMs,
 } from '../config.ts'
 import type { Turn } from './memory.ts'
+import { recordAiCall, recordAiError } from './ai-telemetry.ts'
 
 const MAX_RETRIES = 3
 const RETRY_DELAY_MS = 2000
@@ -134,13 +135,16 @@ async function withClaudeFallback<T>(run: (modelId: string) => Promise<T>): Prom
       if (modelId !== claudeModel) {
         console.warn(`[claude] trying fallback model: ${modelId}`)
       }
-      return await withRetry(`claude:${modelId}`, () => run(modelId))
+      const out = await withRetry(`claude:${modelId}`, () => run(modelId))
+      recordAiCall('claude')
+      return out
     } catch (e) {
       lastError = e
       const msg = e instanceof Error ? e.message : String(e)
       console.warn(`[claude] model ${modelId} failed: ${msg.slice(0, 180)}`)
     }
   }
+  recordAiError('claude')
   throw lastError ?? new Error('No Claude model could produce a response.')
 }
 
