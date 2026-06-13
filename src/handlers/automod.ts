@@ -16,6 +16,8 @@ import {
   automodMaxMentions,
   automodUrlBlocklistRegex,
   automodUrlBlocklistSubstrings,
+  scamLinkAiDelete,
+  scamLinkAiEnabled,
   TICKET_CLOSED_CATEGORY_ID,
   TICKET_OPEN_CATEGORY_ID,
   urlHostMatchesAutomodGifBlocklist,
@@ -229,6 +231,27 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
           await notify(msg, rule, 'Logged only (URL_RISK_DELETE_MESSAGE=0)')
         }
         return urlRiskDeleteMessage ? 'blocked' : 'ok'
+      }
+
+      // Unknown link that passed the heuristics: ask the AI if it is a scam/phishing site.
+      if (scamLinkAiEnabled) {
+        const verdict = await import('../services/scam-link-ai.ts')
+          .then(({ classifyMessageLinks }) => classifyMessageLinks(content))
+          .catch(() => null)
+        if (verdict) {
+          const rule = `AI scam link (${Math.round(verdict.confidence * 100)}%): ${verdict.reason || verdict.url}`.slice(0, 240)
+          if (scamLinkAiDelete) {
+            try {
+              await deleteAutomodMessage(msg, rule)
+            } catch {}
+            await notify(msg, rule, 'Message deleted')
+            try {
+              await msg.member?.timeout(5 * 60 * 1000, 'AutoMod: AI-flagged scam link')
+            } catch {}
+            return 'blocked'
+          }
+          await notify(msg, rule, 'Logged only (SCAM_LINK_AI_DELETE=0)')
+        }
       }
     }
 

@@ -1129,6 +1129,18 @@ export function channelPromptExtraByChannelId(): Record<string, string> {
 /** Comma-separated extra hosts trusted in `/scam_check` heuristics (merged with URL_RISK_TRUSTED_HOSTS idea). */
 export const scamCheckExtraTrustedHosts = parseHostList(process.env.SCAM_CHECK_EXTRA_TRUSTED_HOSTS)
 
+/** AI scam/phishing classification for unknown links the URL-risk heuristics did not catch. */
+export const scamLinkAiEnabled = !isEnvOff(process.env.SCAM_LINK_AI_ENABLED ?? '0')
+export const scamLinkAiDelete = !isEnvOff(process.env.SCAM_LINK_AI_DELETE ?? '1')
+export const scamLinkAiMinConfidence = Math.min(
+  0.99,
+  Math.max(0.5, parseFloat(process.env.SCAM_LINK_AI_MIN_CONFIDENCE ?? '0.8') || 0.8),
+)
+export const scamLinkAiMaxPerMin = Math.max(
+  1,
+  parseInt(process.env.SCAM_LINK_AI_MAX_PER_MIN ?? '8', 10) || 8,
+)
+
 function parseHostList(raw: string | undefined): Set<string> {
   const s = new Set<string>()
   if (!raw?.trim()) return s
