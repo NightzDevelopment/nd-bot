@@ -599,7 +599,7 @@ function parseEscalationThresholds(): {
   let w = Math.max(1, parseInt(process.env.AI_AUTOMOD_ESCALATION_WARN_AT ?? '4', 10) || 4)
   let k = Math.max(1, parseInt(process.env.AI_AUTOMOD_ESCALATION_KICK_AT ?? '7', 10) || 7)
   let b = Math.max(1, parseInt(process.env.AI_AUTOMOD_ESCALATION_BAN_AT ?? '12', 10) || 12)
-  const arr = [w, k, b].sort((a, b) => a - b)
+  const arr = [w, k, b].sort((a, b) => a - b) as [number, number, number]
   ;[w, k, b] = arr
   if (w === k || k === b) {
     w = 4
@@ -864,6 +864,21 @@ export const altDetectionEnabled = !isEnvOff(process.env.ALT_DETECTION_ENABLED ?
 export const altAlertThreshold = Math.max(
   1,
   parseInt(process.env.ALT_ALERT_THRESHOLD ?? '3', 10) || 3,
+)
+/** Take tiered auto-action (quarantine/kick/ban) on suspected bot/alt joins. */
+export const altActionEnabled = !isEnvOff(process.env.ALT_ACTION_ENABLED ?? '1')
+/** Dry-run: log/alert what WOULD happen but take no action. */
+export const altDryRun = !isEnvOff(process.env.ALT_DRY_RUN ?? '0')
+/** Score tiers for action. quarantine <= kick <= ban. */
+export const altQuarantineAt = Math.max(1, parseInt(process.env.ALT_QUARANTINE_AT ?? '4', 10) || 4)
+export const altKickAt = Math.max(1, parseInt(process.env.ALT_KICK_AT ?? '6', 10) || 6)
+export const altBanAt = Math.max(1, parseInt(process.env.ALT_BAN_AT ?? '8', 10) || 8)
+/** Role added on quarantine. Falls back to VERIFY_UNVERIFIED_ROLE_ID. */
+export const altQuarantineRoleId = process.env.ALT_QUARANTINE_ROLE_ID?.trim() || undefined
+/** Cap auto-bans per 60s to avoid mass false positives during a flood. */
+export const altAutobanMaxPerMin = Math.max(
+  1,
+  parseInt(process.env.ALT_AUTOBAN_MAX_PER_MIN ?? '5', 10) || 5,
 )
 
 /** Verification gate: new members must click a button before gaining access. */
