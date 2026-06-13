@@ -140,17 +140,17 @@ function renderAuditTable(data) {
     .map((e) => {
       const colors = CATEGORY_COLORS[e.category] || CATEGORY_COLORS.Other
       const catPill = `<span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;background:${colors.bg};color:${colors.text};border:1px solid ${colors.border};white-space:nowrap;">${escHtml(e.category)}</span>`
-      const time = e.createdAt ? new Date(e.createdAt).toLocaleString() : '—'
-      const timeRel = e.createdAt ? relativeTime(e.createdAt) : '—'
+      const time = e.createdAt ? new Date(e.createdAt).toLocaleString() : '-'
+      const timeRel = e.createdAt ? relativeTime(e.createdAt) : '-'
       const executor = e.executor
         ? `<span title="${escHtml(e.executor.id)}">${escHtml(e.executor.tag)}</span>`
-        : '<span style="color:var(--text-muted)">—</span>'
+        : '<span style="color:var(--text-muted)">-</span>'
       const target = e.target
         ? `<span title="${escHtml(e.target.id)}">${escHtml(e.target.tag)}</span>`
-        : '<span style="color:var(--text-muted)">—</span>'
+        : '<span style="color:var(--text-muted)">-</span>'
       const reason = e.reason
         ? `<span title="${escHtml(e.reason)}">${escHtml(e.reason.slice(0, 40))}${e.reason.length > 40 ? '…' : ''}</span>`
-        : '<span style="color:var(--text-muted)">—</span>'
+        : '<span style="color:var(--text-muted)">-</span>'
       return `
       <tr class="al-row" data-id="${escAttr(e.id)}" style="cursor:pointer;">
         <td>${catPill}</td>
@@ -183,8 +183,8 @@ function openAuditModal(e) {
           (c) => `
         <tr>
           <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);padding:4px 8px;">${escHtml(c.key)}</td>
-          <td style="font-size:12px;padding:4px 8px;color:#f87171;">${c.old != null ? escHtml(String(c.old).slice(0, 80)) : '<em>—</em>'}</td>
-          <td style="font-size:12px;padding:4px 8px;color:#34d399;">${c.new != null ? escHtml(String(c.new).slice(0, 80)) : '<em>—</em>'}</td>
+          <td style="font-size:12px;padding:4px 8px;color:#f87171;">${c.old != null ? escHtml(String(c.old).slice(0, 80)) : '<em>-</em>'}</td>
+          <td style="font-size:12px;padding:4px 8px;color:#34d399;">${c.new != null ? escHtml(String(c.new).slice(0, 80)) : '<em>-</em>'}</td>
         </tr>`,
         )
         .join('')
@@ -208,12 +208,12 @@ function openAuditModal(e) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:1rem;">
           <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:0.625rem 0.75rem;">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);margin-bottom:4px;">Executor</div>
-            <div style="font-size:13px;font-weight:600;">${e.executor ? escHtml(e.executor.tag) : '—'}</div>
+            <div style="font-size:13px;font-weight:600;">${e.executor ? escHtml(e.executor.tag) : '-'}</div>
             ${e.executor ? `<div style="font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);">${escHtml(e.executor.id)}</div>` : ''}
           </div>
           <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:8px;padding:0.625rem 0.75rem;">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-tertiary);margin-bottom:4px;">Target</div>
-            <div style="font-size:13px;font-weight:600;">${e.target ? escHtml(e.target.tag) : '—'}</div>
+            <div style="font-size:13px;font-weight:600;">${e.target ? escHtml(e.target.tag) : '-'}</div>
             ${e.target ? `<div style="font-size:11px;color:var(--text-secondary);font-family:var(--font-mono);">${escHtml(e.target.id)}</div>` : ''}
           </div>
         </div>

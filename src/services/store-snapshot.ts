@@ -112,7 +112,7 @@ export function buildStorePageContext(): string {
   if (!cached?.text) return ''
   const iso = new Date(cached.fetchedAt).toISOString()
   return [
-    '**Live Nightz store catalog (FaxStore; text snapshot from the public listing — prices/titles change, confirm on the site):**',
+    '**Live Nightz store catalog (FaxStore; text snapshot from the public listing, prices/titles change, confirm on the site):**',
     `Source: ${cached.url} (fetched ${iso})`,
     cached.text,
   ].join('\n')
@@ -144,7 +144,7 @@ export async function refreshStoreSnapshot(): Promise<void> {
       const text = normalizeFetchedText(body)
       if (text.length < 200) {
         console.warn(
-          '[store-snapshot] response very short — page may be JS-only; snapshot may be low-value',
+          '[store-snapshot] response very short: page may be JS-only; snapshot may be low-value',
         )
       }
       cached = { url: storePageUrl, text, fetchedAt: Date.now() }
@@ -227,7 +227,7 @@ export function getStoreSnapshotHealth(): StoreSnapshotHealth {
 export function formatStoreHealthOneLiner(): string {
   const h = getStoreSnapshotHealth()
   if (!h.enabled) return '**Store snapshot:** disabled'
-  const age = h.ageMinutes == null ? '—' : `${Math.max(0, Math.floor(h.ageMinutes))} min`
+  const age = h.ageMinutes == null ? '-' : `${Math.max(0, Math.floor(h.ageMinutes))} min`
   const err = h.lastError ? ` · err: ${h.lastError}` : ''
   return `**Store snapshot:** ${h.status} · ${age} ago · ${h.charCount} chars${err}`
 }
@@ -243,7 +243,7 @@ export function buildStoreCommandBody(): string {
     '**Nightz store**',
     `**Browse:** ${storePageUrl}`,
     '',
-    `**Bot snapshot:** ${h.status} · ${h.charCount ? `${h.charCount} chars` : 'no data'} · age ${h.ageMinutes != null ? `${Math.floor(h.ageMinutes)} min` : '—'}`,
+    `**Bot snapshot:** ${h.status} · ${h.charCount ? `${h.charCount} chars` : 'no data'} · age ${h.ageMinutes != null ? `${Math.floor(h.ageMinutes)} min` : '-'}`,
   ]
   if (featured.length) {
     lines.push('', '**Featured**')

@@ -732,12 +732,17 @@ export function registerMessageHandler(client: Client): void {
           .replace(/\n\n\n+/g, '\n\n')
           .trim()
 
-        // Append the AI warning disclaimer as Discord subtext (small grey line).
-        if (aiReplyDisclaimerEnabled && aiReplyDisclaimer) {
-          reply = `${reply}\n\n-# ${aiReplyDisclaimer}`
-        }
+        // Append the AI warning disclaimer as Discord subtext (small grey line)
+        // ONLY to the outgoing message. The clean reply (without the disclaimer)
+        // is what we store in conversation memory, so the model never sees its
+        // own disclaimer in history and stops echoing it (which caused a
+        // doubled warning).
+        const outgoing =
+          aiReplyDisclaimerEnabled && aiReplyDisclaimer
+            ? `${reply}\n\n-# ${aiReplyDisclaimer}`
+            : reply
 
-        const parts = chunkText(reply)
+        const parts = chunkText(outgoing)
         for (let i = 0; i < parts.length; i++) {
           const chunk = parts[i]!
           if (i === 0) await msg.reply({ content: chunk })

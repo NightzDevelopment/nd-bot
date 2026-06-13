@@ -18,7 +18,7 @@ export interface AnalyticsEvent {
 
 /**
  * Read analytics.jsonl as NDJSON (one event per line).
- * The previous readJson() helper expected a single JSON array — this file
+ * The previous readJson() helper expected a single JSON array, but this file
  * is line-delimited, so it always parsed as empty.
  */
 async function readAnalyticsEvents(): Promise<AnalyticsEvent[]> {

@@ -1,5 +1,5 @@
 /**
- * ND Sentinel Dashboard — layout & component styles
+ * ND Sentinel Dashboard: layout & component styles
  * Glassmorphism, ND branding, premium control-center feel
  */
 @import "./theme.css";
@@ -17,7 +17,7 @@ body {
   height: 100%;
 }
 
-/* ── Sentinel Sidebar — frosted glass with ND brand bar ──────────── */
+/* ── Sentinel Sidebar: frosted glass with ND brand bar ──────────── */
 .dashboard-sidebar {
   width: 240px;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.85) 0%, rgba(10, 16, 36, 0.9) 100%);
@@ -51,7 +51,7 @@ body {
   opacity: 0.6;
 }
 
-/* Logo block — Nightz Development brand */
+/* Logo block: Nightz Development brand */
 .dashboard-logo {
   display: flex;
   flex-direction: column;
@@ -101,12 +101,12 @@ body {
 .sidebar-section-label {
   padding: 0.5rem 0.875rem 0.25rem;
 }
-/* Footer pinned to bottom — auto margin pushes it past all the navs */
+/* Footer pinned to bottom: auto margin pushes it past all the navs */
 .dashboard-sidebar .dashboard-footer {
   margin-top: auto;
 }
 
-/* ND nav link — slim, with left rail on active */
+/* ND nav link: slim, with left rail on active */
 .nav-link {
   position: relative;
   padding: 0.55rem 0.875rem;
@@ -281,7 +281,7 @@ body {
   display: block;
 }
 
-/* ── Stat cards — Sentinel telemetry ─────────────────────────────── */
+/* ── Stat cards: Sentinel telemetry ─────────────────────────────── */
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -554,7 +554,7 @@ body {
   font-weight: 600;
 }
 
-/* Moderation tab panels — only active one visible */
+/* Moderation tab panels: only active one visible */
 .mod-tab-content {
   display: none;
 }

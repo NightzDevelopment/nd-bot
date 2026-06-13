@@ -2,7 +2,7 @@
  * Per-verdict AI AutoMod actions from env AI_AUTOMOD_ACTION_<VERDICT> and AI_AUTOMOD_TIMEOUT_MIN_<VERDICT>.
  * Tokens: none | log | delete | timeout (comma-separated). Example: log,delete,timeout
  *
- * Progressive **kick** / **ban** are not tokens here — they come from strike escalation:
+ * Progressive **kick** / **ban** are not tokens here; they come from strike escalation:
  * AI_AUTOMOD_ESCALATION_ENABLED=1 plus AI_AUTOMOD_ESCALATION_WARN_AT / _KICK_AT / _BAN_AT.
  */
 

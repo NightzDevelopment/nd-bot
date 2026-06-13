@@ -23,7 +23,7 @@ export function buildHelpEmbed(): EmbedBuilder {
         name: 'Moderation (staff)',
         value:
           '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode`\n' +
-          '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode` · `/counters` (ServerStats-style stat channel names — add · remove · list · refresh)',
+          '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode` · `/counters` (ServerStats-style stat channel names: add · remove · list · refresh)',
         inline: false,
       },
       {
@@ -37,13 +37,13 @@ export function buildHelpEmbed(): EmbedBuilder {
         name: 'Community',
         value:
           '**Prefix:** `nd!rank` · `nd!leaderboard` · `nd!afk` · `nd!poll` (reaction poll, emoji votes) · **native polls:** `nd!polls` / `nd!polls list` · `nd!polls create` · `nd!polls end` · `nd!polls pin` · `nd!polls stats` · `nd!announce` · `nd!reminder` · `nd!rolereact` · `nd!giveaway` · `nd!giveaway-end` · `nd!giveaway-list` · `nd!suggest` · `nd!approve` · `nd!deny` · `nd!suggestions` · `nd!schedule` · `nd!schedule-list` · `nd!schedule-cancel`\n' +
-          '**Slash:** `/rank` · `/leaderboard` · `/afk` · `/polls` (list · create · end · pin · unpin · stats) — native Discord polls in your configured Polls channel',
+          '**Slash:** `/rank` · `/leaderboard` · `/afk` · `/polls` (list · create · end · pin · unpin · stats), native Discord polls in your configured Polls channel',
         inline: false,
       },
       {
         name: 'Temp voice channels',
         value:
-          '**Prefix (channel owner):** `nd!vc-limit` · `nd!vc-name` · `nd!vc-lock` · `nd!vc-unlock` — temporary voice channels from the lobby (no bot TTS/STT).',
+          '**Prefix (channel owner):** `nd!vc-limit` · `nd!vc-name` · `nd!vc-lock` · `nd!vc-unlock`: temporary voice channels from the lobby (no bot TTS/STT).',
         inline: false,
       },
       {

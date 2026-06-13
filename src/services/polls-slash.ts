@@ -1,5 +1,5 @@
 /**
- * Slash `/polls` and prefix `nd!polls` — native Discord polls in configured channel(s).
+ * Slash `/polls` and prefix `nd!polls`: native Discord polls in configured channel(s).
  */
 import {
   type ChatInputCommandInteraction,
@@ -215,7 +215,7 @@ export async function handlePollsSlash(interaction: ChatInputCommandInteraction)
   }
 }
 
-/** Prefix `nd!polls` — returns true if handled. */
+/** Prefix `nd!polls`: returns true if handled. */
 export async function handlePollsPrefix(msg: Message, args: string): Promise<boolean> {
   if (!msg.guild) {
     await msg.reply('Use this command in a server.')
@@ -397,7 +397,7 @@ export async function handlePollsPrefix(msg: Message, args: string): Promise<boo
 
   await msg.reply(
     'Usage:\n' +
-      '• `nd!polls` / `nd!polls list` — active native polls\n' +
+      '• `nd!polls` / `nd!polls list`: active native polls\n' +
       '• `nd!polls create …` · `nd!polls end <id>` · `nd!polls pin|unpin|stats <id>` (mods)\n' +
       '• Reaction polls: `nd!poll` (separate from native polls)',
   )

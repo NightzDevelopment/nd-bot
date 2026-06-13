@@ -633,7 +633,7 @@ export function registerInteractionHandler(client: Client): void {
           `**nd-bot** \`v${v}\` · \`${MODEL_ID}\`\n` +
             `Round-trip **${Date.now() - t0}**ms · gateway **${ws}**ms · uptime **${um}**\n` +
             `${formatStoreHealthOneLiner()}\n` +
-            `If replies duplicate, stop extra \`bun run src/bot.ts\` — use **one** PM2 (or dev) task only.`,
+            `If replies duplicate, stop extra \`bun run src/bot.ts\`, use **one** PM2 (or dev) task only.`,
         )
         return
       }
@@ -789,7 +789,7 @@ export function registerInteractionHandler(client: Client): void {
             return
           }
           const lines = list.map(
-            (t) => `• \`${t.key}\` — ${t.title}${t.category ? ` _(${t.category})_` : ''}`,
+            (t) => `• \`${t.key}\`: ${t.title}${t.category ? ` _(${t.category})_` : ''}`,
           )
           await interaction.reply({
             content: lines.join('\n').slice(0, 1900),
@@ -1447,7 +1447,7 @@ export function registerInteractionHandler(client: Client): void {
             return
           }
           const lines = events.map(
-            (e) => `• **${e.title}** — <t:${Math.floor(e.startsAt / 1000)}:R> · ${e.rsvps.yes.length} going · \`${e.id}\``,
+            (e) => `• **${e.title}**: <t:${Math.floor(e.startsAt / 1000)}:R> · ${e.rsvps.yes.length} going · \`${e.id}\``,
           )
           await interaction.reply({ content: lines.join('\n').slice(0, 1900), flags: MessageFlags.Ephemeral })
           return
@@ -1578,7 +1578,7 @@ export function registerInteractionHandler(client: Client): void {
           const ts = `<t:${Math.floor(e.createdAt / 1000)}:R>`
           const exec = e.executor ? `**${e.executor.tag}**` : 'Unknown'
           const tgt = e.target ? ` → ${e.target.tag}` : ''
-          const reason = e.reason ? ` — *${e.reason.slice(0, 60)}*` : ''
+          const reason = e.reason ? ` (*${e.reason.slice(0, 60)}*)` : ''
           return `${ts} ${exec}${tgt}: ${e.action}${reason}`
         })
 
@@ -1751,7 +1751,7 @@ export function registerInteractionHandler(client: Client): void {
         }
         const lines = cooldowns.map(
           (c) =>
-            `${labels[c.command] || '•'} \`/${c.command}\` — ${formatRemaining(c.remainingMs)}`,
+            `${labels[c.command] || '•'} \`/${c.command}\`: ${formatRemaining(c.remainingMs)}`,
         )
         const embed = ndEmbed()
           .setTitle('Your Economy Cooldowns')
@@ -1775,7 +1775,7 @@ export function registerInteractionHandler(client: Client): void {
           const medals = ['[1ST]', '[2ND]', '[3RD]']
           const lines = top.map((r, i) => {
             const m = medals[i] ?? `**${i + 1}.**`
-            return `${m} <@${r.userId}> — **${r.total.toLocaleString()} NDC** (wallet: ${r.balance.toLocaleString()}, bank: ${r.bank.toLocaleString()})`
+            return `${m} <@${r.userId}>: **${r.total.toLocaleString()} NDC** (wallet: ${r.balance.toLocaleString()}, bank: ${r.bank.toLocaleString()})`
           })
           const embed = ndEmbed()
             .setTitle('NDC Richest Members')
@@ -1828,7 +1828,7 @@ export function registerInteractionHandler(client: Client): void {
           await interaction.deferReply({ flags: MessageFlags.Ephemeral })
           const stocks = getStocks()
           const lines = stocks.map((s) => {
-            return `• **${s.symbol}** (${s.name}) — **${s.price.toFixed(2)} NDC** | Volatility: ${(s.volatility * 100).toFixed(0)}%`
+            return `• **${s.symbol}** (${s.name}): **${s.price.toFixed(2)} NDC** | Volatility: ${(s.volatility * 100).toFixed(0)}%`
           })
 
           const embed = ndEmbed()

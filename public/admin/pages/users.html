@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <title>Users — nd-bot Dashboard</title>
+  <title>Users - nd-bot Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -154,10 +154,10 @@
       </div>
 
       <div class="stats-row">
-        <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value accent" id="stat-total">—</div></div>
-        <div class="stat-card"><div class="stat-label">Admins</div><div class="stat-value" id="stat-admins">—</div></div>
-        <div class="stat-card"><div class="stat-label">Moderators</div><div class="stat-value" id="stat-mods">—</div></div>
-        <div class="stat-card"><div class="stat-label">Viewers</div><div class="stat-value" id="stat-viewers">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value accent" id="stat-total">-</div></div>
+        <div class="stat-card"><div class="stat-label">Admins</div><div class="stat-value" id="stat-admins">-</div></div>
+        <div class="stat-card"><div class="stat-label">Moderators</div><div class="stat-value" id="stat-mods">-</div></div>
+        <div class="stat-card"><div class="stat-label">Viewers</div><div class="stat-value" id="stat-viewers">-</div></div>
       </div>
 
       <div class="table-card">
@@ -203,9 +203,9 @@
         <div class="form-group">
           <label class="form-label" for="invite-role">Role</label>
           <select id="invite-role" class="form-select">
-            <option value="viewer">Viewer — read-only</option>
-            <option value="moderator">Moderator — can edit config</option>
-            <option value="admin">Admin — full access</option>
+            <option value="viewer">Viewer: read-only</option>
+            <option value="moderator">Moderator: can edit config</option>
+            <option value="admin">Admin: full access</option>
           </select>
         </div>
         <div class="form-error" id="invite-error" hidden></div>
@@ -232,9 +232,9 @@
         <div class="form-group">
           <label class="form-label" for="role-select">New role</label>
           <select id="role-select" class="form-select">
-            <option value="viewer">Viewer — read-only</option>
-            <option value="moderator">Moderator — can edit config</option>
-            <option value="admin">Admin — full access</option>
+            <option value="viewer">Viewer: read-only</option>
+            <option value="moderator">Moderator: can edit config</option>
+            <option value="admin">Admin: full access</option>
           </select>
         </div>
         <div class="form-error" id="role-error" hidden></div>
@@ -312,7 +312,7 @@
   }
 
   function fmtDate(ts) {
-    if (!ts) return '—'
+    if (!ts) return '-'
     return new Date(ts).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })
   }
 
@@ -344,7 +344,7 @@
       const actions = isAdmin && !isMe
         ? `<button class="btn-table" data-action="role" data-id="${u.id}" data-email="${escAttr(u.email)}" data-role="${u.role}">Change Role</button>
            <button class="btn-table danger" data-action="delete" data-id="${u.id}" data-email="${escAttr(u.email)}">Remove</button>`
-        : `<span style="font-size:11px;color:var(--text-muted)">${isMe ? 'You' : '—'}</span>`
+        : `<span style="font-size:11px;color:var(--text-muted)">${isMe ? 'You' : '-'}</span>`
       return `<tr>
         <td class="primary">${escHtml(u.email)}</td>
         <td>${roleBadge(u.role, isMe)}</td>

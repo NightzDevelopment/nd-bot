@@ -1,5 +1,5 @@
 /**
- * Ticket Tool–style transcripts: paginated message fetch, HTML + plain text.
+ * Ticket Tool-style transcripts: paginated message fetch, HTML + plain text.
  */
 import type { Guild, Message, TextChannel } from 'discord.js'
 import type { TicketRecord } from './ticket-store.ts'
@@ -73,17 +73,17 @@ export function buildTranscriptTxt(
       ? [
           `Closed (UTC):    ${new Date(meta.closedAt).toISOString()}`,
           `Closed by:       ${meta.closedByTag}`,
-          `Staff notes:     ${meta.staffNotes || '—'}`,
+          `Staff notes:     ${meta.staffNotes || '-'}`,
         ]
       : [
           `Export (UTC):    ${new Date(meta.exportedAt).toISOString()}`,
           `Exported by:     ${meta.exportedByTag}`,
-          `Note:            Manual snapshot — ticket may still be open`,
+          `Note:            Manual snapshot, ticket may still be open`,
         ]
 
   const lines: string[] = [
     '═'.repeat(72),
-    `NIGHTZ DEVELOPMENT — SUPPORT TRANSCRIPT`,
+    `NIGHTZ DEVELOPMENT: SUPPORT TRANSCRIPT`,
     `Ticket #${padTicketId(ticket.id)}`,
     '═'.repeat(72),
     `Ticket ID:       #${padTicketId(ticket.id)}`,
@@ -91,10 +91,10 @@ export function buildTranscriptTxt(
     `Channel ID:      ${ticket.channelId}`,
     `Requester:       ${ticket.userTag} (${ticket.userId})`,
     `Category:        ${ticket.reason}`,
-    `Workflow status: ${ticket.workflowStatus ?? '—'}`,
+    `Workflow status: ${ticket.workflowStatus ?? '-'}`,
     `Opened (UTC):    ${new Date(ticket.openedAt).toISOString()}`,
     ...closeBlock,
-    `Claimed by:      ${ticket.claimedByTag ?? '— (not claimed)'}`,
+    `Claimed by:      ${ticket.claimedByTag ?? '- (not claimed)'}`,
     `Messages logged: ${meta.messageCount}`,
     `Participants:    ${meta.participantCount}`,
     '═'.repeat(72),
@@ -125,18 +125,18 @@ export function buildTranscriptHtml(
   meta: TranscriptMeta,
 ): Buffer {
   const guildIcon = guild.iconURL({ size: 128 }) ?? ''
-  const title = `Ticket #${padTicketId(ticket.id)} — ${escHtml(ticket.reason)}`
+  const title = `Ticket #${padTicketId(ticket.id)}: ${escHtml(ticket.reason)}`
 
   const closeGrid =
     meta.kind === 'close'
       ? `
       <div class="kv"><div class="k">Closed</div><div class="v">${escHtml(new Date(meta.closedAt).toISOString())}</div></div>
       <div class="kv"><div class="k">Closed by</div><div class="v">${escHtml(meta.closedByTag)}</div></div>
-      <div class="kv" style="grid-column: 1 / -1"><div class="k">Staff notes</div><div class="v">${meta.staffNotes ? nl2br(meta.staffNotes) : '—'}</div></div>`
+      <div class="kv" style="grid-column: 1 / -1"><div class="k">Staff notes</div><div class="v">${meta.staffNotes ? nl2br(meta.staffNotes) : '-'}</div></div>`
       : `
       <div class="kv"><div class="k">Exported</div><div class="v">${escHtml(new Date(meta.exportedAt).toISOString())}</div></div>
       <div class="kv"><div class="k">Exported by</div><div class="v">${escHtml(meta.exportedByTag)}</div></div>
-      <div class="kv" style="grid-column: 1 / -1"><div class="k">Note</div><div class="v">Manual snapshot — conversation may continue after this export.</div></div>`
+      <div class="kv" style="grid-column: 1 / -1"><div class="k">Note</div><div class="v">Manual snapshot, conversation may continue after this export.</div></div>`
 
   const rows = messages
     .map((m) => {
@@ -153,7 +153,7 @@ export function buildTranscriptHtml(
           : ''
       const embedNote =
         m.embeds.length > 0
-          ? `<div class="embed-note">${m.embeds.length} embed(s) — see Discord for full content</div>`
+          ? `<div class="embed-note">${m.embeds.length} embed(s), see Discord for full content</div>`
           : ''
       return `<div class="msg">
   <img class="av" src="${escHtml(av)}" width="40" height="40" alt="" />
@@ -230,7 +230,7 @@ export function buildTranscriptHtml(
     <div class="hero-top">
       ${guildIcon ? `<img class="guild" src="${escHtml(guildIcon)}" alt=""/>` : ''}
       <div>
-        <h1>${escHtml(guild.name)} — Support transcript</h1>
+        <h1>${escHtml(guild.name)}: Support transcript</h1>
         <div class="sub">Nightz Development · Channel: #${escHtml(channel.name)} · Logged messages: ${meta.messageCount}</div>
       </div>
     </div>
@@ -238,9 +238,9 @@ export function buildTranscriptHtml(
       <div class="kv"><div class="k">Ticket</div><div class="v">#${padTicketId(ticket.id)}</div></div>
       <div class="kv"><div class="k">Requester</div><div class="v">${escHtml(ticket.userTag)}<br/><span style="color:var(--muted);font-size:0.85rem">${ticket.userId}</span></div></div>
       <div class="kv"><div class="k">Category</div><div class="v">${escHtml(ticket.reason)}</div></div>
-      <div class="kv"><div class="k">Workflow</div><div class="v">${ticket.workflowStatus ? escHtml(ticket.workflowStatus) : '—'}</div></div>
+      <div class="kv"><div class="k">Workflow</div><div class="v">${ticket.workflowStatus ? escHtml(ticket.workflowStatus) : '-'}</div></div>
       <div class="kv"><div class="k">Opened</div><div class="v">${escHtml(new Date(ticket.openedAt).toISOString())}</div></div>
-      <div class="kv"><div class="k">Claimed by</div><div class="v">${ticket.claimedByTag ? escHtml(ticket.claimedByTag) : '—'}</div></div>
+      <div class="kv"><div class="k">Claimed by</div><div class="v">${ticket.claimedByTag ? escHtml(ticket.claimedByTag) : '-'}</div></div>
       <div class="kv"><div class="k">Participants</div><div class="v">${meta.participantCount}</div></div>
       ${closeGrid}
     </div>

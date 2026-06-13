@@ -1,5 +1,5 @@
 /**
- * ND Sentinel Theme — Nightz Development Dashboard
+ * ND Sentinel Theme: Nightz Development Dashboard
  * Slate base + ND signature blue, glassmorphism, depth gradients
  */
 
@@ -24,7 +24,7 @@
   --slate-200: #cbd5e1;
   --slate-100: #e2e8f0;
 
-  /* Semantic tokens — Sentinel default = dark */
+  /* Semantic tokens: Sentinel default = dark */
   --bg-primary: #020617;
   --bg-secondary: rgba(15, 23, 42, 0.72);
   --bg-tertiary: rgba(30, 41, 59, 0.55);
@@ -44,7 +44,7 @@
   --accent-primary: var(--nd-blue);
   --accent-secondary: var(--nd-blue-bright);
 
-  /* Status — Sentinel grade */
+  /* Status: Sentinel grade */
   --success: #10b981;
   --success-bg: rgba(16, 185, 129, 0.1);
   --warning: #f59e0b;
@@ -88,7 +88,7 @@
   color-scheme: dark;
 }
 
-/* Light mode override (rarely used — Sentinel is dark first) */
+/* Light mode override (rarely used; Sentinel is dark first) */
 [data-theme="light"] {
   --bg-primary: #f8fafc;
   --bg-secondary: rgba(255, 255, 255, 0.85);
@@ -224,7 +224,7 @@ h6 {
   border-color: rgba(239, 68, 68, 0.25);
 }
 
-/* Toast notifications — Sentinel alert style */
+/* Toast notifications: Sentinel alert style */
 .toast {
   position: fixed;
   bottom: -100px;

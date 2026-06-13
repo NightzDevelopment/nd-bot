@@ -7,7 +7,7 @@ const FILE = 'tickets.json'
 
 export type TicketStatus = 'open' | 'closed' | 'deleted'
 
-/** Ticket priority — drives SLA targets, color coding, and staff pings. */
+/** Ticket priority: drives SLA targets, color coding, and staff pings. */
 export type TicketPriority = 'low' | 'normal' | 'high' | 'critical'
 
 export type TicketRecord = {

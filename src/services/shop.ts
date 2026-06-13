@@ -58,7 +58,7 @@ export async function handleShopSlash(interaction: ChatInputCommandInteraction):
     const lines = items.map((i) => {
       const stock = i.stock !== undefined ? ` · Stock: ${i.stock}` : ''
       const roleTag = i.roleId ? ` · <@&${i.roleId}>` : ''
-      return `**[ITEM] ${i.name}** — **${i.price.toLocaleString()} NDC**${roleTag}${stock}\n> ${i.description || 'No description.'}\n> ID: \`${i.id}\``
+      return `**[ITEM] ${i.name}**: **${i.price.toLocaleString()} NDC**${roleTag}${stock}\n> ${i.description || 'No description.'}\n> ID: \`${i.id}\``
     })
     const embed = new EmbedBuilder()
       .setColor(0xf5c542)
@@ -231,7 +231,7 @@ export async function handleShopSlash(interaction: ChatInputCommandInteraction):
         i.stock !== undefined
           ? ` · ${i.stock === 0 ? '[SOLD_OUT] sold out' : `${i.stock} left`}`
           : ' · unlimited'
-      return `\`${i.id}\` **${i.name}** — ${i.price.toLocaleString()} NDC${stock}`
+      return `\`${i.id}\` **${i.name}**: ${i.price.toLocaleString()} NDC${stock}`
     })
     await interaction.reply({
       content: `**Shop items (${items.length}):**\n${lines.join('\n')}\n\nEdit with \`/shop edit id:<id>\` · Remove with \`/shop remove id:<id>\``,

@@ -5,10 +5,10 @@
  * dev and CI don't need a Sentry account.
  *
  * Environment:
- *   - SENTRY_DSN              — required to enable Sentry
- *   - SENTRY_ENVIRONMENT      — defaults to NODE_ENV or 'development'
- *   - SENTRY_RELEASE          — optional, e.g. git SHA
- *   - SENTRY_TRACES_SAMPLE_RATE — 0.0-1.0; default 0 (no perf monitoring)
+ *   - SENTRY_DSN              : required to enable Sentry
+ *   - SENTRY_ENVIRONMENT      : defaults to NODE_ENV or 'development'
+ *   - SENTRY_RELEASE          : optional, e.g. git SHA
+ *   - SENTRY_TRACES_SAMPLE_RATE : 0.0-1.0; default 0 (no perf monitoring)
  *
  * Call initSentry() ONCE from src/process-guards.ts before anything else.
  * Then anywhere in the codebase:

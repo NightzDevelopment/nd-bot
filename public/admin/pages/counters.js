@@ -38,7 +38,7 @@ async function loadCounters() {
         </td>
         <td style="color:#a78bfa;font-weight:600;">${window.esc(r.stat)}</td>
         <td style="color:#94a3b8;font-size:12px;font-family:monospace;">${window.esc(r.template)}</td>
-        <td style="color:#60a5fa;font-size:13px;">${r.preview ? window.esc(r.preview) : '<span style="color:#475569;">—</span>'}</td>
+        <td style="color:#60a5fa;font-size:13px;">${r.preview ? window.esc(r.preview) : '<span style="color:#475569;">-</span>'}</td>
         <td style="white-space:nowrap;">
           <button class="btn btn-sm" onclick="editCounter('${window.esc(r.channelId)}','${window.esc(r.stat)}','${window.esc(r.template).replace(/'/g, '&#39;')}')" style="margin-right:4px;">Edit</button>
           <button class="btn btn-sm" onclick="deleteCounter('${window.esc(r.channelId)}')" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">Delete</button>
@@ -168,7 +168,7 @@ window.refreshCountersNow = async function refreshCountersNow() {
   try {
     const r = await window.apiClient.refreshCounters()
     if (!r.ok) throw new Error(r.error)
-    window.showToast('Refresh triggered — channel names update shortly', 'success')
+    window.showToast('Refresh triggered, channel names update shortly', 'success')
   } catch (e) {
     window.showToast('Failed: ' + e.message, 'error')
   }

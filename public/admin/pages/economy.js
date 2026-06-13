@@ -157,9 +157,9 @@ function renderEconomyConfig() {
     {
       title: 'Gambling',
       fields: [
-        { key: 'gambleJackpotChance', label: 'Jackpot Chance (0–1)', type: 'number', step: 0.01 },
+        { key: 'gambleJackpotChance', label: 'Jackpot Chance (0-1)', type: 'number', step: 0.01 },
         { key: 'gambleJackpotMultiplier', label: 'Jackpot Multiplier (×)', type: 'number' },
-        { key: 'gambleWinChance', label: 'Win Chance (0–1)', type: 'number', step: 0.01 },
+        { key: 'gambleWinChance', label: 'Win Chance (0-1)', type: 'number', step: 0.01 },
         { key: 'gambleWinMin', label: 'Win Multiplier Min (×)', type: 'number', step: 0.1 },
         { key: 'gambleWinMax', label: 'Win Multiplier Max (×)', type: 'number', step: 0.1 },
       ],
@@ -169,13 +169,13 @@ function renderEconomyConfig() {
       fields: [
         {
           key: 'crimeSuccessChance',
-          label: 'Crime Success Chance (0–1)',
+          label: 'Crime Success Chance (0-1)',
           type: 'number',
           step: 0.01,
         },
         { key: 'crimeMinReward', label: 'Crime Min Reward (NDC)', type: 'number' },
         { key: 'crimeMaxReward', label: 'Crime Max Reward (NDC)', type: 'number' },
-        { key: 'crimeCatchChance', label: 'Crime Caught Chance (0–1)', type: 'number', step: 0.01 },
+        { key: 'crimeCatchChance', label: 'Crime Caught Chance (0-1)', type: 'number', step: 0.01 },
         { key: 'crimeFineMin', label: 'Crime Fine Min (NDC)', type: 'number' },
         { key: 'crimeFineMax', label: 'Crime Fine Max (NDC)', type: 'number' },
       ],
@@ -185,13 +185,13 @@ function renderEconomyConfig() {
       fields: [
         {
           key: 'heistSuccessChance',
-          label: 'Heist Success Chance (0–1)',
+          label: 'Heist Success Chance (0-1)',
           type: 'number',
           step: 0.01,
         },
         { key: 'heistMinReward', label: 'Heist Min Reward (NDC)', type: 'number' },
         { key: 'heistMaxReward', label: 'Heist Max Reward (NDC)', type: 'number' },
-        { key: 'heistCatchChance', label: 'Heist Caught Chance (0–1)', type: 'number', step: 0.01 },
+        { key: 'heistCatchChance', label: 'Heist Caught Chance (0-1)', type: 'number', step: 0.01 },
         { key: 'heistFineMin', label: 'Heist Fine Min (NDC)', type: 'number' },
         { key: 'heistFineMax', label: 'Heist Fine Max (NDC)', type: 'number' },
       ],
@@ -199,8 +199,8 @@ function renderEconomyConfig() {
     {
       title: 'Rob',
       fields: [
-        { key: 'robStealPercentMin', label: 'Rob Steal % Min (0–1)', type: 'number', step: 0.01 },
-        { key: 'robStealPercentMax', label: 'Rob Steal % Max (0–1)', type: 'number', step: 0.01 },
+        { key: 'robStealPercentMin', label: 'Rob Steal % Min (0-1)', type: 'number', step: 0.01 },
+        { key: 'robStealPercentMax', label: 'Rob Steal % Max (0-1)', type: 'number', step: 0.01 },
         { key: 'robMinVictimBalance', label: 'Rob Victim Min Balance (NDC)', type: 'number' },
       ],
     },

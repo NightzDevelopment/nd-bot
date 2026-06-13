@@ -84,7 +84,7 @@ function renderMembersTable(data) {
           ? `<span style="color:${warnColor};font-weight:700;">${m.warnings}</span>`
           : `<span style="color:#475569;">0</span>`
 
-      const lastActive = m.lastActivityAt ? fmtRelative(m.lastActivityAt) : '—'
+      const lastActive = m.lastActivityAt ? fmtRelative(m.lastActivityAt) : '-'
 
       return `<tr style="cursor:pointer;" onclick="viewMemberDetails('${m.userId}')">
       <td style="padding:.6rem 1rem;">${nameHtml}</td>
@@ -161,7 +161,7 @@ function showMemberModal(data, userId) {
             <div style="background:rgba(251,191,36,0.06);border-left:3px solid rgba(251,191,36,0.5);border-radius:4px;padding:.5rem .75rem;font-size:12px;">
               <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:2px;">
                 <span>Mod: <code style="font-size:10px;">${esc(w.moderatorId)}</code></span>
-                <span>${w.at ? new Date(w.at).toLocaleDateString() : '—'}</span>
+                <span>${w.at ? new Date(w.at).toLocaleDateString() : '-'}</span>
               </div>
               <div style="color:#e2e8f0;">${esc(w.reason || 'No reason')}</div>
             </div>`,
@@ -187,7 +187,7 @@ function showMemberModal(data, userId) {
               return `<div style="background:rgba(15,18,40,0.6);border-left:3px solid ${borderColor};border-radius:4px;padding:.5rem .75rem;font-size:12px;">
               <div style="display:flex;justify-content:space-between;color:#64748b;margin-bottom:2px;">
                 <span>By: <code style="font-size:10px;">${esc(n.by)}</code>${n.severity ? ` · <strong style="color:${borderColor};">${n.severity}</strong>` : ''}</span>
-                <span>${n.at ? new Date(n.at).toLocaleDateString() : '—'}</span>
+                <span>${n.at ? new Date(n.at).toLocaleDateString() : '-'}</span>
               </div>
               <div style="color:#e2e8f0;">${esc(n.text)}</div>
             </div>`

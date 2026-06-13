@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   nd-bot Dashboard — v2 Design System
+   nd-bot Dashboard: v2 Design System
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── Design tokens ── */
@@ -23,7 +23,7 @@
   --text-tertiary: #55607f;
   --text-muted: #3a4460;
 
-  /* Accent — Indigo */
+  /* Accent: Indigo */
   --accent: #818cf8;
   --accent-hover: #a5b4fc;
   --accent-muted: #6366f1;
@@ -668,7 +668,7 @@ code {
   margin: 0 0 8px;
 }
 
-/* Toggle grid — 3 per row */
+/* Toggle grid: 3 per row */
 .bool-deck-outer {
   margin-bottom: 6px;
 }

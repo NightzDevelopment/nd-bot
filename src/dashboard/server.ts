@@ -57,7 +57,7 @@ const PROJECT_ROOT = join(import.meta.dir, '../..')
 
 const MAX_LOG_TAIL_BYTES = 5 * 1024 * 1024
 
-/** PM2 log paths relative to repo root — see ecosystem.config.cjs `logs/`. */
+/** PM2 log paths relative to repo root (see ecosystem.config.cjs `logs/`). */
 function pm2LogAbs(kind: 'out' | 'err'): string {
   const name = kind === 'out' ? 'pm2-out.log' : 'pm2-error.log'
   return join(PROJECT_ROOT, 'logs', name)
@@ -168,7 +168,7 @@ function triggerProcessRestart(): { ok: true } | { ok: false; error: string } {
   }
 
   // Fallback: self-respawn with detached child running `bun run dev`, then exit current process.
-  // This works regardless of PM2 / supervisor — the new process is independent.
+  // This works regardless of PM2 / supervisor: the new process is independent.
   try {
     console.log('[dashboard] restart: PM2 not found, falling back to self-respawn')
     const bun = process.execPath
@@ -183,7 +183,7 @@ function triggerProcessRestart(): { ok: true } | { ok: false; error: string } {
       console.error('[dashboard] self-respawn error:', err)
     })
     child.unref()
-    // Give the child time to grab the port — schedule exit shortly after
+    // Give the child time to grab the port, then schedule exit shortly after
     setTimeout(() => {
       console.log('[dashboard] restart: parent exiting after spawning child')
       process.exit(0)
@@ -439,7 +439,7 @@ export function startDashboard(): void {
   const token = expectedToken()
   if (!token) {
     console.error(
-      '[dashboard] DASHBOARD_ENABLED is set but DASHBOARD_TOKEN is empty — not starting',
+      '[dashboard] DASHBOARD_ENABLED is set but DASHBOARD_TOKEN is empty, not starting',
     )
     return
   }
@@ -511,7 +511,7 @@ export function startDashboard(): void {
 
       // Wrap everything so every response passes through _respond for request logging
       const _res = await (async (): Promise<Response> => {
-        // Public health endpoint — no auth, so external watchdogs can ping it.
+        // Public health endpoint, no auth, so external watchdogs can ping it.
         // Returns intentionally minimal info (no tokens, no env values).
         if (pathname === '/api/health') {
           const d = getDiscordStatus()
@@ -1205,7 +1205,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             return json({ ok: true, data })
           }
 
-          // GET /api/v2/levels/list — all users with level+XP across all guilds
+          // GET /api/v2/levels/list: all users with level+XP across all guilds
           if (req.method === 'GET' && pathname === '/api/v2/levels/list') {
             const { readFile: rf } = await import('node:fs/promises')
             const { join: pj } = await import('node:path')
@@ -1584,7 +1584,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
           }
 
           // ===== MEMBERS ENDPOINTS =====
-          // Enriched list — joins profile + reputation + warnings + notes + badges
+          // Enriched list: joins profile + reputation + warnings + notes + badges
           if (req.method === 'GET' && pathname === '/api/members/full') {
             try {
               const limit = parseInt(url.searchParams.get('limit') ?? '200', 10)
@@ -1734,7 +1734,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             }
           }
 
-          // GET /api/dossier/:userId — unified user history (warnings, cases,
+          // GET /api/dossier/:userId: unified user history (warnings, cases,
           // notes, reputation, profile, ticket counts).
           const dossierMatch = pathname.match(/^\/api\/dossier\/([^/]+)$/)
           if (dossierMatch && req.method === 'GET') {
@@ -1752,7 +1752,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             }
           }
 
-          // GET /api/members/:userId/tickets — list user's open tickets for member card
+          // GET /api/members/:userId/tickets: list user's open tickets for member card
           const memberTicketsMatch = pathname.match(/^\/api\/members\/([^/]+)\/tickets$/)
           if (memberTicketsMatch && req.method === 'GET') {
             try {
@@ -1774,7 +1774,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             }
           }
 
-          // POST /api/mod-notes — add a staff note to a user
+          // POST /api/mod-notes: add a staff note to a user
           if (req.method === 'POST' && pathname === '/api/mod-notes') {
             if (readonly) return json({ error: 'read-only' }, { status: 403 })
             const body = await readBoundedJson(req, 4 * 1024)
@@ -2047,7 +2047,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
                 const ch = await client.channels.fetch(channelId).catch(() => null)
                 if (ch?.isTextBased?.()) {
                   await ch.send({
-                    content: `🔒 **Ticket closed** by ${actor} (via Dashboard)${reason ? ` — ${reason}` : ''}.`,
+                    content: `🔒 **Ticket closed** by ${actor} (via Dashboard)${reason ? `: ${reason}` : ''}.`,
                   })
                 }
               } catch {
@@ -2099,7 +2099,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             return json({ ok: true, message: `Priority set to ${level}.` })
           }
 
-          // GET /api/tickets/:channelId/messages — fetch channel message history
+          // GET /api/tickets/:channelId/messages: fetch channel message history
           const ticketMsgsMatch = pathname.match(/^\/api\/tickets\/([^/]+)\/messages$/)
           if (ticketMsgsMatch && req.method === 'GET') {
             const channelId = ticketMsgsMatch[1] ?? ''
@@ -2132,7 +2132,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             }
           }
 
-          // GET /api/guild/bans — list banned users
+          // GET /api/guild/bans: list banned users
           if (req.method === 'GET' && pathname === '/api/guild/bans') {
             const { getDiscordClient } = await import('./runtime-state.ts')
             const client = getDiscordClient<any>()
@@ -2279,7 +2279,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             }
           }
 
-          // GET /api/guild/channels — list text channels for pickers
+          // GET /api/guild/channels: list text channels for pickers
           if (req.method === 'GET' && pathname === '/api/guild/channels') {
             const { getDiscordClient } = await import('./runtime-state.ts')
             const client = getDiscordClient<any>()
@@ -2988,7 +2988,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             const { getDiscordClient } = await import('./runtime-state.ts')
             const client = getDiscordClient<any>()
             await setLevelRole(guildId, level, roleId)
-            // Fire backfill in background — don't block the API response
+            // Fire backfill in background, don't block the API response
             void backfillLevelRole(client, guildId, level, roleId).catch(() => {})
             return json({ ok: true })
           }
@@ -3086,7 +3086,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             return json({ ok: true, data: rec })
           }
 
-          // DELETE /api/levels/user/:userId  { guildId }  — full reset
+          // DELETE /api/levels/user/:userId  { guildId }  : full reset
           if (req.method === 'DELETE' && pathname.startsWith('/api/levels/user/')) {
             if (readonly) return json({ error: 'read-only' }, { status: 403 })
             const userId = pathname.split('/').pop()!

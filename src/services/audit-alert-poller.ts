@@ -1,5 +1,5 @@
 /**
- * Audit Alert Poller — periodically checks Discord audit logs for suspicious activity
+ * Audit Alert Poller: periodically checks Discord audit logs for suspicious activity
  * and posts alerts to the configured staff channel.
  */
 import { type Client, EmbedBuilder } from 'discord.js'
@@ -60,7 +60,7 @@ async function postAlerts(client: Client, alerts: AuditAlert[]): Promise<void> {
       const emoji = ALERT_EMOJI[alert.type] ?? '⚠️'
       const embed = new EmbedBuilder()
         .setColor(ALERT_COLOR[alert.severity])
-        .setTitle(`${emoji} Security Alert — ${alert.severity.toUpperCase()}`)
+        .setTitle(`${emoji} Security Alert: ${alert.severity.toUpperCase()}`)
         .setDescription(`**${alert.message}**`)
         .setTimestamp(new Date(alert.detectedAt))
 
@@ -89,7 +89,7 @@ async function postAlerts(client: Client, alerts: AuditAlert[]): Promise<void> {
 
 export function startAuditAlertPoller(client: Client): void {
   if (!auditAlertChannelId) {
-    console.log('[audit-alert] AUDIT_ALERT_CHANNEL_ID not set — alerts will only show in dashboard')
+    console.log('[audit-alert] AUDIT_ALERT_CHANNEL_ID not set, alerts will only show in dashboard')
     return
   }
 

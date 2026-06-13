@@ -83,7 +83,7 @@ export function validateAndMergePatch(
       continue
     }
     if (isSensitiveKey(k) && (raw === '***' || raw === '')) {
-      // Treat as "leave unchanged" — UI re-sends masked sentinel.
+      // Treat as "leave unchanged": UI re-sends masked sentinel.
       continue
     }
     const c = coerceForType(f.type, raw)

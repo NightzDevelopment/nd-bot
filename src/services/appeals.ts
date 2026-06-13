@@ -56,7 +56,7 @@ export async function dmBanAppealPrompt(
     )
     await user.send({ embeds: [embed], components: [row] })
   } catch {
-    /* DMs closed — nothing we can do */
+    /* DMs closed, nothing we can do */
   }
 }
 

@@ -137,7 +137,7 @@ class ActivityFeed {
           )
         if (d.escalateAction)
           detailParts.push(
-            '— <strong style="color:#f87171;">' + window.esc(d.escalateAction) + '</strong>',
+            '- <strong style="color:#f87171;">' + window.esc(d.escalateAction) + '</strong>',
           )
         if (e.type === 'economy_transaction' && d.action) {
           const sign = (d.amount ?? 0) >= 0 ? '+' : ''

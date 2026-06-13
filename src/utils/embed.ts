@@ -17,7 +17,7 @@ export function ndEmbed(): EmbedBuilder {
     .setFooter({ text: 'Nightz Development | Powered by AI' })
 }
 
-/** Open/welcome ticket threads — AI may respond first. */
+/** Open/welcome ticket threads: AI may respond first. */
 export function ndTicketEmbedOpen(): EmbedBuilder {
   return new EmbedBuilder().setColor(ND_COLOR).setFooter({ text: TICKET_FOOTER_WITH_AI })
 }
@@ -37,7 +37,7 @@ export function ndTicketEmbedCritical(): EmbedBuilder {
   return new EmbedBuilder().setColor(ND_COLOR_RED).setFooter({ text: TICKET_FOOTER_SUPPORT })
 }
 
-/** Closed tickets, staff actions, DMs — no AI in footer. */
+/** Closed tickets, staff actions, DMs: no AI in footer. */
 export function ndTicketEmbedStaff(): EmbedBuilder {
   return new EmbedBuilder().setColor(ND_COLOR).setFooter({ text: TICKET_FOOTER_SUPPORT })
 }

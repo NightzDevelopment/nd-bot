@@ -80,7 +80,7 @@ export async function maybeSendTicketOffer(msg: Message, botReplyFullText: strin
 
   await msg.channel.send({
     content:
-      '**Human support** — tap below to open a **private ticket**, or use the **#tickets / support** channel in the server list.',
+      '**Human support:** tap below to open a **private ticket**, or use the **#tickets / support** channel in the server list.',
     components: [row],
   })
 }
@@ -112,7 +112,7 @@ export async function maybeOfferTicketFromHowQuestion(msg: Message): Promise<voi
 
   await msg.reply({
     content:
-      '**Tickets:** I can open a **private support channel** for you — tap the button below.',
+      '**Tickets:** I can open a **private support channel** for you. Tap the button below.',
     components: [row],
   })
 }
@@ -200,7 +200,7 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
         contextJumpUrl: jump,
       })
       await triggerMsg.reply({
-        content: `**Ticket created.** Continue in ${ch} — category **Support (from chat)**.`,
+        content: `**Ticket created.** Continue in ${ch}, category **Support (from chat)**.`,
       })
       return
     } catch (e) {
@@ -208,7 +208,7 @@ async function openTicketFlow(triggerMsg: Message): Promise<void> {
       console.error('[ticket auto-create]', err)
       await triggerMsg.reply({
         content:
-          '**Could not open a ticket channel** (permissions or limits). Staff were **pinged** with your message — watch for a reply here.',
+          '**Could not open a ticket channel** (permissions or limits). Staff were **pinged** with your message, watch for a reply here.',
       })
       await reportTicketIntake(tag, userId, chName, triggerMsg.channel.id, guild.id, snippet, jump)
       return

@@ -36,7 +36,7 @@ window.loadPolls = async function loadPolls(status = 'all') {
             const pct = totalVotes > 0 ? Math.round((a.votes / totalVotes) * 100) : 0
             return `<div style="margin-bottom:.3rem;">
           <div style="display:flex;justify-content:space-between;font-size:11px;color:#94a3b8;margin-bottom:2px;">
-            <span>${window.esc(a.text || '—')}</span>
+            <span>${window.esc(a.text || '-')}</span>
             <span><strong style="color:#60a5fa;">${a.votes}</strong> · ${pct}%</span>
           </div>
           <div style="height:5px;background:rgba(148,163,184,0.1);border-radius:3px;overflow:hidden;">

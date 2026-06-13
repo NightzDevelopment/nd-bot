@@ -227,7 +227,7 @@ export const productDocsMaxFiles = Math.min(
 
 /**
  * Fetch public store listing (HTML→text) for AI context; refresh on a timer.
- * Nightz uses **FaxStore** (Weblutions): https://weblutions.com/store/faxstore — storefront URL is still your public `STORE_PAGE_URL`.
+ * Nightz uses **FaxStore** (Weblutions): https://weblutions.com/store/faxstore (storefront URL is still your public `STORE_PAGE_URL`).
  */
 export const storePageSnapshotEnabled = !isEnvOff(process.env.STORE_PAGE_SNAPSHOT_ENABLED ?? '1')
 export const storePageUrl = process.env.STORE_PAGE_URL?.trim() || 'https://store.nightz.dev/store'
@@ -381,7 +381,7 @@ export const DM_LOG_CHANNEL_ID = process.env.DM_LOG_CHANNEL_ID?.trim() || undefi
 /** Native Discord polls: vote logs to staff + “last hour” reminder in the poll channel */
 export const pollMonitorEnabled = !isEnvOff(process.env.POLL_MONITOR_ENABLED ?? '0')
 /**
- * Your **polls** channel(s) only — same place vote logs apply and last-hour pings go.
+ * Your **polls** channel(s) only, same place vote logs apply and last-hour pings go.
  * Prefer `POLL_REMINDER_CHANNEL_IDS`; `POLL_MONITOR_CHANNEL_IDS` is still read for compatibility.
  */
 export const pollReminderChannelIds = (() => {
@@ -435,7 +435,7 @@ export const profileScanEnabled = !isEnvOff(process.env.PROFILE_SCAN_ENABLED ?? 
 export const profileScanText = !isEnvOff(process.env.PROFILE_SCAN_TEXT ?? '1')
 /**
  * Include **custom status** (the short line under the username when set) in text checks.
- * Not the same as About Me — bios are still unavailable to bots. Requires **Presence Intent**
+ * Not the same as About Me; bios are still unavailable to bots. Requires **Presence Intent**
  * (Developer Portal → Bot → Privileged Gateway Intents) and `GuildPresences` in code.
  */
 export const profileScanCustomStatus = !isEnvOff(process.env.PROFILE_SCAN_CUSTOM_STATUS ?? '0')
@@ -701,7 +701,7 @@ export function automodUrlBlocklistSubstrings(): readonly string[] {
 /**
  * When enabled, rule AutoMod deletes messages that contain http(s) URLs whose host matches a
  * known GIF / short-loop / meme embed domain (plus optional AUTOMOD_GIF_BLOCK_HOSTS).
- * Default off — many communities allow Tenor/Giphy.
+ * Default off; many communities allow Tenor/Giphy.
  */
 export const automodBlockGifUrls = !isEnvOff(process.env.AUTOMOD_BLOCK_GIF_URLS ?? '0')
 
@@ -944,7 +944,7 @@ export const ticketTranscriptMaxMessages = Math.min(
   5000,
   Math.max(50, parseInt(process.env.TICKET_TRANSCRIPT_MAX_MESSAGES ?? '2000', 10) || 2000),
 )
-/** When ticket transcripts are on, also generate Ticket Tool–style HTML (default on). */
+/** When ticket transcripts are on, also generate Ticket Tool-style HTML (default on). */
 export const ticketTranscriptHtmlEnabled = !isEnvOff(process.env.TICKET_TRANSCRIPT_HTML ?? '1')
 export const ticketDmOnClose = !isEnvOff(process.env.TICKET_DM_ON_CLOSE ?? '0')
 export const ticketAutoCloseHours = Math.max(

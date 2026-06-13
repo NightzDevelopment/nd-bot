@@ -43,7 +43,7 @@ export function acquireInstanceLock(): void {
   const v = process.env.ND_BOT_ALLOW_DUPLICATE_INSTANCE?.trim().toLowerCase()
   if (v === '1' || v === 'true' || v === 'yes' || v === 'on') {
     console.warn(
-      '[instance] ND_BOT_ALLOW_DUPLICATE_INSTANCE is set — single-instance lock skipped (risk of duplicate bots).',
+      '[instance] ND_BOT_ALLOW_DUPLICATE_INSTANCE is set, single-instance lock skipped (risk of duplicate bots).',
     )
     return
   }
@@ -96,7 +96,7 @@ export function acquireInstanceLock(): void {
         }
       }
     } catch {
-      /* malformed lock — overwrite below */
+      /* malformed lock, overwrite below */
     }
   }
 

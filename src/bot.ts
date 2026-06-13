@@ -65,7 +65,7 @@ import {
 import { acquireInstanceLock } from './utils/single-instance.ts'
 
 validateConfigOrExit()
-/** Listens as soon as env is valid — does not wait for Discord `ready` (so you can use it with an invalid/missing bot token). */
+/** Listens as soon as env is valid; does not wait for Discord `ready` (so you can use it with an invalid/missing bot token). */
 startDashboard()
 
 const client = new Client({
@@ -201,7 +201,7 @@ client.once(Events.ClientReady, async (c) => {
     console.error('[scheduler] Failed to start reminder loop:', e)
   }
 
-  // Audit alert poller — posts security alerts to staff channel
+  // Audit alert poller: posts security alerts to staff channel
   const { startAuditAlertPoller } = await import('./services/audit-alert-poller.ts')
   startAuditAlertPoller(c)
 })

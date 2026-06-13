@@ -54,7 +54,7 @@ async function renderAutoDeleteRules() {
         <div>
           <label style="font-size:10px;color:#64748b;text-transform:uppercase;display:block;margin-bottom:.25rem;">Channel</label>
           <select onchange="updateAutoDeleteRule(${idx},'channelId',this.value)" style="width:100%;padding:.4rem;background:#0a0e1f;border:1px solid rgba(148,163,184,0.2);border-radius:4px;color:#e2e8f0;font-size:12px;">
-            <option value="">— Any channel —</option>${channelOpts.replace(`value="${window.esc(rule.channelId || '')}"`, `value="${window.esc(rule.channelId || '')}" selected`)}
+            <option value="">Any channel</option>${channelOpts.replace(`value="${window.esc(rule.channelId || '')}"`, `value="${window.esc(rule.channelId || '')}" selected`)}
           </select>
         </div>
         <div>
@@ -127,7 +127,7 @@ window.saveAutoDeleteRules = async () => {
       AUTO_DELETE_RULES_JSON: JSON.stringify(_autoDeleteRules),
     })
     if (r.errors) throw new Error(JSON.stringify(r.errors))
-    window.showToast('Saved — restart bot to apply', 'success')
+    window.showToast('Saved. Restart bot to apply', 'success')
   } catch (e) {
     window.showToast('Failed: ' + e.message, 'error')
   }
@@ -172,7 +172,7 @@ async function renderAutoPurgeRules() {
         <div>
           <label style="font-size:10px;color:#64748b;text-transform:uppercase;display:block;margin-bottom:.25rem;">Channel</label>
           <select onchange="_autoPurgeRules[${idx}].channelId=this.value" style="width:100%;padding:.4rem;background:#0a0e1f;border:1px solid rgba(148,163,184,0.2);border-radius:4px;color:#e2e8f0;font-size:12px;">
-            <option value="">— Pick channel —</option>${channelOpts.replace(`value="${window.esc(rule.channelId || '')}"`, `value="${window.esc(rule.channelId || '')}" selected`)}
+            <option value="">Pick channel</option>${channelOpts.replace(`value="${window.esc(rule.channelId || '')}"`, `value="${window.esc(rule.channelId || '')}" selected`)}
           </select>
         </div>
         <div>
@@ -209,7 +209,7 @@ window.saveAutoPurgeRules = async () => {
       AUTO_PURGE_RULES_JSON: JSON.stringify(_autoPurgeRules),
     })
     if (r.errors) throw new Error(JSON.stringify(r.errors))
-    window.showToast('Saved — restart bot to apply', 'success')
+    window.showToast('Saved. Restart bot to apply', 'success')
   } catch (e) {
     window.showToast('Failed: ' + e.message, 'error')
   }

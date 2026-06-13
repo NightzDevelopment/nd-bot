@@ -189,7 +189,7 @@ export async function buildLeaderboardEmbed(guildId: string, window: 'all' | 'we
           ? rows
               .map(
                 (x, i) =>
-                  `**${i + 1}.** <@${x.userId}> — Level **${x.record.level}**, ${x.record.xp} XP`,
+                  `**${i + 1}.** <@${x.userId}> - Level **${x.record.level}**, ${x.record.xp} XP`,
               )
               .join('\n')
           : 'No XP has been recorded yet.',
@@ -203,9 +203,9 @@ export async function buildLeaderboardEmbed(guildId: string, window: 'all' | 'we
     .setDescription(
       rows.length
         ? rows
-            .map((x, i) => `**${i + 1}.** <@${x.userId}> — +${x.gained.toLocaleString()} XP`)
+            .map((x, i) => `**${i + 1}.** <@${x.userId}> - +${x.gained.toLocaleString()} XP`)
             .join('\n')
-        : 'Not enough history yet for this window. XP snapshots are still building up — check back in a few days.',
+        : 'Not enough history yet for this window. XP snapshots are still building up, check back in a few days.',
     )
 }
 
@@ -327,7 +327,7 @@ export async function handleLevelRoleSlash(
       content: `✅ Members who reach **Level ${level}** will now receive <@&${role.id}>.\n⏳ Granting role to existing members in the background…`,
       flags: MessageFlags.Ephemeral,
     })
-    // Fire backfill after replying — never block the command response
+    // Fire backfill after replying, never block the command response
     backfillLevelRole(interaction.client, guildId, level, role.id)
       .then(({ granted, errors }) => {
         if (granted > 0) {

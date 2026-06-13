@@ -36,21 +36,21 @@ function pollLogId(): string | undefined {
   return pollStaffLogChannelId || STAFF_LOG_CHANNEL_ID
 }
 
-/** Rotating lines — light, on-brand chaos. */
+/** Rotating lines: light, on-brand chaos. */
 function funnyReminderLine(): string {
   const lines = [
     '**Poll o’clock:** the timer is sweating. Cast your vote before it ghosts you.',
-    '**Last call (literally):** this poll is almost out of juice — tap an answer like your RP depends on it.',
+    '**Last call (literally):** this poll is almost out of juice, tap an answer like your RP depends on it.',
     '**Hurry mode:** democracy waits for nobody. Except maybe you. For like… an hour.',
-    '**Pro tip:** the poll is shy and closing soon — vote now or forever hold your hot takes.',
+    '**Pro tip:** the poll is shy and closing soon, vote now or forever hold your hot takes.',
     '**Emergency broadcast:** the vibes are still open, but not for long. Get your pick in.',
     '**Speedrun voting:** clock’s loud, options are waiting, your opinion is the main character.',
-    '**Plot twist:** time is almost up. Choose wisely — or chaotically. We don’t judge.',
-    '**Friendly panic:** poll ending soon™ — slide your vote in before it’s lore.',
+    '**Plot twist:** time is almost up. Choose wisely, or chaotically. We don’t judge.',
+    '**Friendly panic:** poll ending soon™, slide your vote in before it’s lore.',
     '**Reality check:** this isn’t a drill (it kind of is). Vote while the pixels still count.',
     '**Main quest:** pick an option. **Side quest:** do it before the poll yeets itself.',
     '**Attention citizens:** the ballot box is about to nap. Wake it up with your vote.',
-    '**Soft deadline, hard FOMO:** last hour energy — don’t let “I’ll vote later” win.',
+    '**Soft deadline, hard FOMO:** last hour energy, don’t let “I’ll vote later” win.',
     '**Server lore moment:** your vote matters. The poll’s closing. Drama optional, participation mandatory.',
     '**Beep boop:** human required. Select an answer before the poll enters witness protection.',
     '**One hour-ish left:** enough time to overthink, not enough to procrastinate forever.',
@@ -64,16 +64,16 @@ function funnyReminderLine(): string {
     '**Low battery warning:** poll closing soon. Plug in your opinion.',
     '**Speed limit:** 1 vote per rules. Emotional damage from missing the deadline: unlimited.',
     '**Achievement unlocked:** “Participated.” (Only if you vote. We can’t unlock vibes for lurkers.)',
-    '**Poll fairy says:** last hour wishes are valid — but you still have to click.',
+    '**Poll fairy says:** last hour wishes are valid, but you still have to click.',
     '**Timeline check:** still time, not much. Vote like you mean it.',
     '**Friendly fire (none):** just vote. The poll is ending, not your career.',
-    '**Meta moment:** you read this far — reward yourself by voting. Icon behavior.',
+    '**Meta moment:** you read this far, reward yourself by voting. Icon behavior.',
     '**Closing credits incoming:** cast now or explain yourself in #regrets (not a real channel… yet).',
     '**Rubber duck debugging but for democracy:** talk it out, then vote anyway.',
     '**Hype train last stop:** all aboard the “I actually voted” express. Choo choo, time’s up soon.',
     '**Poll:** “Am I ending soon?” **Answer:** yes. **Your move:** obvious.',
-    '**One hour warning:** the universe, the mods, and this bot agree — vote or vibe check fails.',
-    '**Serious mode (briefly):** your vote helps the team decide. Last moments — make it count.',
+    '**One hour warning:** the universe, the mods, and this bot agree: vote or vibe check fails.',
+    '**Serious mode (briefly):** your vote helps the team decide. Last moments, make it count.',
   ]
   return lines[Math.floor(Math.random() * lines.length)]!
 }
@@ -190,14 +190,14 @@ async function logVoteToStaff(
 export function registerPollMonitor(client: Client): void {
   if (!pollMonitorEnabled || pollReminderChannelIds.size === 0) {
     console.log(
-      '[poll] Monitor off — set POLL_MONITOR_ENABLED=1 and POLL_REMINDER_CHANNEL_IDS (your #polls / #votes channel ID)',
+      '[poll] Monitor off: set POLL_MONITOR_ENABLED=1 and POLL_REMINDER_CHANNEL_IDS (your #polls / #votes channel ID)',
     )
     return
   }
 
   if (!pollLogId() && pollLogVotes) {
     console.warn(
-      '[poll] POLL_LOG_VOTES is on but no staff log — set STAFF_LOG_CHANNEL_ID or POLL_STAFF_LOG_CHANNEL_ID',
+      '[poll] POLL_LOG_VOTES is on but no staff log: set STAFF_LOG_CHANNEL_ID or POLL_STAFF_LOG_CHANNEL_ID',
     )
   }
 

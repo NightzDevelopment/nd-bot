@@ -101,7 +101,7 @@ export async function startModmail(
 
   const header = new EmbedBuilder()
     .setColor(0x60a5fa)
-    .setTitle(`Modmail — ${user.tag}`)
+    .setTitle(`Modmail: ${user.tag}`)
     .setDescription(
       `<@${user.id}> · \`${user.id}\`\nReply in this channel to message the user. Messages here are sent to their DMs. Use the button to close.`,
     )

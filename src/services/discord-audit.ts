@@ -1,5 +1,5 @@
 /**
- * Discord Audit Log fetcher — wraps guild.fetchAuditLogs() with action-type filtering,
+ * Discord Audit Log fetcher: wraps guild.fetchAuditLogs() with action-type filtering,
  * normalised output, suspicious-activity detection, and a simple in-memory cache.
  */
 import { AuditLogEvent, type Client, type Guild } from 'discord.js'
@@ -338,7 +338,7 @@ export function exportAuditAsCsv(entries: AuditEntry[]): string {
       e.target ? `${e.target.tag} (${e.target.id})` : '',
       e.reason ?? '',
       new Date(e.createdAt).toISOString(),
-      e.changes.map((c) => `${c.key}: ${c.old ?? '—'} → ${c.new ?? '—'}`).join('; '),
+      e.changes.map((c) => `${c.key}: ${c.old ?? '-'} → ${c.new ?? '-'}`).join('; '),
     ])
   }
   return rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')

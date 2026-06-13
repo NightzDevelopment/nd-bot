@@ -39,7 +39,7 @@ export function recordRequest(entry: RequestLogEntry): void {
   _ring.push(entry)
   if (_ring.length > RING_MAX) _ring.shift()
 
-  // Async file write — fire-and-forget
+  // Async file write, fire-and-forget
   const line = `${new Date(entry.at).toISOString()} ${entry.method.padEnd(6)} ${String(entry.status).padEnd(3)} ${String(entry.durationMs).padStart(6)}ms ${entry.path.slice(0, 120).padEnd(80)} ${(entry.ip || '-').padEnd(20)} ${entry.user ?? '-'}\n`
   void ensureLogDir().then(() => appendFile(LOG_FILE, line).catch(() => {}))
 }

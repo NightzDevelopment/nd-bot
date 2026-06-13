@@ -1,5 +1,5 @@
 /**
- * Ticket templates — saved staff replies for common ticket scenarios.
+ * Ticket templates: saved staff replies for common ticket scenarios.
  * Storage: data/ticket-templates.json
  *
  * Format:
@@ -29,7 +29,7 @@ export type TemplateStore = Record<string, TicketTemplate>
 const DEFAULT_TEMPLATES: TemplateStore = {
   'install-help': {
     key: 'install-help',
-    title: 'Installation help — request details',
+    title: 'Installation help: request details',
     body:
       'Thanks for opening a ticket! To get you running quickly, please share:\n' +
       '• Your **framework** (ESX / QBCore / standalone)\n' +
@@ -61,14 +61,14 @@ const DEFAULT_TEMPLATES: TemplateStore = {
   },
   'fixed-please-test': {
     key: 'fixed-please-test',
-    title: 'Fix shipped — please test',
+    title: 'Fix shipped: please test',
     body: "We've shipped a fix for this issue. Please pull the latest version, restart your server, and let us know if the problem is resolved on your end.",
     createdAt: 0,
     createdBy: 'system',
   },
   'closing-soon': {
     key: 'closing-soon',
-    title: 'Closing soon — last chance',
+    title: 'Closing soon: last chance',
     body: "We haven't heard back in a while, so we'll close this ticket soon. If you still need help, just reply here and we'll keep it open.",
     createdAt: 0,
     createdBy: 'system',

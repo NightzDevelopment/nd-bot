@@ -120,7 +120,7 @@ const REASON_NEXT_STEP: Record<string, string[]> = {
   'bug report': [
     'Paste the **exact error** (SCRIPT ERROR / stack) or a clear screenshot.',
     'Name the **resource version** and **framework** (ESX / QBCore / standalone).',
-    'Describe **steps to reproduce** — minimal repro is best.',
+    'Describe **steps to reproduce**, minimal repro is best.',
   ],
   'refund request': [
     'Share your **order / invoice ID** (never your payment details).',
@@ -159,7 +159,7 @@ const REASON_NEXT_STEP: Record<string, string[]> = {
   ],
   suggestions: [
     'Name the **product** this suggestion is for.',
-    'Describe the **use case** — what are you trying to do today that is awkward?',
+    'Describe the **use case**: what are you trying to do today that is awkward?',
     'Optionally, describe how you think it should behave.',
   ],
   'report a problem': [
@@ -400,7 +400,7 @@ export function buildTicketPanelEmbed(guild: Guild): EmbedBuilder {
       {
         name: 'Guidelines',
         value: [
-          '· **One issue per ticket** — open another ticket for a separate topic',
+          '· **One issue per ticket**: open another ticket for a separate topic',
           '· Include **artifact**, **framework** (ESX / QBCore), and **steps to reproduce** when relevant',
           '· **Do not ping** staff; tickets are handled in queue order',
         ].join('\n'),
@@ -676,7 +676,7 @@ export async function createTicketChannel(
     .setTitle(`Support Ticket #${padId(numericId)}`)
     .setDescription(
       [
-        'Welcome to **Nightz Network Live Support**. This is a **private channel** — only you and our staff team can see it.',
+        'Welcome to **Nightz Network Live Support**. This is a **private channel**: only you and our staff team can see it.',
         '',
         'Our assistant will get things started. A staff member will follow up as soon as possible.',
         'Please share any relevant details (errors, screenshots, framework version) to help us resolve your issue quickly.',
@@ -803,7 +803,7 @@ export async function createTicketChannel(
       const aiPrompt = [
         `You are a friendly support assistant for Nightz Network, a FiveM development community.`,
         `A user just opened a support ticket in the category "${reason}".${productLine}${frameworkLine}${detailsLine}`,
-        `Write a short, warm, professional greeting (2–4 sentences). Acknowledge what they need help with, ask the 1–2 most important follow-up questions based on their category, and let them know staff will follow up soon.`,
+        `Write a short, warm, professional greeting (2 to 4 sentences). Acknowledge what they need help with, ask the 1 to 2 most important follow-up questions based on their category, and let them know staff will follow up soon.`,
         `Do NOT use bullet lists. Do NOT mention that you are an AI. Do NOT say "I'll help you". Keep it concise and natural. No emojis.`,
       ].join('\n')
       const aiGreeting = await generateOnce(_triageModel, aiPrompt)
@@ -932,11 +932,11 @@ async function postStaffTicketLog(
     if (kind === 'closed' && ticket.closedAt) {
       const dur = formatDuration(ticket.closedAt - ticket.openedAt)
       embed.addFields(
-        { name: 'Closed by', value: ticket.closedByTag ?? '—', inline: true },
+        { name: 'Closed by', value: ticket.closedByTag ?? '-', inline: true },
         { name: 'Duration', value: dur, inline: true },
         {
           name: 'Logged messages',
-          value: String(ticket.messageCount ?? '—'),
+          value: String(ticket.messageCount ?? '-'),
           inline: true,
         },
       )
@@ -1095,7 +1095,7 @@ export async function tryHandleTicketSystem(interaction: Interaction): Promise<b
 function buildIntakeModal(reason: string = 'other'): ModalBuilder {
   const modal = new ModalBuilder()
     .setCustomId(`${TICKET_PREFIX}:intake_modal`)
-    .setTitle('Open ticket — extra details')
+    .setTitle('Open ticket: extra details')
 
   const normalizedReason = reason.trim().toLowerCase()
   const isPartnership =
@@ -1297,7 +1297,7 @@ async function handleIntakeModal(interaction: ModalSubmitInteraction): Promise<v
       intakeDetails: intakeDetails || undefined,
     })
 
-    let reply = `**Ticket created.** Continue in ${ch} — only you and staff can see it.`
+    let reply = `**Ticket created.** Continue in ${ch}, only you and staff can see it.`
     if (faqMatches.length > 0) {
       reply += '\n\n**While you wait, these FAQ answers may help:**\n'
       reply += faqMatches.map((m) => `> ${m.slice(0, 300)}`).join('\n\n')
@@ -1437,7 +1437,7 @@ async function handleClaim(interaction: Interaction, channelId: string): Promise
   await ch.send({
     embeds: [
       ndTicketEmbedStaff().setDescription(
-        `**Claimed** by ${interaction.user} · \`${interaction.user.tag}\` — staff is handling this ticket.`,
+        `**Claimed** by ${interaction.user} · \`${interaction.user.tag}\`. Staff is handling this ticket.`,
       ),
     ],
   })
@@ -1723,7 +1723,7 @@ async function runCloseTicket(
       name: 'Nightz Network · Ticket closed',
       iconURL: icon ?? undefined,
     })
-    .setTitle(`Support Ticket #${padId(ticket.id)} — Closed`)
+    .setTitle(`Support Ticket #${padId(ticket.id)}: Closed`)
     .setDescription(transcriptHint)
     .addFields(
       {
@@ -1758,7 +1758,7 @@ async function runCloseTicket(
       },
       {
         name: 'Claimed by',
-        value: ticket.claimedByTag ?? '— *(unclaimed)*',
+        value: ticket.claimedByTag ?? '- *(unclaimed)*',
         inline: true,
       },
       {
@@ -1853,7 +1853,7 @@ async function runCloseTicket(
         ticketsHelped: (profile?.stats.ticketsHelped ?? 0) + 1,
       })
     } catch {
-      // Non-critical — don't fail close on reputation error
+      // Non-critical: don't fail close on reputation error
     }
   }
 
@@ -1862,7 +1862,7 @@ async function runCloseTicket(
       const u = await client.users.fetch(ticket.userId)
       const dmEmbed = ndTicketEmbedStaff()
         .setColor(0xed4245)
-        .setTitle(`Support Ticket #${padId(ticket.id)} — Closed`)
+        .setTitle(`Support Ticket #${padId(ticket.id)}: Closed`)
         .setDescription(
           `Thanks for contacting **${guild.name}**. This ticket was closed by **${closedBy.tag}**.`,
         )
@@ -1881,7 +1881,7 @@ async function runCloseTicket(
       if (ticketTranscriptEnabled && transcriptBuffers.length > 0) {
         dmEmbed.addFields({
           name: 'Transcript',
-          value: `[Closing message in ticket channel](${closingJumpUrl}) — full logs are attached below.`,
+          value: `[Closing message in ticket channel](${closingJumpUrl}). Full logs are attached below.`,
           inline: false,
         })
       } else if (!ticketTranscriptEnabled) {
@@ -1991,7 +1991,7 @@ async function handleReopen(interaction: Interaction, channelId: string): Promis
   await ch.send({
     embeds: [
       ndTicketEmbedStaff().setDescription(
-        `**Support Ticket #${padId(ticket.id)} — Reopened** by ${interaction.user} · \`${interaction.user.tag}\`.\nThe requester can send messages again. **Status** was reset to **${defaultWorkflowStatus()}** on the pinned welcome message — use **Claim** or the status menu as needed.`,
+        `**Support Ticket #${padId(ticket.id)}: Reopened** by ${interaction.user} · \`${interaction.user.tag}\`.\nThe requester can send messages again. **Status** was reset to **${defaultWorkflowStatus()}** on the pinned welcome message, use **Claim** or the status menu as needed.`,
       ),
     ],
   })
@@ -2300,10 +2300,10 @@ export async function getTicketTriagePromptSuffix(msg: Message): Promise<string>
   const category = ticket.reason || 'General'
   const tone =
     priority === 'critical'
-      ? 'Critical priority — be concise and direct. Acknowledge urgency, gather only the most essential details.'
+      ? 'Critical priority: be concise and direct. Acknowledge urgency, gather only the most essential details.'
       : priority === 'high'
-        ? 'High priority — be efficient. Acknowledge the issue, then ask the most useful 1–2 follow-up questions.'
-        : 'Standard triage — collect framework, errors, resource name, reproduction steps in 1–2 short questions.'
+        ? 'High priority: be efficient. Acknowledge the issue, then ask the most useful 1 to 2 follow-up questions.'
+        : 'Standard triage: collect framework, errors, resource name, reproduction steps in 1 to 2 short questions.'
   return `\n\n[Support ticket triage · category: "${category}" · priority: ${priority} · ${tone} Staff has not claimed yet. Do not promise a human response time. No emojis.]`
 }
 
@@ -2588,7 +2588,7 @@ export async function setTicketStaffNote(
   note: string,
 ): Promise<string> {
   if (!isGuildMod(actor)) {
-    return '**Staff only** — you need a moderator role to set a ticket note.'
+    return '**Staff only**: you need a moderator role to set a ticket note.'
   }
   const ticket = await getTicketByChannel(channel.id)
   if (!ticket) {
@@ -2616,7 +2616,7 @@ export async function ticketAddUser(
   targetId: string,
 ): Promise<string> {
   if (!isGuildMod(actor)) {
-    return '**Staff only** — you need a moderator role to add people to tickets.'
+    return '**Staff only**: you need a moderator role to add people to tickets.'
   }
   const ticket = await getTicketByChannel(channel.id)
   if (!ticket || ticket.status !== 'open') {
@@ -2639,7 +2639,7 @@ export async function ticketRemoveUser(
   targetId: string,
 ): Promise<string> {
   if (!isGuildMod(actor)) {
-    return '**Staff only** — you need a moderator role to remove people from tickets.'
+    return '**Staff only**: you need a moderator role to remove people from tickets.'
   }
   const ticket = await getTicketByChannel(channel.id)
   if (!ticket || ticket.status !== 'open') {

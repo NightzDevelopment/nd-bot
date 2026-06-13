@@ -18,7 +18,7 @@
     html, body { margin: 0; padding: 0; }
     /* Prevent styles.css from re-doing body layout */
     body { min-height: unset !important; flex-direction: row !important; background-image: none !important; color: #e2e8f0 !important; }
-    /* Force all page text to be visible — overrides old styles.css variable conflicts */
+    /* Force all page text to be visible (overrides old styles.css variable conflicts) */
     .page, .page * { color: inherit; }
     .page { color: #e2e8f0; }
     h1, h2, h3, h4 { color: #e2e8f0; }
@@ -40,7 +40,7 @@
     .save-bar { display:flex; gap:.75rem; align-items:center; margin-bottom:1.25rem; padding:.75rem 1rem; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius); }
     .save-bar #cfg-status-msg { font-size:12px; color:var(--text-secondary); }
 
-    /* Fields wrapper — same look as old .fields-scroll */
+    /* Fields wrapper: same look as old .fields-scroll */
     .cfg-fields-wrap { display:flex; flex-direction:column; gap:0; max-width:60rem; }
 
     /* Data file / logs helpers */
@@ -73,7 +73,7 @@
     /* Sentinel perf-impact badge */
     .badge-perf { font-size:10px; font-weight:700; color:var(--nd-blue-bright); background:var(--nd-blue-soft); padding:1px 6px; border-radius:4px; border:1px solid rgba(96,165,250,0.3); cursor:help; white-space:nowrap; }
 
-    /* Bot Config split layout — tab rail + fields */
+    /* Bot Config split layout: tab rail + fields */
     .cfg-split { display: grid; grid-template-columns: 220px 1fr; gap: 1.5rem; align-items: start; }
     .cfg-tabnav {
       position: sticky;
@@ -289,10 +289,10 @@
               <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:1rem;">Server Health</div>
               <div id="health-grid" style="display:flex;flex-direction:column;gap:.5rem;">
                 <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Bot Status</span><span id="h-bot-status" style="color:#34d399;font-weight:600;">●  Online</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Uptime</span><span id="h-uptime" style="color:#e2e8f0;">—</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Open Tickets</span><span id="h-open-tickets" style="color:#e2e8f0;">—</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Active Members</span><span id="h-active-members" style="color:#e2e8f0;">—</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">AI Model</span><span id="h-ai-model" style="color:#60a5fa;font-size:11px;font-family:monospace;">—</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Uptime</span><span id="h-uptime" style="color:#e2e8f0;">-</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Open Tickets</span><span id="h-open-tickets" style="color:#e2e8f0;">-</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Active Members</span><span id="h-active-members" style="color:#e2e8f0;">-</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">AI Model</span><span id="h-ai-model" style="color:#60a5fa;font-size:11px;font-family:monospace;">-</span></div>
               </div>
               <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(148,163,184,0.10);">
                 <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:.75rem;">Alerts</div>
@@ -449,11 +449,11 @@
             .tk-sla-bad { color:#f87171; font-weight:700; }
           </style>
           <div class="tk-stat-grid" id="tk-stats">
-            <div class="tk-stat"><div class="tk-stat-label">Open</div><div class="tk-stat-value" id="tk-stat-open">—</div></div>
-            <div class="tk-stat"><div class="tk-stat-label">Closed</div><div class="tk-stat-value" id="tk-stat-closed">—</div></div>
-            <div class="tk-stat"><div class="tk-stat-label">Avg Resolution</div><div class="tk-stat-value" id="tk-stat-avg">—</div></div>
-            <div class="tk-stat"><div class="tk-stat-label">Median First Reply</div><div class="tk-stat-value" id="tk-stat-median">—</div></div>
-            <div class="tk-stat"><div class="tk-stat-label">Reopened</div><div class="tk-stat-value" id="tk-stat-reopen">—</div><div class="tk-stat-sub" id="tk-stat-reopen-rate"></div></div>
+            <div class="tk-stat"><div class="tk-stat-label">Open</div><div class="tk-stat-value" id="tk-stat-open">-</div></div>
+            <div class="tk-stat"><div class="tk-stat-label">Closed</div><div class="tk-stat-value" id="tk-stat-closed">-</div></div>
+            <div class="tk-stat"><div class="tk-stat-label">Avg Resolution</div><div class="tk-stat-value" id="tk-stat-avg">-</div></div>
+            <div class="tk-stat"><div class="tk-stat-label">Median First Reply</div><div class="tk-stat-value" id="tk-stat-median">-</div></div>
+            <div class="tk-stat"><div class="tk-stat-label">Reopened</div><div class="tk-stat-value" id="tk-stat-reopen">-</div><div class="tk-stat-sub" id="tk-stat-reopen-rate"></div></div>
           </div>
           <div class="tk-toolbar">
             <select id="tk-filter-status" class="data-select" style="padding:7px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text);font:inherit;font-size:13px;">
@@ -710,7 +710,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
             <div>
               <div style="font-size:1.2rem;font-weight:700;color:#e2e8f0;">Counter Channels</div>
-              <div style="font-size:12px;color:#64748b;margin-top:2px;">Live stat channels — bot auto-renames channels with current numbers</div>
+              <div style="font-size:12px;color:#64748b;margin-top:2px;">Live stat channels, bot auto-renames channels with current numbers</div>
             </div>
             <div style="display:flex;gap:.5rem;">
               <button class="btn btn-sm" onclick="refreshCountersNow()" style="background:rgba(96,165,250,0.08);border-color:rgba(96,165,250,0.3);color:#60a5fa;">↻ Refresh Now</button>

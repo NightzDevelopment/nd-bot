@@ -54,10 +54,10 @@ function formatAiAutomodActions(a: AiAutomodResolvedAction): string {
 }
 
 function formatAiAutomodAttachments(msg: Message): string {
-  if (msg.attachments.size === 0) return '—'
+  if (msg.attachments.size === 0) return '-'
   const lines: string[] = []
   for (const a of msg.attachments.values()) {
-    const line = `• **${a.name.replace(/\*/g, '')}** — ${(a.size / 1024).toFixed(1)} KiB`
+    const line = `• **${a.name.replace(/\*/g, '')}** - ${(a.size / 1024).toFixed(1)} KiB`
     if (lines.join('\n').length + line.length > 950) {
       lines.push(`… +${msg.attachments.size - lines.length} more`)
       break
@@ -68,7 +68,7 @@ function formatAiAutomodAttachments(msg: Message): string {
 }
 
 function formatAiAutomodEmbedPreviews(msg: Message): string {
-  if (msg.embeds.length === 0) return '—'
+  if (msg.embeds.length === 0) return '-'
   const lines: string[] = []
   const n = Math.min(5, msg.embeds.length)
   for (let i = 0; i < n; i++) {
@@ -76,7 +76,7 @@ function formatAiAutomodEmbedPreviews(msg: Message): string {
     const bits = [e.title, e.url, e.description?.slice(0, 120)].filter((x): x is string =>
       Boolean(x && String(x).trim()),
     )
-    lines.push(`${i + 1}. ${bits.join(' — ').slice(0, 240)}`)
+    lines.push(`${i + 1}. ${bits.join(' - ').slice(0, 240)}`)
   }
   if (msg.embeds.length > n) {
     lines.push(`… +${msg.embeds.length - n} more`)
@@ -512,7 +512,7 @@ export async function reportAiAutomod(
         ),
       )
       .addFields(
-        { name: 'Reason (model)', value: reason.slice(0, 1024) || '—' },
+        { name: 'Reason (model)', value: reason.slice(0, 1024) || '-' },
         {
           name: 'Follow-up actions (from config)',
           value: formatAiAutomodActions(actions).slice(0, 1024),

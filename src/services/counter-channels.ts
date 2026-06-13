@@ -1,6 +1,6 @@
 /**
  * ServerStats-style "counter" channels: update channel **names** with a live {count} from guild stats.
- * Data: data/counters.json — not controlled by the local admin HTTP UI.
+ * Data: data/counters.json, not controlled by the local admin HTTP UI.
  */
 import {
   ChannelType,
@@ -190,7 +190,7 @@ let loop: ReturnType<typeof setInterval> | null = null
 
 export function startCounterChannelLoop(client: Client): void {
   if (!counterChannelsEnabled) {
-    console.info('[counters] off — set COUNTER_CHANNELS_ENABLED=1 to run stat channel updates')
+    console.info('[counters] off: set COUNTER_CHANNELS_ENABLED=1 to run stat channel updates')
     return
   }
   if (loop) return
@@ -267,7 +267,7 @@ export async function addCounter(
     return { ok: false, error: `Per-guild limit (${MAX_PER_GUILD}) reached` }
   }
   if (store.rows.some((r) => r.channelId === channelId)) {
-    return { ok: false, error: 'Channel already has a counter — delete it first' }
+    return { ok: false, error: 'Channel already has a counter, delete it first' }
   }
   const row: CounterRow = { guildId, channelId, stat: s, template: tpl }
   store.rows.push(row)
@@ -462,7 +462,7 @@ export async function handleCountersSlash(interaction: ChatInputCommandInteracti
       })
       return
     }
-    const lines = list.map((r) => `• <#${r.channelId}> — **${r.stat}** — \`${r.template}\``)
+    const lines = list.map((r) => `• <#${r.channelId}> - **${r.stat}** - \`${r.template}\``)
     await interaction.reply({
       content: `**Stat channels (${list.length}):**\n${lines.join('\n').slice(0, 3900)}`,
       flags: MessageFlags.Ephemeral,

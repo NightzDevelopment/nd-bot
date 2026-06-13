@@ -1,5 +1,5 @@
 /**
- * Shared formatting helpers — exposed on window for any page to use.
+ * Shared formatting helpers, exposed on window for any page to use.
  */
 
 window.esc = function esc(s) {
@@ -11,7 +11,7 @@ window.esc = function esc(s) {
 }
 
 window.fmtRelative = function fmtRelative(ts) {
-  if (!ts) return '—'
+  if (!ts) return '-'
   const d = Date.now() - ts
   if (d < 0) {
     // future
@@ -30,12 +30,12 @@ window.fmtRelative = function fmtRelative(ts) {
 }
 
 window.fmtAbsolute = function fmtAbsolute(ts) {
-  if (!ts) return '—'
+  if (!ts) return '-'
   return new Date(ts).toLocaleString()
 }
 
 window.fmtDuration = function fmtDuration(ms) {
-  if (!ms || ms < 0) return '—'
+  if (!ms || ms < 0) return '-'
   const s = Math.floor(ms / 1000)
   if (s < 60) return s + 's'
   const m = Math.floor(s / 60)

@@ -122,7 +122,7 @@ async function loadWarningsTab() {
                   </div>
                 </td>
                 <td style="color:#94a3b8;font-size:12px;">${escHtml((w.latestReason || 'N/A').slice(0, 60))}</td>
-                <td style="color:#64748b;font-size:12px;white-space:nowrap;">${w.lastWarningAt ? new Date(w.lastWarningAt).toLocaleDateString() : '—'}</td>
+                <td style="color:#64748b;font-size:12px;white-space:nowrap;">${w.lastWarningAt ? new Date(w.lastWarningAt).toLocaleDateString() : '-'}</td>
                 <td><button class="btn btn-sm" onclick="clearUserWarnings('${w.userId}')"
                   style="color:#34d399;border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.08);">Clear</button></td>
               </tr>`
@@ -346,7 +346,7 @@ function renderBans(bans) {
     .map(
       (b) => `
     <tr>
-      <td style="color:#e2e8f0;font-weight:500;">${escHtml(b.userTag || '—')}</td>
+      <td style="color:#e2e8f0;font-weight:500;">${escHtml(b.userTag || '-')}</td>
       <td><code style="font-size:11px;color:#94a3b8;">${escHtml(b.userId)}</code></td>
       <td style="color:#94a3b8;font-size:12px;">${escHtml(b.reason || 'No reason provided')}</td>
       <td><button class="btn btn-sm" style="color:#34d399;border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.08);"
@@ -455,7 +455,7 @@ async function loadAiStrikesTab() {
                     <div style="background:${barColor};height:4px;border-radius:4px;width:${pct}%;"></div>
                   </div>
                 </td>
-                <td style="color:#64748b;font-size:12px;">${row.lastStrikeAt ? new Date(row.lastStrikeAt).toLocaleDateString() : '—'}</td>
+                <td style="color:#64748b;font-size:12px;">${row.lastStrikeAt ? new Date(row.lastStrikeAt).toLocaleDateString() : '-'}</td>
                 <td>${statusBadges || '<span style="color:#475569;font-size:11px;">None</span>'}</td>
                 <td><button class="btn btn-sm" onclick="resetStrike('${key}', '${row.userId}')"
                   style="color:#34d399;border-color:rgba(52,211,153,0.3);background:rgba(52,211,153,0.08);">Reset</button></td>

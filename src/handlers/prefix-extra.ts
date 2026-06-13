@@ -553,7 +553,7 @@ export async function rerollGiveawayDraw(
   const { getGiveawayById } = await import('../services/giveaways-store.ts')
   const g = await getGiveawayById(id)
   if (!g) return { ok: false, winners: [], error: 'Not found' }
-  if (!g.ended) return { ok: false, winners: [], error: 'Giveaway is still active — end it first' }
+  if (!g.ended) return { ok: false, winners: [], error: 'Giveaway is still active, end it first' }
   const ch = await client.channels.fetch(g.channelId).catch(() => null)
   if (!ch?.isTextBased()) return { ok: false, winners: [], error: 'Channel not accessible' }
   const message = await ch.messages.fetch(g.messageId).catch(() => null)

@@ -587,12 +587,12 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       seconds = parseInt(plain[1]!, 10)
     } else {
       await msg.reply(
-        'Usage: `nd!slowmode <seconds>` or `nd!slowmode #channel <seconds>` (0–21600)',
+        'Usage: `nd!slowmode <seconds>` or `nd!slowmode #channel <seconds>` (0-21600)',
       )
       return
     }
     if (!Number.isFinite(seconds) || seconds < 0 || seconds > 21600) {
-      await msg.reply('Seconds must be 0–21600.')
+      await msg.reply('Seconds must be 0-21600.')
       return
     }
     if (!('setRateLimitPerUser' in ch) || !ch.isTextBased()) {
@@ -735,7 +735,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
         return
       }
       await msg.reply(
-        `**${ev.name}** active until <t:${Math.floor(ev.endsAt / 1000)}:R> — XP x${ev.xpMultiplier}, NDC x${ev.currencyMultiplier}.`,
+        `**${ev.name}** active until <t:${Math.floor(ev.endsAt / 1000)}:R>: XP x${ev.xpMultiplier}, NDC x${ev.currencyMultiplier}.`,
       )
       return
     }
@@ -760,7 +760,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       const dur = parseDuration(durRaw)
       const name = parts.join(' ') || 'Seasonal Event'
       if (!isFinite(xpMult) || !isFinite(ndcMult) || !dur) {
-        await msg.reply('Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>` — e.g. `nd!season start 2 2 2d Double Weekend`')
+        await msg.reply('Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>`, e.g. `nd!season start 2 2 2d Double Weekend`')
         return
       }
       const now = Date.now()
@@ -891,7 +891,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (cmd === 'product') {
     if (!args) {
       await msg.reply(
-        'Usage: `nd!product <name>` — matches the cached FaxStore listing, or manual aliases in `PRODUCT_ALIAS_URLS`.',
+        'Usage: `nd!product <name>`, matches the cached FaxStore listing, or manual aliases in `PRODUCT_ALIAS_URLS`.',
       )
       return
     }

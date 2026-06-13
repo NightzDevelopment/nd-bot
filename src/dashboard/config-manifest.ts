@@ -557,7 +557,7 @@ const HELP: Readonly<Record<string, string>> = {
   PRODUCT_DOCS_MAX_FILES: 'Cap on docs loaded per request.',
   PRODUCT_ALIAS_URLS: 'Optional product name -> docs URL JSON map.',
   STORE_FEATURED_LINES: 'One featured bullet per line for /store (overrides auto-parsed listing).',
-  STORE_FEATURED_COUNT: 'How many featured bullets when using auto-parsed items (1–10).',
+  STORE_FEATURED_COUNT: 'How many featured bullets when using auto-parsed items (1-10).',
   STORE_LOOKUP_MAX_RESULTS: 'Max product matches returned by /product and nd!product.',
   STORE_SNAPSHOT_STALE_MINUTES:
     'Health UI treats the snapshot as stale after this many minutes without refresh.',
@@ -633,7 +633,7 @@ const HELP: Readonly<Record<string, string>> = {
 
   // AI Automod
   AI_AUTOMOD_ENABLED: 'Master switch for AI moderation queue.',
-  AI_AUTOMOD_MIN_CONFIDENCE: 'Confidence floor for an AI verdict to act on (0–1, default 0.75).',
+  AI_AUTOMOD_MIN_CONFIDENCE: 'Confidence floor for an AI verdict to act on (0-1, default 0.75).',
   AI_AUTOMOD_BATCH_SIZE: 'How many messages collected before sending one AI batch.',
   AI_AUTOMOD_BATCH_INTERVAL_MS: 'Max wait (ms) before flushing a non-full batch.',
   AI_AUTOMOD_MAX_CALLS_PER_MINUTE: 'Hard cap on AI moderation requests per minute (rate limit).',
@@ -677,7 +677,7 @@ const HELP: Readonly<Record<string, string>> = {
     'Burst threshold: this many messages within the window triggers slowmode.',
   AUTOMOD_FAST_MSG_WINDOW_SEC: 'Window for the burst counter (seconds).',
   AUTOMOD_HOMOGLYPH_SCRIPT_RATIO:
-    'Ratio (0–1) of suspicious script characters to flag homoglyph spam.',
+    'Ratio (0-1) of suspicious script characters to flag homoglyph spam.',
   AUTOMOD_URL_BLOCKLIST_SUBSTRINGS: 'Newline- or comma-separated URL substrings to always block.',
   AUTOMOD_URL_BLOCKLIST_REGEX: 'Comma-separated regex patterns to block in URLs.',
   AUTOMOD_BLOCKED_ATTACHMENT_EXT:
@@ -687,7 +687,7 @@ const HELP: Readonly<Record<string, string>> = {
 
   // URL risk
   URL_RISK_ENABLED: 'Score every posted URL for phishing/scam risk.',
-  URL_RISK_BLOCK_SCORE: 'Score (0–100) at which a URL is blocked. Min 25.',
+  URL_RISK_BLOCK_SCORE: 'Score (0-100) at which a URL is blocked. Min 25.',
   URL_RISK_DELETE_MESSAGE: 'Delete the message when a URL exceeds the block score.',
   URL_RISK_TRUSTED_HOSTS: 'Comma-separated hostnames always allowed.',
 
@@ -704,7 +704,7 @@ const HELP: Readonly<Record<string, string>> = {
   PROFILE_SCAN_AVATAR_VISION: 'Send avatars to vision model for review.',
   PROFILE_SCAN_DEFAULT_AVATARS: 'Also scan accounts that still have the default Discord avatar.',
   PROFILE_SCAN_INVITE_IN_NAME: 'Flag profiles whose name contains a discord.gg invite.',
-  PROFILE_SCAN_MIN_CONFIDENCE: 'Floor (0–1) for acting on AI profile findings.',
+  PROFILE_SCAN_MIN_CONFIDENCE: 'Floor (0-1) for acting on AI profile findings.',
   PROFILE_SCAN_COOLDOWN_SEC: 'Per-user re-scan cooldown (seconds).',
   PROFILE_SCAN_MAX_PER_MINUTE: 'Global cap on profile scans per minute.',
   PROFILE_FLAG_TERMS: 'Newline- or comma-separated terms that auto-flag a profile.',
@@ -831,7 +831,7 @@ function fieldTypeFor(key: string): ConfigFieldType {
 }
 
 /**
- * Tab routing. Order matters — first match wins. Each entry is a predicate so
+ * Tab routing. Order matters: first match wins. Each entry is a predicate so
  * the precedence is explicit (the previous prefix-tower was fragile).
  */
 type TabRule = { match: (k: string) => boolean; tab: string }

@@ -364,7 +364,7 @@ export async function claimWork(
     { job: 'wrote documentation' },
     { job: 'tested a new script' },
   ]
-  // Bounded random — index is always within range.
+  // Bounded random, index is always within range.
   const pick = jobs[Math.floor(Math.random() * jobs.length)] as { job: string }
   const baseWork = cfg.workMin + Math.floor(Math.random() * (cfg.workMax - cfg.workMin + 1))
   const { currentSeasonalMultipliers } = await import('./seasonal-events.ts')
@@ -712,7 +712,7 @@ async function doGather(
   }
 
   const flavors = GATHER_FLAVORS[kind]
-  // Bounded random index — always in range.
+  // Bounded random index, always in range.
   const pick = flavors[Math.floor(Math.random() * flavors.length)] as (typeof flavors)[number]
   const baseMin = cfg[minRewardKey]
   const baseMax = cfg[maxRewardKey]

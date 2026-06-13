@@ -34,7 +34,7 @@ if (existsSync(overrideFile)) {
     process.env.ND_DASH_OVERRIDES_BROKEN = '1'
     process.env.ND_DASH_OVERRIDES_ERROR = String((e as Error)?.message ?? e).slice(0, 240)
     console.error(
-      `[config-bootstrap] FAILED to read ${overrideFile} — bot is starting with .env values only.`,
+      `[config-bootstrap] FAILED to read ${overrideFile}, bot is starting with .env values only.`,
     )
     console.error(`[config-bootstrap] cause: ${process.env.ND_DASH_OVERRIDES_ERROR}`)
     console.error(

@@ -8,7 +8,7 @@ The bot reads **all pinned messages** in the channel set by `FAQ_CHANNEL_ID` and
 2. Set `FAQ_CHANNEL_ID` in `.env` to that channel’s ID.
 3. Restart the bot. You should see a log line like `[faq] loaded N pinned FAQ entries`.
 
-## What to pin (aim for 20–50 pins)
+## What to pin (aim for 20 to 50 pins)
 
 Each pin should be **self-contained**. Use a clear Q/A pattern:
 

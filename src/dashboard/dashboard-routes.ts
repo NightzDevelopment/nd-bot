@@ -1,4 +1,4 @@
-// @ts-nocheck — WIP: depends on `elysia` (not installed) and is not wired
+// @ts-nocheck WIP: depends on `elysia` (not installed) and is not wired
 // into src/bot.ts yet. Skipping typecheck until the dashboard router is
 // either migrated to elysia (`bun add elysia`) or these routes are folded
 // into src/dashboard/server.ts (Bun.serve). Track in Phase 5 (Dashboard

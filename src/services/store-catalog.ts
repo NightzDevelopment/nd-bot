@@ -68,7 +68,7 @@ function extractTitleAndPrice(block: string): { title: string; price: string } {
       break
     }
   }
-  return { title: title || 'Product', price: price || '—' }
+  return { title: title || 'Product', price: price || '-' }
 }
 
 /** Bare product URLs (HTML→text often omits `[text](url)` markdown). */
@@ -243,7 +243,7 @@ export function buildFeaturedLines(
   const trimmed = curatedLines.map((l) => l.trim()).filter(Boolean)
   if (trimmed.length > 0) return trimmed.slice(0, storeFeaturedCount)
   return parsed.slice(0, storeFeaturedCount).map((p) => {
-    const price = p.price === '—' ? '' : ` — ${p.price}`
+    const price = p.price === '-' ? '' : ` - ${p.price}`
     return `**${p.title}**${price} · ${p.url}`
   })
 }
@@ -255,12 +255,12 @@ export function formatProductLookupReply(
   if (hits.length === 0) {
     return (
       `No match in the cached store listing for **${query}**. ` +
-      `Try \`/store\` or open <${storePageUrl}> — or set a manual alias in \`PRODUCT_ALIAS_URLS\`.`
+      `Try \`/store\` or open <${storePageUrl}>, or set a manual alias in \`PRODUCT_ALIAS_URLS\`.`
     )
   }
   const lines = hits.map(
     (h) =>
-      `• **${h.item.title}** — ${h.item.price} — ${h.item.url} _(score ${Math.round(h.score)})_`,
+      `• **${h.item.title}** - ${h.item.price} - ${h.item.url} _(score ${Math.round(h.score)})_`,
   )
   return `Matches for **${query}** (cached Nightz listing):\n${lines.join('\n')}`.slice(0, 3900)
 }
@@ -271,7 +271,7 @@ export function buildTicketProductHintBlock(listingText: string): string {
   if (items.length === 0) return ''
   const lines = items
     .slice(0, 5)
-    .map((p) => `• **${p.title}** (${p.price}) — ${p.url}`)
+    .map((p) => `• **${p.title}** (${p.price}) - ${p.url}`)
     .join('\n')
   return (
     `\n\n**Which product?** Name the **resource** or paste a store link.\n` +

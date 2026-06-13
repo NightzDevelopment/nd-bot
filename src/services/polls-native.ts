@@ -236,7 +236,7 @@ export function botCanPostPolls(
   const pingEveryoneNeeded =
     pollCreateAnnouncementTemplate.length > 0 && pollCreateAnnouncementPingEveryone
   if (pingEveryoneNeeded && !perms.has(PermissionFlagsBits.MentionEveryone)) {
-    return `${target} denies **Mention Everyone** — needed when \`POLL_CREATE_ANNOUNCEMENT_PING_EVERYONE=1\`. Turn the ping off in env/dashboard or grant the bot that permission.`
+    return `${target} denies **Mention Everyone**, needed when \`POLL_CREATE_ANNOUNCEMENT_PING_EVERYONE=1\`. Turn the ping off in env/dashboard or grant the bot that permission.`
   }
   return null
 }

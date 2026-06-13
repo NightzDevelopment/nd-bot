@@ -1,5 +1,5 @@
 /**
- * Shared UI components — modal, channel picker, datetime picker, markdown preview.
+ * Shared UI components: modal, channel picker, datetime picker, markdown preview.
  * All functions exposed on window.
  */
 
@@ -43,7 +43,7 @@ window.uiChannelPicker = async function uiChannelPicker(opts = {}) {
   if (opts.includeBlank !== false) {
     const blank = document.createElement('option')
     blank.value = ''
-    blank.textContent = opts.placeholder || '— select channel —'
+    blank.textContent = opts.placeholder || 'Select channel'
     sel.appendChild(blank)
   }
 

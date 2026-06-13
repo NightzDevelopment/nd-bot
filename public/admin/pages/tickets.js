@@ -29,10 +29,10 @@ async function loadTicketStats() {
     const s = r.data
     setText('tk-stat-open', s.totalOpen ?? 0)
     setText('tk-stat-closed', s.totalClosed ?? 0)
-    setText('tk-stat-avg', s.avgResolutionMs != null ? formatDuration(s.avgResolutionMs) : '—')
+    setText('tk-stat-avg', s.avgResolutionMs != null ? formatDuration(s.avgResolutionMs) : '-')
     setText(
       'tk-stat-median',
-      s.medianMsToFirstStaffReply != null ? formatDuration(s.medianMsToFirstStaffReply) : '—',
+      s.medianMsToFirstStaffReply != null ? formatDuration(s.medianMsToFirstStaffReply) : '-',
     )
     setText('tk-stat-reopen', s.reopenedTickets ?? 0)
     if (s.reopenRate != null) {
@@ -74,15 +74,15 @@ function renderTicketTable(data) {
       const priorityClass = `tk-priority-${t.priority || 'normal'}`
       const priority = (t.priority || 'normal').toUpperCase()
       const statusClass = `tk-status-${t.status}`
-      const opened = t.openedAt ? formatRelative(t.openedAt) : '—'
+      const opened = t.openedAt ? formatRelative(t.openedAt) : '-'
       const slaBreached = t.status === 'open' && !t.firstStaffReplyAt && t.slaBreachedAt
-      const claimedBy = t.claimedByTag || '—'
-      const userTag = t.userTag || t.userId || '—'
+      const claimedBy = t.claimedByTag || '-'
+      const userTag = t.userTag || t.userId || '-'
       return `
       <tr data-channel-id="${escapeAttr(t.channelId)}" class="tk-row" style="cursor:pointer;">
         <td><code>#${String(t.id).padStart(4, '0')}</code></td>
         <td><span title="${escapeAttr(t.userId)}">${escapeHtml(userTag)}</span></td>
-        <td>${escapeHtml(t.reason || '—')}</td>
+        <td>${escapeHtml(t.reason || '-')}</td>
         <td><span class="tk-priority-pill ${priorityClass}">${priority}</span></td>
         <td><span class="${statusClass}">${escapeHtml(t.status)}${slaBreached ? ' <span class="tk-sla-bad">⚠ SLA</span>' : ''}</span></td>
         <td>${escapeHtml(claimedBy)}</td>
@@ -107,7 +107,7 @@ async function openTicketModal(t) {
   modal.className = 'modal'
   const priorityClass = `tk-priority-${t.priority || 'normal'}`
   const priority = (t.priority || 'normal').toUpperCase()
-  const opened = t.openedAt ? new Date(t.openedAt).toLocaleString() : '—'
+  const opened = t.openedAt ? new Date(t.openedAt).toLocaleString() : '-'
 
   modal.innerHTML = `
     <div class="modal-content" style="max-width:760px;max-height:90vh;display:flex;flex-direction:column;">
@@ -353,7 +353,7 @@ function setText(id, txt) {
 }
 
 function formatDuration(ms) {
-  if (!ms || ms < 0) return '—'
+  if (!ms || ms < 0) return '-'
   const sec = Math.floor(ms / 1000)
   if (sec < 60) return `${sec}s`
   const min = Math.floor(sec / 60)

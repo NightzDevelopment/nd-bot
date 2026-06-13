@@ -94,7 +94,7 @@ function channelIdFromAuditExtra(extra: { channel?: { id: string } } | null): st
   return null
 }
 
-/** Single message delete — target is the message author; extra has channel + count. */
+/** Single message delete: target is the message author; extra has channel + count. */
 export async function lookupMessageDeleteActor(
   guild: Guild,
   channelId: string,
@@ -260,7 +260,7 @@ export function formatExecutorLine(r: AuditLookupResult): string {
   if (r.executorId) {
     return `\`${r.executorId}\` (partial user)`
   }
-  return 'Unknown (no matching audit entry yet — try again if Discord was slow)'
+  return 'Unknown (no matching audit entry yet, try again if Discord was slow)'
 }
 
 export function formatAuditFooter(guild: Guild, lookup: AuditLookupResult): string {

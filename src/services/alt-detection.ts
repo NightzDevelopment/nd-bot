@@ -131,7 +131,7 @@ function scoreNameAndProfile(member: GuildMember): AltScore {
     score += 1
     reasons.push('auto-generated-looking username')
   }
-  // Discord's own automod flagged the username/nickname as suspicious — strong.
+  // Discord's own automod flagged the username/nickname as suspicious: strong.
   if (member.flags?.has(GuildMemberFlags.AutomodQuarantinedUsernameOrGuildNickname)) {
     score += 4
     reasons.push('Discord flagged the username/nickname (automod quarantine)')
@@ -248,7 +248,7 @@ export function registerAltDetection(client: Client): void {
       const acted = action !== 'none' && !action.startsWith('none')
       const embed = new EmbedBuilder()
         .setColor(action === 'banned' ? 0xef4444 : score >= 5 ? 0xef4444 : 0xfbbf24)
-        .setTitle(acted ? `Suspected bot/alt — ${action}` : 'Possible alt / ban-evasion')
+        .setTitle(acted ? `Suspected bot/alt: ${action}` : 'Possible alt / ban-evasion')
         .setDescription(`<@${member.id}> · \`${member.id}\` · **${member.user.tag}**`)
         .addFields(
           { name: 'Risk score', value: `${score}`, inline: true },

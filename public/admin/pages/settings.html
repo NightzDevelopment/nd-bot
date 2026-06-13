@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <title>Settings — nd-bot Dashboard</title>
+  <title>Settings - nd-bot Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -201,7 +201,7 @@
               <div class="setting-desc">Your account email address.</div>
             </div>
             <div class="setting-control">
-              <span class="acct-value" id="acct-email">—</span>
+              <span class="acct-value" id="acct-email">-</span>
             </div>
           </div>
           <div class="setting-row">
@@ -210,7 +210,7 @@
               <div class="setting-desc">Your permission level on this dashboard.</div>
             </div>
             <div class="setting-control">
-              <span id="acct-role-badge">—</span>
+              <span id="acct-role-badge">-</span>
             </div>
           </div>
           <div class="setting-row">
@@ -260,8 +260,8 @@
               </div>
             </div>
             <div style="font-size:12px;color:var(--text-muted)">
-              Version: <code id="version-text">—</code> &nbsp;·&nbsp;
-              Gateway: <code id="gw-text">—</code>
+              Version: <code id="version-text">-</code> &nbsp;·&nbsp;
+              Gateway: <code id="gw-text">-</code>
             </div>
           </div>
         </div>
@@ -298,8 +298,8 @@
   // ── Version info from health endpoint ──
   api.getHealth().then(res => {
     if (res.ok) {
-      document.getElementById('version-text').textContent = res.data.version  || '—'
-      document.getElementById('gw-text').textContent      = res.data.gw != null ? `${res.data.gw}ms` : '—'
+      document.getElementById('version-text').textContent = res.data.version  || '-'
+      document.getElementById('gw-text').textContent      = res.data.gw != null ? `${res.data.gw}ms` : '-'
     }
   }).catch(() => {})
 

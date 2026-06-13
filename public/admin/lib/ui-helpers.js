@@ -1,5 +1,5 @@
 /**
- * UI Helpers — toasts, modals, copy-to-clipboard, keyboard shortcuts.
+ * UI Helpers: toasts, modals, copy-to-clipboard, keyboard shortcuts.
  * Zero dependencies, pure vanilla JS.
  */
 
@@ -265,13 +265,13 @@ export function escapeHtml(str) {
 }
 
 export function formatDate(timestamp) {
-  if (!timestamp) return '—'
+  if (!timestamp) return '-'
   const d = new Date(timestamp)
   return d.toLocaleString()
 }
 
 export function formatRelative(timestamp) {
-  if (!timestamp) return '—'
+  if (!timestamp) return '-'
   const diff = Date.now() - timestamp
   if (diff < 60000) return 'just now'
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`

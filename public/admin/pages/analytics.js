@@ -7,7 +7,7 @@ const charts = {}
 
 async function initAnalytics() {
   if (!window.Chart) {
-    showToast('Chart library failed to load — check console', 'error')
+    showToast('Chart library failed to load, check console', 'error')
     console.error('[Telemetry] Chart.js not loaded. Hard-refresh the page (Ctrl+Shift+R).')
     return
   }

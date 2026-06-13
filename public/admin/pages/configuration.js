@@ -132,7 +132,7 @@ async function loadConfig() {
 // ── Sentinel performance/validation hints for sensitive RAG fields ──
 const PERFORMANCE_HINTS = {
   EMBEDDING_MAX_CHUNK_CHARS: {
-    tip: 'Higher = fewer, larger chunks. Lower = more precise retrieval but slower indexing. Recommended: 800–1500.',
+    tip: 'Higher = fewer, larger chunks. Lower = more precise retrieval but slower indexing. Recommended: 800 to 1500.',
     validate: (v) => {
       const n = parseInt(v, 10)
       if (Number.isNaN(n)) return null
@@ -159,7 +159,7 @@ const PERFORMANCE_HINTS = {
     tip: 'Google embedding model. text-embedding-004 is current generation.',
   },
   ACTIVE_CONVERSATION_MS: {
-    tip: 'Window after which a channel returns to passive monitoring. 60–300s typical.',
+    tip: 'Window after which a channel returns to passive monitoring. 60 to 300s typical.',
   },
   HEATED_SLOWMODE_COOLDOWN_MS: {
     tip: 'Re-arm window for the heated-channel detector. Keep ≥ 60s to avoid flicker.',
@@ -567,7 +567,7 @@ function setupDataFileEditor() {
       try {
         data = JSON.parse(editor.value)
       } catch {
-        showToast('Invalid JSON — fix before saving', 'error')
+        showToast('Invalid JSON, fix before saving', 'error')
         return
       }
       try {
@@ -703,8 +703,8 @@ function renderRequestLog() {
       <td style="color:${statusColor};font-weight:700;">${e.status}</td>
       <td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escRl(e.path)}">${escRl(e.path)}</td>
       <td style="color:var(--text-secondary);">${dur}</td>
-      <td style="color:var(--text-tertiary);">${escRl(e.ip || '—')}</td>
-      <td style="color:var(--text-tertiary);">${escRl(e.user || '—')}</td>
+      <td style="color:var(--text-tertiary);">${escRl(e.ip || '-')}</td>
+      <td style="color:var(--text-tertiary);">${escRl(e.user || '-')}</td>
     </tr>`
     })
     .join('')
@@ -725,12 +725,12 @@ async function refreshHealth() {
       const el = document.getElementById(id)
       if (el) el.textContent = val
     }
-    set('h-discord', h.discord || '—')
-    set('h-uptime', h.uptimeSec != null ? fmtUptime(h.uptimeSec) : '—')
-    set('h-version', h.botVersion || '—')
-    set('h-ping', h.discordWsPingMs != null ? h.discordWsPingMs + ' ms' : '—')
-    set('h-guilds', h.discordGuildCount ?? '—')
-    set('h-pid', h.processPid ?? '—')
+    set('h-discord', h.discord || '-')
+    set('h-uptime', h.uptimeSec != null ? fmtUptime(h.uptimeSec) : '-')
+    set('h-version', h.botVersion || '-')
+    set('h-ping', h.discordWsPingMs != null ? h.discordWsPingMs + ' ms' : '-')
+    set('h-guilds', h.discordGuildCount ?? '-')
+    set('h-pid', h.processPid ?? '-')
   } catch (e) {
     console.warn('Health fetch failed:', e)
   }

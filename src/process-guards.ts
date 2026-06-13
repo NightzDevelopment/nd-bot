@@ -16,7 +16,7 @@ export function installProcessGuards(): void {
   initSentry()
 
   process.on('uncaughtException', (err) => {
-    log.fatal({ err }, '[process] uncaughtException — bot will exit so the supervisor can restart')
+    log.fatal({ err }, '[process] uncaughtException: bot will exit so the supervisor can restart')
     captureException(err, { source: 'uncaughtException' })
     void flushSentry().finally(() => process.exit(1))
   })
@@ -31,7 +31,7 @@ export function installProcessGuards(): void {
     captureException(err, { source: 'unhandledRejection', count: unhandledRejectionCount })
 
     if (unhandledRejectionCount >= 5) {
-      log.fatal('[process] too many unhandled rejections — exiting so supervisor can restart')
+      log.fatal('[process] too many unhandled rejections, exiting so supervisor can restart')
       void flushSentry().finally(() => process.exit(1))
     }
   })

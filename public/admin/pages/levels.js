@@ -193,7 +193,7 @@ window.openLevelEdit = (userId, guildId, level, xp, msgs) => {
   _lmGuildId = guildId
   const info = _userCache[userId]
   document.getElementById('lm-title').textContent =
-    `Edit levels — ${info ? info.displayName + ' (@' + info.username + ')' : userId.slice(0, 14) + '…'}`
+    `Edit levels: ${info ? info.displayName + ' (@' + info.username + ')' : userId.slice(0, 14) + '…'}`
   document.getElementById('lm-level').value = level
   document.getElementById('lm-xp').value = xp
   document.getElementById('lm-msgs').value = msgs
@@ -369,7 +369,7 @@ window.saveLevelRole = async () => {
     return
   }
   if (!_levelsGuildId) {
-    showErr('Guild ID not loaded yet — try refreshing.')
+    showErr('Guild ID not loaded yet, try refreshing.')
     return
   }
 

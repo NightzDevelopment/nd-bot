@@ -55,7 +55,7 @@ export function buildVerifyPanel(): {
 export function registerVerification(client: Client): void {
   if (!verifyEnabled) return
   if (!verifyRoleId) {
-    log.warn('VERIFY_ENABLED but VERIFY_ROLE_ID is not set — verification disabled')
+    log.warn('VERIFY_ENABLED but VERIFY_ROLE_ID is not set: verification disabled')
     return
   }
 

@@ -441,9 +441,9 @@ export async function runUniversalAgentLoop(
     `\n\n` +
     `CRITICAL TOOL-USE RULES (override any prior assumptions):
 
-You have LIVE access to other Discord channels, the ND codebase, and the bot database through the tools below. You are NOT limited to this channel. NEVER say "I cannot see other channels" or "I do not have direct visibility" — you DO, via the readDiscordChannel tool.
+You have LIVE access to other Discord channels, the ND codebase, and the bot database through the tools below. You are NOT limited to this channel. NEVER say "I cannot see other channels" or "I do not have direct visibility": you DO, via the readDiscordChannel tool.
 
-MANDATORY TOOL CALLS — you MUST call the appropriate tool BEFORE answering when:
+MANDATORY TOOL CALLS: you MUST call the appropriate tool BEFORE answering when:
 - The user mentions or references ANY Discord channel (with or without #, e.g. "public-sneak-peeks", "#announcements", "updates channel") → call readDiscordChannel
 - The user asks about code, scripts, configs, exports, errors, or FiveM resources → call grepNDSearch, viewNDFile, or listNDDirectory
 - The user asks about their balance, level, warnings, quests, or any player data → call inspectSystemDb
@@ -451,7 +451,7 @@ MANDATORY TOOL CALLS — you MUST call the appropriate tool BEFORE answering whe
 Available Tools:
 1. "listNDDirectory" / "viewNDFile" / "grepNDSearch": Browse, read, and search raw code files in D:\\Nightz Development.
 2. "inspectSystemDb": Run read-only SELECT queries on the bot's SQLite database (tables: users_economy, users_levels, warnings, tickets, stocks, reminders, reputation).
-3. "readDiscordChannel": Fetch the last N messages from ANY server channel by name or ID. Use this whenever a user references another channel — read it first, then answer based on what you find there.
+3. "readDiscordChannel": Fetch the last N messages from ANY server channel by name or ID. Use this whenever a user references another channel: read it first, then answer based on what you find there.
 
 Always call tools FIRST, then compose your answer from the tool results. Do not guess or say you lack access.`
 

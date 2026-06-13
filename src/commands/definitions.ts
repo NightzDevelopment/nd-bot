@@ -263,7 +263,7 @@ export const slashCommands = [
         .addStringOption((o) =>
           o
             .setName('answers')
-            .setDescription('Options separated by | (2–10)')
+            .setDescription('Options separated by | (2-10)')
             .setRequired(true)
             .setMaxLength(550),
         )
@@ -389,7 +389,7 @@ export const slashCommands = [
     .addIntegerOption((o) =>
       o
         .setName('seconds')
-        .setDescription('0–21600')
+        .setDescription('0-21600')
         .setRequired(true)
         .setMinValue(0)
         .setMaxValue(21600),
@@ -445,7 +445,7 @@ export const slashCommands = [
         .addStringOption((o) =>
           o
             .setName('template')
-            .setDescription('Text with {count} — e.g. Members: {count} (default by stat)')
+            .setDescription('Text with {count}, e.g. Members: {count} (default by stat)')
             .setRequired(false)
             .setMaxLength(90),
         ),
@@ -706,7 +706,7 @@ export const slashCommands = [
     .addSubcommand((sc) => sc.setName('list').setDescription('Show all level role rewards')),
   new SlashCommandBuilder()
     .setName('shop')
-    .setDescription('NDC economy shop — buy items with your coins')
+    .setDescription('NDC economy shop: buy items with your coins')
     .addSubcommand((sc) => sc.setName('list').setDescription('Browse available items'))
     .addSubcommand((sc) =>
       sc

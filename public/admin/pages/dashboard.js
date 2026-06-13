@@ -29,7 +29,7 @@ async function loadDashboardStats() {
       updateStatCard('users', d.uniqueUsers ?? 0)
       updateStatCard('commands', d.totalCustomCommands ?? 0)
       renderAlerts(d)
-      setText('h-active-members', (d.uniqueUsers ?? '—').toLocaleString?.() ?? d.uniqueUsers ?? '—')
+      setText('h-active-members', (d.uniqueUsers ?? '-').toLocaleString?.() ?? d.uniqueUsers ?? '-')
       if (d.modelName) setText('h-ai-model', d.modelName)
     }
 
@@ -96,7 +96,7 @@ window.loadLeaderboard = async (stat = 'reputation') => {
       .map(
         (row, i) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid rgba(148,163,184,0.07);">
-        <span style="font-size:12px;color:#94a3b8;">${medals[i] || `${i + 1}.`} <code style="color:#e2e8f0;font-size:11px;">${escapeHtml(row.userId?.slice(0, 10) ?? '—')}</code></span>
+        <span style="font-size:12px;color:#94a3b8;">${medals[i] || `${i + 1}.`} <code style="color:#e2e8f0;font-size:11px;">${escapeHtml(row.userId?.slice(0, 10) ?? '-')}</code></span>
         <span style="font-size:13px;font-weight:700;color:#60a5fa;">${row.value?.toLocaleString?.() ?? row.value ?? 0}</span>
       </div>`,
       )
@@ -160,7 +160,7 @@ function updateStatCard(id, value) {
 
 function setText(id, val) {
   const el = document.getElementById(id)
-  if (el) el.textContent = val ?? '—'
+  if (el) el.textContent = val ?? '-'
 }
 
 function formatUptime(seconds) {

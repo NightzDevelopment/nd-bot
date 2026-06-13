@@ -82,7 +82,7 @@ export function formatDossierEmbed(d: Dossier, userTag: string): EmbedBuilder {
   const warnLines = d.warnings.length
     ? d.warnings
         .slice(0, 5)
-        .map((w) => `• ${rel(w.at)} — ${w.reason.slice(0, 80)}`)
+        .map((w) => `• ${rel(w.at)}: ${w.reason.slice(0, 80)}`)
         .join('\n')
     : '*none*'
   const noteLines = d.notes.length
@@ -94,14 +94,14 @@ export function formatDossierEmbed(d: Dossier, userTag: string): EmbedBuilder {
   const caseLines = d.cases.length
     ? d.cases
         .slice(0, 5)
-        .map((c) => `• ${rel(c.at)} — **${c.action}** ${c.reason.slice(0, 60)}`)
+        .map((c) => `• ${rel(c.at)}: **${c.action}** ${c.reason.slice(0, 60)}`)
         .join('\n')
     : '*none*'
 
   const color = d.warningCount >= 3 || d.cases.length >= 3 ? 0xef4444 : 0x60a5fa
   const embed = new EmbedBuilder()
     .setColor(color)
-    .setTitle(`Dossier — ${userTag}`)
+    .setTitle(`Dossier: ${userTag}`)
     .setDescription(`<@${d.userId}> · \`${d.userId}\``)
     .addFields(
       {

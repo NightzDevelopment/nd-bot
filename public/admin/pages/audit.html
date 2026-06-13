@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark" />
-  <title>Audit Log — nd-bot Dashboard</title>
+  <title>Audit Log - nd-bot Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -309,7 +309,7 @@
 
     document.getElementById('table-wrap').hidden = false
     document.getElementById('pagination').hidden = false
-    document.getElementById('page-info').textContent = `Entries ${offset + 1}–${offset + entries.length}`
+    document.getElementById('page-info').textContent = `Entries ${offset + 1}-${offset + entries.length}`
     document.getElementById('prev-btn').disabled = offset === 0
     document.getElementById('next-btn').disabled = entries.length < LIMIT
 
@@ -318,8 +318,8 @@
         <td class="ts" title="${formatDate(e.timestamp)}">${formatRelative(e.timestamp)}</td>
         <td style="color:var(--text)">${escHtml(e.userEmail)}</td>
         <td>${actionBadge(e.action)}</td>
-        <td class="mono">${escHtml(e.resource || '—')}</td>
-        <td class="mono" style="color:var(--text-muted)">${escHtml(e.ipAddress || '—')}</td>
+        <td class="mono">${escHtml(e.resource || '-')}</td>
+        <td class="mono" style="color:var(--text-muted)">${escHtml(e.ipAddress || '-')}</td>
         <td><button class="detail-link" data-entry='${JSON.stringify(e).replace(/'/g,"&#39;")}'>View</button></td>
       </tr>`).join('')
 
@@ -330,14 +330,14 @@
 
   function showEntryDetail(entry) {
     const { details = {} } = entry
-    document.getElementById('detail-title').textContent = `Audit — ${entry.action.replace(/_/g,' ')}`
+    document.getElementById('detail-title').textContent = `Audit: ${entry.action.replace(/_/g,' ')}`
 
     let html = `
       <div class="diff-row"><span class="diff-label">Time</span><span class="diff-value">${formatDate(entry.timestamp)}</span></div>
       <div class="diff-row"><span class="diff-label">User</span><span class="diff-value">${escHtml(entry.userEmail)} (${escHtml(entry.userId)})</span></div>
       <div class="diff-row"><span class="diff-label">Action</span><span class="diff-value">${escHtml(entry.action)}</span></div>
-      <div class="diff-row"><span class="diff-label">Resource</span><span class="diff-value">${escHtml(entry.resource || '—')}</span></div>
-      <div class="diff-row"><span class="diff-label">IP Address</span><span class="diff-value">${escHtml(entry.ipAddress || '—')}</span></div>`
+      <div class="diff-row"><span class="diff-label">Resource</span><span class="diff-value">${escHtml(entry.resource || '-')}</span></div>
+      <div class="diff-row"><span class="diff-label">IP Address</span><span class="diff-value">${escHtml(entry.ipAddress || '-')}</span></div>`
 
     if (details.oldValue !== undefined)
       html += `<div class="diff-row"><span class="diff-label">Old Value</span><span class="diff-value diff-old">${escHtml(String(details.oldValue))}</span></div>`

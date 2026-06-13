@@ -112,7 +112,7 @@ export async function maybeAutomodEscalation(
     const member = msg.member ?? (await msg.guild.members.fetch(userId).catch(() => null))
     const botId = msg.client.user.id
 
-    // Ban first if threshold jumped (e.g. import) — requires highest strikes
+    // Ban first if threshold jumped (e.g. import), requires highest strikes
     if (
       rec.strikes >= aiAutomodEscalationBanAt &&
       !rec.autoBanned &&
@@ -162,7 +162,7 @@ export async function maybeAutomodEscalation(
       try {
         await addWarning(guildId, userId, {
           at: now,
-          reason: `Automatic warning: AI AutoMod strike ${rec.strikes} (threshold ${aiAutomodEscalationWarnAt}) — ${v}`,
+          reason: `Automatic warning: AI AutoMod strike ${rec.strikes} (threshold ${aiAutomodEscalationWarnAt}): ${v}`,
           moderatorId: botId,
         })
         rec.autoWarned = true

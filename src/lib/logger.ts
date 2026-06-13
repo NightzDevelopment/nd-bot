@@ -8,14 +8,14 @@
  *
  * Output format:
  *   - dev (NODE_ENV !== 'production'): pretty-printed, colored, single-line
- *   - prod: NDJSON (one JSON record per line) — easy to ship to any log
+ *   - prod: NDJSON (one JSON record per line), easy to ship to any log
  *     aggregator (Loki, Datadog, CloudWatch, etc.)
  *
  * Levels respect LOG_LEVEL env var (trace/debug/info/warn/error/fatal).
  * Defaults to 'info'.
  *
  * Migration note: `console.log/warn/error` calls across src/ have NOT been
- * replaced yet (128 files). Migrate opportunistically — both work side-by-side.
+ * replaced yet (128 files). Migrate opportunistically; both work side-by-side.
  */
 import pino, { type Logger, type LoggerOptions } from 'pino'
 

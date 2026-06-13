@@ -1,7 +1,7 @@
 /**
  * Scan visible profile fields (username, global name, server nickname), optional **custom status**
  * (requires Presence intent), and optionally the profile picture via Gemini vision.
- * Discord does **not** provide “About Me” / bio text to bots — only custom status is scannable as text.
+ * Discord does **not** provide “About Me” / bio text to bots; only custom status is scannable as text.
  */
 import {
   ActivityType,
@@ -66,7 +66,7 @@ function buildVisibleProfileText(member: GuildMember): string {
   return parts.filter(Boolean).join('\n')
 }
 
-/** Custom status line (type Custom) — not the About Me bio. */
+/** Custom status line (type Custom), not the About Me bio. */
 function customStatusFromPresence(p: Presence | null): string {
   if (!p?.activities?.length) return ''
   const act = p.activities.find((a) => a.type === ActivityType.Custom)
@@ -96,11 +96,11 @@ function buildScannedFieldsBlock(member: GuildMember): {
 } {
   const lines = [
     `**Username:** ${member.user.username}`,
-    `**Global display:** ${member.user.globalName ?? '—'}`,
-    `**Server nickname:** ${member.nickname ?? '—'}`,
+    `**Global display:** ${member.user.globalName ?? '-'}`,
+    `**Server nickname:** ${member.nickname ?? '-'}`,
   ]
   if (profileScanCustomStatus) {
-    lines.push(`**Custom status:** ${getCustomStatusText(member) || '—'}`)
+    lines.push(`**Custom status:** ${getCustomStatusText(member) || '-'}`)
   }
   return {
     name: 'Scanned fields',
@@ -262,7 +262,7 @@ export function registerProfileScan(client: Client): void {
   }
   if (profileScanCustomStatus) {
     console.log(
-      '[profile-scan] custom status scanning on — enable **Presence Intent** in Discord Developer Portal if statuses look empty.',
+      '[profile-scan] custom status scanning on: enable **Presence Intent** in Discord Developer Portal if statuses look empty.',
     )
   }
 

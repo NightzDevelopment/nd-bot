@@ -52,7 +52,7 @@ function renderShopTable(items) {
       <td style="font-size:20px;text-align:center;">${escapeHtml(item.emoji || '🛒')}</td>
       <td>
         <span style="color:#e2e8f0;font-weight:600;">${escapeHtml(item.name)}</span>
-        <br><span style="color:#64748b;font-size:11px;">${escapeHtml(item.description || '—')}</span>
+        <br><span style="color:#64748b;font-size:11px;">${escapeHtml(item.description || '-')}</span>
       </td>
       <td style="font-weight:700;color:#f5c542;text-align:right;">${item.price.toLocaleString()} NDC</td>
       <td>${type}${roleTag}</td>
@@ -168,7 +168,7 @@ window.openShopEdit = (id) => {
   const item = _shopItems.find((i) => i.id === id)
   if (!item) return
   _smEditId = id
-  document.getElementById('sm-title').textContent = `Edit — ${item.name}`
+  document.getElementById('sm-title').textContent = `Edit ${item.name}`
   document.getElementById('sm-name').value = item.name
   document.getElementById('sm-price').value = item.price
   document.getElementById('sm-emoji').value = item.emoji || ''

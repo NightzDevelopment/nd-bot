@@ -211,15 +211,15 @@ Categories to consider: ${flags.join(', ') || 'general safety'}.${rulesExtra}
 For each message output one object:
 {"messageId":"...","verdict":"${verdictEnum}","confidence":0.0-1.0,"reason":"brief"}
 
-**Confidence (required — use varied scores, do not default to 0.9):**
+**Confidence (required, use varied scores, do not default to 0.9):**
 - Output a number between **0.0** and **1.0** with **two decimal places** when helpful (e.g. \`0.73\`, \`0.81\`, \`0.66\`).
 - **Do not** output the same confidence for every flagged message. Match strength to evidence.
 - Guideline scale (non-SAFE verdicts):
-  - **~0.55–0.69**: weak / ambiguous / could be joke or missing context; borderline — use only when you still believe a rule is broken.
-  - **~0.70–0.79**: plausible violation, some doubt or soft wording.
-  - **~0.80–0.88**: likely violation, clear enough for moderation.
-  - **~0.89–0.95**: strong / explicit evidence.
-  - **~0.96–1.0**: unambiguous (obvious slur, clear scam URL pattern, blatant NSFW).
+  - **~0.55 to 0.69**: weak / ambiguous / could be joke or missing context; borderline, use only when you still believe a rule is broken.
+  - **~0.70 to 0.79**: plausible violation, some doubt or soft wording.
+  - **~0.80 to 0.88**: likely violation, clear enough for moderation.
+  - **~0.89 to 0.95**: strong / explicit evidence.
+  - **~0.96 to 1.0**: unambiguous (obvious slur, clear scam URL pattern, blatant NSFW).
 - If you would have picked **0.90** out of habit, choose **0.74**, **0.82**, or **0.87** instead when the case is weaker or stronger.
 
 Verdict meanings:
@@ -238,7 +238,7 @@ Verdict meanings:
 - SPAM_AD: repeated ads / shilling
 
 Rules:
-- verdict SAFE unless clearly harmful; for non-SAFE verdicts, **confidence** must be **>= ${aiAutomodMinConfidence}** or the bot ignores the flag (treat as SAFE for automation). More ambiguous cases should use **lower** confidences in the 0.65–0.82 range when still above the threshold.
+- verdict SAFE unless clearly harmful; for non-SAFE verdicts, **confidence** must be **>= ${aiAutomodMinConfidence}** or the bot ignores the flag (treat as SAFE for automation). More ambiguous cases should use **lower** confidences in the 0.65 to 0.82 range when still above the threshold.
 - When unsure, use SAFE.
 - TOXICITY_HIGH for credible threats.
 - **Leetspeak / obfuscation:** Treat character substitutions as the underlying word (e.g. 0→o, 3→e, 1→i, @→a). Flag NSFW/scam meaning even if spelling is distorted.
@@ -407,7 +407,7 @@ async function applyVerdictActions(
       deletedMessage = true
     } catch (e) {
       console.warn(
-        '[ai-automod] message delete failed — grant bot **Manage Messages** in this channel (and check hierarchy):',
+        '[ai-automod] message delete failed: grant bot **Manage Messages** in this channel (and check hierarchy):',
         msg.channel.id,
         e,
       )
@@ -429,7 +429,7 @@ async function applyVerdictActions(
       timedOut = true
     } catch (e) {
       console.warn(
-        '[ai-automod] member timeout failed — need **Moderate Members** and role below bot:',
+        '[ai-automod] member timeout failed: need **Moderate Members** and role below bot:',
         msg.author.id,
         e,
       )
@@ -516,7 +516,7 @@ async function processVisionQueue(): Promise<QueueDrain> {
         content: `[image attachment: ${att.name}] ${content}`,
         author: q.msg.author.tag,
       },
-    ])}\n\nNote: This message includes an image — classify text+image together (NSFW/gore/hate/scams). **Vary confidence** per the scale above; do not always use 0.9.`
+    ])}\n\nNote: This message includes an image, classify text+image together (NSFW/gore/hate/scams). **Vary confidence** per the scale above; do not always use 0.9.`
 
     const raw = await generateRawWithImage(prompt, image)
     const verdicts = mergeVerdictsForBatch(parseJsonArray(raw), batchIds)

@@ -69,7 +69,7 @@ function renderCommandsTable(cmds) {
     <td style="font-weight:700;color:#e2e8f0;font-family:monospace;">/${escHtml(cmd.name)}</td>
     <td style="color:#94a3b8;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(cmd.response)}">${escHtml(cmd.response.slice(0, 80))}${cmd.response.length > 80 ? '…' : ''}</td>
     <td><span style="color:${permColor[cmd.permissions] || '#94a3b8'};font-size:11px;font-weight:600;text-transform:uppercase;">${escHtml(cmd.permissions)}</span></td>
-    <td style="color:#64748b;font-size:12px;">${cmd.cooldown > 0 ? cmd.cooldown + 's' : '—'}</td>
+    <td style="color:#64748b;font-size:12px;">${cmd.cooldown > 0 ? cmd.cooldown + 's' : '-'}</td>
     <td style="color:#64748b;font-size:12px;">${(cmd.usageCount || 0).toLocaleString()}</td>
     <td style="white-space:nowrap;">
       <button class="btn btn-sm" onclick="openCommandEdit(${JSON.stringify(cmd.name)})" style="margin-right:4px;">Edit</button>
@@ -100,7 +100,7 @@ function injectCommandModal() {
         <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Command Name *</span>
         <input id="cmd-name" type="text" maxlength="32" placeholder="e.g. rules"
           style="background:rgba(15,18,40,0.8);border:1px solid rgba(96,165,250,0.25);color:#e2e8f0;padding:.5rem .65rem;border-radius:6px;font-size:14px;font-family:monospace;" />
-        <span style="font-size:10px;color:#475569;">Alphanumeric, underscore, dash — used as /commandname</span>
+        <span style="font-size:10px;color:#475569;">Alphanumeric, underscore, dash, used as /commandname</span>
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;margin-bottom:1rem;">
         <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Response * <span id="cmd-char-count" style="color:#475569;font-weight:400;"></span></span>
@@ -162,7 +162,7 @@ window.openCommandEdit = (name) => {
   const cmd = _commands.find((c) => c.name === name)
   if (!cmd) return
   _cmdEditName = name
-  document.getElementById('cmd-title').textContent = `Edit — /${name}`
+  document.getElementById('cmd-title').textContent = `Edit /${name}`
   document.getElementById('cmd-name').value = name
   document.getElementById('cmd-name').disabled = true
   document.getElementById('cmd-response').value = cmd.response
@@ -338,7 +338,7 @@ window.openMacroEdit = (key) => {
   const macro = _macros.find((m) => m.key === key)
   if (!macro) return
   _macroEditKey = key
-  document.getElementById('macro-title').textContent = `Edit — ${key}`
+  document.getElementById('macro-title').textContent = `Edit ${key}`
   document.getElementById('macro-key').value = key
   document.getElementById('macro-key').disabled = true
   document.getElementById('macro-body').value = macro.body

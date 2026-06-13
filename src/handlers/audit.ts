@@ -392,7 +392,7 @@ export function registerAuditHandler(client: Client): void {
         },
         {
           name: 'Content',
-          value: (msg.content ?? '(unknown — uncached or embed-only)').slice(0, 900),
+          value: (msg.content ?? '(unknown - uncached or embed-only)').slice(0, 900),
         },
       )
       .setFooter({ text: formatAuditFooter(guild, lookup) })
@@ -431,7 +431,7 @@ export function registerAuditHandler(client: Client): void {
 
     const removal =
       kind === 'kick'
-        ? `**Kicked** — moderator: ${formatExecutorLine(result)}`
+        ? `**Kicked** - moderator: ${formatExecutorLine(result)}`
         : '**Voluntary leave** (no recent kick/ban audit entry)'
 
     const embed = new EmbedBuilder()
@@ -509,7 +509,7 @@ export function registerAuditHandler(client: Client): void {
         guildIdsField(guild, [
           `**Channel ID:** \`${gch.id}\``,
           `**Type:** ${channelTypeLabel(gch.type)}`,
-          parent ? `**Category:** ${parent.name} (\`${parent.id}\`)` : `**Category:** —`,
+          parent ? `**Category:** ${parent.name} (\`${parent.id}\`)` : `**Category:** -`,
         ]),
         {
           name: 'Created by (audit)',
@@ -534,7 +534,7 @@ export function registerAuditHandler(client: Client): void {
         guildIdsField(guild, [
           `**Channel ID:** \`${ch.id}\``,
           `**Type:** ${channelTypeLabel(ch.type)}`,
-          ch.parentId ? `**Parent/category ID:** \`${ch.parentId}\`` : `**Parent:** —`,
+          ch.parentId ? `**Parent/category ID:** \`${ch.parentId}\`` : `**Parent:** -`,
         ]),
         {
           name: 'Deleted by (audit)',
@@ -562,7 +562,7 @@ export function registerAuditHandler(client: Client): void {
         guildIdsField(guild, [
           `**Channel ID:** \`${channel.id}\``,
           `**Deleted messages:** ${count}`,
-          `**Sample message IDs:**\n${sampleIds.map((id) => `\`${id}\``).join('\n') || '—'}`,
+          `**Sample message IDs:**\n${sampleIds.map((id) => `\`${id}\``).join('\n') || '-'}`,
         ]),
         {
           name: 'Bulk delete (audit)',

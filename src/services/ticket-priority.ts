@@ -43,7 +43,7 @@ export const PRIORITY_COLOR: Record<TicketPriority, number> = {
 
 /**
  * Auto-assign a default priority based on the ticket category text and
- * (optionally) the user's intake details. Conservative defaults — most
+ * (optionally) the user's intake details. Conservative defaults: most
  * tickets land at 'normal' unless the category explicitly suggests urgency.
  */
 export function inferPriorityFromCategory(category: string, details?: string): TicketPriority {

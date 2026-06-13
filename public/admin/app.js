@@ -223,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
   showPage(getInitialPage())
 })
 
-// Handle browser back/forward — sync with hash
+// Handle browser back/forward: sync with hash
 window.addEventListener('hashchange', () => {
   const page = window.location.hash.replace('#', '')
   if (PAGES[page] && page !== currentPage) showPage(page)

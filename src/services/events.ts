@@ -39,8 +39,8 @@ function buildEmbed(ev: EventRecord): EmbedBuilder {
     .setDescription(ev.description || '*(no description)*')
     .addFields(
       { name: 'When', value: `<t:${when}:F> (<t:${when}:R>)`, inline: false },
-      { name: `Going (${ev.rsvps.yes.length})`, value: ev.rsvps.yes.length ? ev.rsvps.yes.map((u) => `<@${u}>`).join(' ').slice(0, 1024) : '—', inline: false },
-      { name: `Maybe (${ev.rsvps.maybe.length})`, value: ev.rsvps.maybe.length ? ev.rsvps.maybe.map((u) => `<@${u}>`).join(' ').slice(0, 1024) : '—', inline: true },
+      { name: `Going (${ev.rsvps.yes.length})`, value: ev.rsvps.yes.length ? ev.rsvps.yes.map((u) => `<@${u}>`).join(' ').slice(0, 1024) : '-', inline: false },
+      { name: `Maybe (${ev.rsvps.maybe.length})`, value: ev.rsvps.maybe.length ? ev.rsvps.maybe.map((u) => `<@${u}>`).join(' ').slice(0, 1024) : '-', inline: true },
       { name: `Can't (${ev.rsvps.no.length})`, value: String(ev.rsvps.no.length), inline: true },
     )
     .setFooter({ text: `Event ID: ${ev.id}` })
