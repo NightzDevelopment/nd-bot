@@ -267,7 +267,12 @@ export async function scanMemberProfile(member: GuildMember): Promise<void> {
   }
 }
 
-async function scanAvatarVision(member: GuildMember): Promise<void> {
+/**
+ * Run the AI vision check on a member's avatar. Returns a formatted flag reason
+ * if the avatar is flagged at or above the confidence threshold, else null.
+ * Pure (no side effects) so both the live scan and the bulk command can reuse it.
+ */
+export async function checkAvatarVision(member: GuildMember): Promise<string | null> {
   const u = member.user
   const url = u.displayAvatarURL({ extension: 'png', size: 256 })
   let mimeType = 'image/png'
@@ -276,9 +281,9 @@ async function scanAvatarVision(member: GuildMember): Promise<void> {
     const res = await fetch(url, {
       headers: { 'User-Agent': 'ND-Discord-Gemini-Bot/1.0 (profile scan)' },
     })
-    if (!res.ok) return
+    if (!res.ok) return null
     const ab = await res.arrayBuffer()
-    if (ab.byteLength > IMAGE_ATTACHMENT_MAX_BYTES) return
+    if (ab.byteLength > IMAGE_ATTACHMENT_MAX_BYTES) return null
     const buf = Buffer.from(ab)
     const ct = res.headers.get('content-type')
     if (ct?.includes('webp')) mimeType = 'image/webp'
@@ -286,8 +291,8 @@ async function scanAvatarVision(member: GuildMember): Promise<void> {
     else if (ct?.includes('gif')) mimeType = 'image/gif'
     dataBase64 = buf.toString('base64')
   } catch (e) {
-    console.warn('[profile-scan] avatar fetch failed:', e)
-    return
+    log.warn({ err: e, userId: member.id }, 'avatar fetch failed')
+    return null
   }
 
   const prompt = `You are a strict content moderation assistant for a Discord server profile picture (avatar image).
@@ -303,19 +308,56 @@ confidence: how sure you are (0-1).`
   try {
     const raw = await generateRawWithImage(prompt, { mimeType, dataBase64 })
     const parsed = parseVisionJson(raw)
-    if (!parsed) return
-    if (!parsed.flag || parsed.confidence < profileScanMinConfidence) {
-      return
-    }
-    await reportProfileFlag(
-      member,
-      'avatar',
-      `Vision check flagged this avatar.\n**Category:** ${parsed.category}\n**Confidence:** ${parsed.confidence.toFixed(2)}\n**Reason:** ${parsed.reason}`,
-      [{ name: 'Model note', value: 'Automated image classification; review context.' }],
-    )
+    if (!parsed) return null
+    if (!parsed.flag || parsed.confidence < profileScanMinConfidence) return null
+    return `Avatar flagged: ${parsed.category} (${parsed.confidence.toFixed(2)}) - ${parsed.reason}`
   } catch (e) {
-    console.warn('[profile-scan] vision failed:', e)
+    log.warn({ err: e, userId: member.id }, 'avatar vision failed')
+    return null
   }
+}
+
+async function scanAvatarVision(member: GuildMember): Promise<void> {
+  const reason = await checkAvatarVision(member)
+  if (!reason) return
+  await reportProfileFlag(member, 'avatar', `Vision check flagged this avatar.\n${reason}`, [
+    { name: 'Model note', value: 'Automated image classification; review context.' },
+  ])
+}
+
+/** Default cap on avatar (AI vision) checks per bulk /scan_names run. */
+export const AVATAR_SCAN_CAP = 500
+
+/**
+ * Collect ALL profile flag reasons for one member (names, custom status, and
+ * optionally the AI avatar vision check). Pure (no alerts / no quarantine) so the
+ * bulk scan command can build a consolidated report. `tryAvatar` gates the
+ * expensive vision call; `checkedAvatar` reports whether it actually ran (so the
+ * caller can budget vision calls).
+ */
+export async function collectProfileFlags(
+  member: GuildMember,
+  opts: { tryAvatar: boolean },
+): Promise<{ reasons: string[]; checkedAvatar: boolean }> {
+  const reasons = [...computeNameReasons(member)]
+
+  // Custom status text (best-effort: only present when Presence intent + cache).
+  const status = getCustomStatusText(member).trim()
+  if (status) {
+    if (containsProfanity(status)) reasons.push('Custom status matched the profanity/abuse filter.')
+    const term = matchCustomTerms(status)
+    if (term) reasons.push(`Custom status matched custom flag term: \`${term}\``)
+    if (inviteInNameRe.test(status)) reasons.push('Custom status contains a Discord invite link.')
+  }
+
+  let checkedAvatar = false
+  if (opts.tryAvatar && (member.user.avatar || profileScanDefaultAvatars)) {
+    checkedAvatar = true
+    const avatarReason = await checkAvatarVision(member)
+    if (avatarReason) reasons.push(avatarReason)
+  }
+
+  return { reasons, checkedAvatar }
 }
 
 function parseVisionJson(raw: string): {

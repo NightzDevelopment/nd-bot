@@ -36,7 +36,7 @@ import {
 } from '../config.ts'
 import { consumeTranslateSlot } from '../handlers/prefix.ts'
 import { handleAfkSlash } from '../services/afk.ts'
-import { applyNameQuarantine, computeNameReasons } from '../services/profile-scan.ts'
+import { applyNameQuarantine, AVATAR_SCAN_CAP, collectProfileFlags } from '../services/profile-scan.ts'
 import {
   type AiProviderMode,
   getAiProviderState,
@@ -723,17 +723,27 @@ export function registerInteractionHandler(client: Client): void {
           return
         }
         const apply = options.getBoolean('apply') === true
+        const includeAvatars = options.getBoolean('avatars') === true
         await interaction.deferReply({ flags: MessageFlags.Ephemeral })
 
         const all = await interaction.guild.members.fetch()
         let scanned = 0
+        let avatarBudget = includeAvatars ? AVATAR_SCAN_CAP : 0
+        let avatarChecks = 0
+        let avatarCapped = false
         const flagged: { tag: string; id: string; reasons: string[]; status: string }[] = []
         for (const member of all.values()) {
           if (member.user.bot) continue
           if (isGuildMod(member)) continue
           if (quarantineNameExemptUserIds.has(member.user.id)) continue
           scanned++
-          const reasons = computeNameReasons(member)
+          const tryAvatar = includeAvatars && avatarBudget > 0
+          if (includeAvatars && avatarBudget === 0 && member.user.avatar) avatarCapped = true
+          const { reasons, checkedAvatar } = await collectProfileFlags(member, { tryAvatar })
+          if (checkedAvatar) {
+            avatarBudget--
+            avatarChecks++
+          }
           if (reasons.length === 0) continue
           let status = 'reported (no action)'
           if (apply) status = await applyNameQuarantine(member)
@@ -744,9 +754,12 @@ export function registerInteractionHandler(client: Client): void {
           ? flagged.filter((f) => f.status === 'quarantined' || f.status === 'already quarantined')
               .length
           : 0
+        const scopeNote = includeAvatars
+          ? ` Avatar checks: ${avatarChecks}${avatarCapped ? ` (capped at ${AVATAR_SCAN_CAP})` : ''}.`
+          : ' (names + status only; add `avatars: true` to also scan avatars.)'
         const header = apply
-          ? `Scanned ${scanned} member(s). Flagged ${flagged.length}. Quarantined ${quarantinedCount}.`
-          : `Scanned ${scanned} member(s). Flagged ${flagged.length}. (Report only - run again with \`apply: true\` to quarantine.)`
+          ? `Scanned ${scanned} member(s). Flagged ${flagged.length}. Quarantined ${quarantinedCount}.${scopeNote}`
+          : `Scanned ${scanned} member(s). Flagged ${flagged.length}. (Report only - run again with \`apply: true\` to quarantine.)${scopeNote}`
 
         if (flagged.length === 0) {
           await interaction.editReply(`${header}\n\nNo flagged names found.`)

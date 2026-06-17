@@ -971,11 +971,17 @@ export const slashCommands = [
     ),
   new SlashCommandBuilder()
     .setName('scan_names')
-    .setDescription('Staff: scan every member for flagged usernames/nicknames; report and optionally quarantine')
+    .setDescription('Staff: scan every member profile (names, status, avatars); report and optionally quarantine')
     .addBooleanOption((o) =>
       o
         .setName('apply')
         .setDescription('Quarantine the flagged members (default: report only, no action)')
+        .setRequired(false),
+    )
+    .addBooleanOption((o) =>
+      o
+        .setName('avatars')
+        .setDescription('Also run AI avatar vision (NSFW/scam/hate); slower, capped at 500 (default: off)')
         .setRequired(false),
     ),
 ]
