@@ -133,7 +133,7 @@ function matchCustomTerms(text: string): string | null {
  * flagged. Used by the auto-quarantine path and runs regardless of
  * PROFILE_SCAN_TEXT. Returns an empty array when the name is clean.
  */
-function computeNameReasons(member: GuildMember): string[] {
+export function computeNameReasons(member: GuildMember): string[] {
   const reasons: string[] = []
   // Discord's own automod flagged the username/nickname.
   if (member.flags?.has(GuildMemberFlags.AutomodQuarantinedUsernameOrGuildNickname)) {
@@ -158,7 +158,7 @@ function computeNameReasons(member: GuildMember): string[] {
  * quarantine role-swap then strips their normal member role. Idempotent and
  * best-effort. Returns a short status label for the staff alert.
  */
-async function applyNameQuarantine(member: GuildMember): Promise<string> {
+export async function applyNameQuarantine(member: GuildMember): Promise<string> {
   const roleId = quarantineRoleId ?? altQuarantineRoleId ?? verifyUnverifiedRoleId
   if (!roleId) return 'quarantine skipped (no QUARANTINE_ROLE_ID configured)'
   if (member.roles.cache.has(roleId)) {

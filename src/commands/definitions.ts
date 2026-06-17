@@ -969,4 +969,13 @@ export const slashCommands = [
     .addSubcommand((sc) =>
       sc.setName('claim').setDescription('Claim rewards for completed quests'),
     ),
+  new SlashCommandBuilder()
+    .setName('scan_names')
+    .setDescription('Staff: scan every member for flagged usernames/nicknames; report and optionally quarantine')
+    .addBooleanOption((o) =>
+      o
+        .setName('apply')
+        .setDescription('Quarantine the flagged members (default: report only, no action)')
+        .setRequired(false),
+    ),
 ]

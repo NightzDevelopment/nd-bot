@@ -27,6 +27,7 @@ import {
   reportMaxBodyLength,
   SYSTEM_PROMPT_DM,
   SYSTEM_PROMPT_GUILD,
+  quarantineNameExemptUserIds,
   safetyExtraMarkdown,
   scamCheckExtraTrustedHosts,
   slashCommandsGuildId,
@@ -35,6 +36,7 @@ import {
 } from '../config.ts'
 import { consumeTranslateSlot } from '../handlers/prefix.ts'
 import { handleAfkSlash } from '../services/afk.ts'
+import { applyNameQuarantine, computeNameReasons } from '../services/profile-scan.ts'
 import {
   type AiProviderMode,
   getAiProviderState,
@@ -707,6 +709,66 @@ export function registerInteractionHandler(client: Client): void {
         }
         const line = await formatTicketStatsLine(interaction.guild.id)
         await interaction.reply({ content: line.slice(0, 2000), flags: MessageFlags.Ephemeral })
+        return
+      }
+
+      if (commandName === 'scan_names') {
+        if (!interaction.guild) {
+          await interaction.reply({ content: 'Use in a server.', flags: MessageFlags.Ephemeral })
+          return
+        }
+        const m = await interaction.guild.members.fetch(interaction.user.id)
+        if (!isGuildMod(m)) {
+          await interaction.reply({ content: 'Moderator only.', flags: MessageFlags.Ephemeral })
+          return
+        }
+        const apply = options.getBoolean('apply') === true
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+
+        const all = await interaction.guild.members.fetch()
+        let scanned = 0
+        const flagged: { tag: string; id: string; reasons: string[]; status: string }[] = []
+        for (const member of all.values()) {
+          if (member.user.bot) continue
+          if (isGuildMod(member)) continue
+          if (quarantineNameExemptUserIds.has(member.user.id)) continue
+          scanned++
+          const reasons = computeNameReasons(member)
+          if (reasons.length === 0) continue
+          let status = 'reported (no action)'
+          if (apply) status = await applyNameQuarantine(member)
+          flagged.push({ tag: member.user.tag, id: member.user.id, reasons, status })
+        }
+
+        const quarantinedCount = apply
+          ? flagged.filter((f) => f.status === 'quarantined' || f.status === 'already quarantined')
+              .length
+          : 0
+        const header = apply
+          ? `Scanned ${scanned} member(s). Flagged ${flagged.length}. Quarantined ${quarantinedCount}.`
+          : `Scanned ${scanned} member(s). Flagged ${flagged.length}. (Report only - run again with \`apply: true\` to quarantine.)`
+
+        if (flagged.length === 0) {
+          await interaction.editReply(`${header}\n\nNo flagged names found.`)
+          return
+        }
+
+        const lines = flagged.map(
+          (f) => `- <@${f.id}> (${f.tag}): ${f.reasons.join('; ')} [${f.status}]`,
+        )
+        const full = `${header}\n\n${lines.join('\n')}`
+        if (full.length <= 1900) {
+          await interaction.editReply(full)
+        } else {
+          // Too long for a message: summarize inline and attach the full list.
+          const { AttachmentBuilder } = await import('discord.js')
+          const buffer = Buffer.from(full, 'utf8')
+          const file = new AttachmentBuilder(buffer, { name: 'flagged-names.txt' })
+          await interaction.editReply({
+            content: `${header}\nFull list attached (${flagged.length} flagged).`,
+            files: [file],
+          })
+        }
         return
       }
 
