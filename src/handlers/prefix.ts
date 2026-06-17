@@ -14,6 +14,7 @@ import {
   openaiFallbackModels,
   openaiModel,
   productAliasUrls,
+  quarantineNameExemptUserIds,
   reportCooldownMs,
   reportMaxBodyLength,
   SYSTEM_PROMPT_DM,
@@ -59,6 +60,7 @@ import {
 } from '../services/mod-actions.ts'
 import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 import { containsProfanity } from '../services/profanity.ts'
+import { applyNameQuarantine, computeNameReasons } from '../services/profile-scan.ts'
 import { formatProductLookupReply } from '../services/store-catalog.ts'
 import {
   buildStoreCommandBody,
@@ -601,6 +603,58 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     }
     await (ch as TextChannel).setRateLimitPerUser(seconds)
     await msg.reply(`Slowmode set to **${seconds}s** in ${ch}.`)
+    return
+  }
+
+  if (cmd === 'scan_names' || cmd === 'scannames') {
+    const member = await guildMemberForModCheck(msg)
+    if (!msg.guild || !member || !isGuildMod(member)) {
+      await msg.reply('Moderator only.')
+      return
+    }
+    const apply = args.trim().toLowerCase() === 'apply'
+    const sent = await msg.reply('Scanning all members for flagged names...')
+
+    const all = await msg.guild.members.fetch()
+    let scanned = 0
+    const flagged: { tag: string; id: string; reasons: string[]; status: string }[] = []
+    for (const gm of all.values()) {
+      if (gm.user.bot) continue
+      if (isGuildMod(gm)) continue
+      if (quarantineNameExemptUserIds.has(gm.user.id)) continue
+      scanned++
+      const reasons = computeNameReasons(gm)
+      if (reasons.length === 0) continue
+      let status = 'reported (no action)'
+      if (apply) status = await applyNameQuarantine(gm)
+      flagged.push({ tag: gm.user.tag, id: gm.user.id, reasons, status })
+    }
+
+    const quarantinedCount = apply
+      ? flagged.filter((f) => f.status === 'quarantined' || f.status === 'already quarantined').length
+      : 0
+    const header = apply
+      ? `Scanned ${scanned} member(s). Flagged ${flagged.length}. Quarantined ${quarantinedCount}.`
+      : `Scanned ${scanned} member(s). Flagged ${flagged.length}. (Report only - run \`nd!scan_names apply\` to quarantine.)`
+
+    if (flagged.length === 0) {
+      await sent.edit(`${header}\n\nNo flagged names found.`)
+      return
+    }
+    const lines = flagged.map(
+      (f) => `- <@${f.id}> (${f.tag}): ${f.reasons.join('; ')} [${f.status}]`,
+    )
+    const full = `${header}\n\n${lines.join('\n')}`
+    if (full.length <= 1900) {
+      await sent.edit(full)
+    } else {
+      const { AttachmentBuilder } = await import('discord.js')
+      const file = new AttachmentBuilder(Buffer.from(full, 'utf8'), { name: 'flagged-names.txt' })
+      await sent.edit({
+        content: `${header}\nFull list attached (${flagged.length} flagged).`,
+        files: [file],
+      })
+    }
     return
   }
 
