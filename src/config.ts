@@ -921,6 +921,23 @@ export const verifyUnverifiedRoleId = process.env.VERIFY_UNVERIFIED_ROLE_ID?.tri
 export const quarantineRoleSwapEnabled = !isEnvOff(process.env.QUARANTINE_ROLESWAP_ENABLED ?? '1')
 export const quarantineRoleId = process.env.QUARANTINE_ROLE_ID?.trim() || undefined
 export const quarantineToggleRoleId = process.env.QUARANTINE_TOGGLE_ROLE_ID?.trim() || undefined
+/**
+ * Auto-quarantine members whose username, display name, or server nickname is
+ * flagged (Discord's own automod-quarantine flag, the profanity/abuse filter,
+ * a custom flag term, or an invite link in the name). Applies QUARANTINE_ROLE_ID
+ * so the role-swap above isolates them, and posts a staff alert. Runs regardless
+ * of PROFILE_SCAN_TEXT. Inert unless a quarantine role is configured.
+ */
+export const quarantineNameFilterEnabled = !isEnvOff(
+  process.env.QUARANTINE_NAME_FILTER_ENABLED ?? '1',
+)
+/**
+ * User IDs never auto-quarantined by the name filter. Use for legitimate members
+ * whose name innocently collides with the profanity substring filter (e.g.
+ * surnames like Hancock or Dickson). A staff un-quarantine alone is not durable:
+ * without an exemption the member is re-quarantined on their next profile change.
+ */
+export const quarantineNameExemptUserIds = parseIdSet(process.env.QUARANTINE_NAME_EXEMPT_USER_IDS)
 /** Kick members who never verify after this many ms (0 = never kick). */
 export const verifyKickAfterMs = Math.max(
   0,

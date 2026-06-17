@@ -255,6 +255,8 @@ const ALL_KEYS: readonly string[] = [
   'QUARANTINE_ROLESWAP_ENABLED',
   'QUARANTINE_ROLE_ID',
   'QUARANTINE_TOGGLE_ROLE_ID',
+  'QUARANTINE_NAME_FILTER_ENABLED',
+  'QUARANTINE_NAME_EXEMPT_USER_IDS',
   'STREAMING_ALERTS_ENABLED',
   'STREAM_ANNOUNCE_CHANNEL_ID',
   'STREAM_POLL_INTERVAL_SEC',
@@ -384,6 +386,7 @@ const BOOL_KEYS = new Set<string>([
   'SCAM_LINK_AI_ENABLED',
   'SCAM_LINK_AI_DELETE',
   'QUARANTINE_ROLESWAP_ENABLED',
+  'QUARANTINE_NAME_FILTER_ENABLED',
   'STARBOARD_ENABLED',
   'STREAMING_ALERTS_ENABLED',
   'LEVELS_ENABLED',
@@ -638,6 +641,10 @@ const HELP: Readonly<Record<string, string>> = {
   QUARANTINE_ROLESWAP_ENABLED: 'When the quarantine role is added, remove the member role; restore it when quarantine is lifted (1/0).',
   QUARANTINE_ROLE_ID: 'The quarantine role to watch.',
   QUARANTINE_TOGGLE_ROLE_ID: 'The member role removed on quarantine and restored when it is lifted.',
+  QUARANTINE_NAME_FILTER_ENABLED:
+    'Auto-quarantine members whose username, display name, or server nickname is flagged (Discord automod-quarantine flag, profanity/abuse filter, custom flag terms, or an invite link). Applies QUARANTINE_ROLE_ID and alerts staff. Runs even if PROFILE_SCAN_TEXT is off (1/0).',
+  QUARANTINE_NAME_EXEMPT_USER_IDS:
+    'Comma-separated user IDs never auto-quarantined by the name filter. Use for legitimate members whose name innocently collides with the filter (e.g. surnames like Hancock or Dickson).',
   STARBOARD_ENABLED: 'Repost highly-reacted messages to a highlights channel (1/0).',
   STARBOARD_CHANNEL_ID: 'Highlights channel where starred messages are reposted.',
   STARBOARD_EMOJI: 'Reaction emoji that counts toward the starboard (default star).',
