@@ -79,6 +79,24 @@ export async function fetchDiscordUser(accessToken: string): Promise<DiscordUser
   }
 }
 
+/**
+ * Cached admin re-check for active sessions. Re-verifies allowlist/role at most
+ * once every couple minutes per user, so removing someone's role (or pulling them
+ * from the allowlist) revokes their dashboard access within that window.
+ */
+const adminCache = new Map<string, { ok: boolean; at: number }>()
+const ADMIN_RECHECK_MS = 2 * 60 * 1000
+
+export async function isStillAdmin(discordId: string): Promise<boolean> {
+  const now = Date.now()
+  const cached = adminCache.get(discordId)
+  if (cached && now - cached.at < ADMIN_RECHECK_MS) return cached.ok
+  const ok = await isAdminDiscordUser(discordId)
+  adminCache.set(discordId, { ok, at: now })
+  if (adminCache.size > 1000) adminCache.delete(adminCache.keys().next().value as string)
+  return ok
+}
+
 /** Admin if allowlisted, OR holding the admin role in the configured guild. */
 export async function isAdminDiscordUser(discordId: string): Promise<boolean> {
   if (dashboardAdminUserIds.has(discordId)) return true

@@ -268,21 +268,31 @@ function unauthorized(): Response {
   return json({ error: 'Unauthorized' }, { status: 401 })
 }
 
-function checkAuth(req: Request): boolean {
-  const want = expectedToken()
-  if (!want) return false
-  const h = req.headers.get('authorization')?.trim() ?? ''
-  const m = /^Bearer\s+(.+)$/i.exec(h)
-  if (!m) return false
-  return safeEqual(m[1] ?? '', want)
-}
+/** Synthetic admin payload for the shared DASHBOARD_TOKEN (loopback) path. */
+const MASTER_PAYLOAD: JWTPayload = { sub: 'local', email: 'local', role: 'admin', iat: 0, exp: 0 }
 
-/** Extract + verify JWT for v2 endpoints */
+/**
+ * Auth for every dashboard API request. Accepts EITHER:
+ *  - the shared DASHBOARD_TOKEN (loopback / local dev), returning MASTER_PAYLOAD, OR
+ *  - a per-user admin JWT whose Discord role is RE-CHECKED on a ~2-minute cache, so
+ *    losing the role (or the allowlist) revokes dashboard access within that window.
+ * Returns the payload (admin) or null (unauthorized).
+ */
 async function checkJwtAuth(req: Request): Promise<JWTPayload | null> {
   const h = req.headers.get('authorization')?.trim() ?? ''
   const m = /^Bearer\s+(.+)$/i.exec(h)
   if (!m) return null
-  return verifyToken(m[1] ?? '')
+  const token = m[1] ?? ''
+  const master = expectedToken()
+  if (master && safeEqual(token, master)) return MASTER_PAYLOAD
+  const payload = await verifyToken(token)
+  if (!payload || payload.role !== 'admin') return null
+  // OAuth sessions carry a Discord ID and get a periodic role re-check.
+  if (payload.did) {
+    const { isStillAdmin } = await import('./oauth-discord.ts')
+    if (!(await isStillAdmin(payload.did))) return null
+  }
+  return payload
 }
 
 function jsonForbidden(): Response {
@@ -617,10 +627,10 @@ export function startDashboard(): void {
           if (!du) return fail('oauth_user')
           if (!(await isAdminDiscordUser(du.id))) return fail('not_authorized')
 
-          // OAuth just GATES access; the dashboard's API auth is the DASHBOARD_TOKEN,
-          // so hand that to the verified admin (the SPA stores + sends it).
-          const dashToken = expectedToken()
-          if (!dashToken) return fail('no_dashboard_token')
+          // Issue a PER-USER admin JWT (carries the Discord ID) so the session's
+          // role can be re-checked periodically and revoked if the role is removed.
+          const { loginDiscordAdmin } = await import('./users.ts')
+          const jwt = await loginDiscordAdmin(du.id, du.global_name || du.username)
           try {
             await logAudit(du.id, du.global_name || du.username, 'oauth_login', 'dashboard', {})
           } catch {
@@ -629,7 +639,7 @@ export function startDashboard(): void {
           return new Response(null, {
             status: 302,
             headers: {
-              Location: `/pages/splash.html#token=${encodeURIComponent(dashToken)}`,
+              Location: `/pages/splash.html#token=${encodeURIComponent(jwt)}`,
               'Set-Cookie': clearCookie,
             },
           })
@@ -1303,7 +1313,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
           if (!rateLimit(apiBuckets, ip, RATE_LIMIT_API)) {
             return json({ error: 'rate limited' }, { status: 429 })
           }
-          if (!checkAuth(req)) return unauthorized()
+          if (!(await checkJwtAuth(req))) return unauthorized()
 
           if (req.method === 'GET' && pathname === '/api/logs') {
             const kindRaw = url.searchParams.get('kind')?.trim().toLowerCase() ?? 'out'

@@ -33,6 +33,16 @@ class ApiClient {
 
     try {
       const response = await fetch(url, options)
+
+      // Session expired or role revoked (periodic re-check failed) -> back to login.
+      if (response.status === 401) {
+        try {
+          localStorage.removeItem('dashboardToken')
+        } catch {}
+        window.location.replace('/pages/splash.html?error=session')
+        throw new Error('Unauthorized')
+      }
+
       const result = await response.json()
 
       if (!response.ok) {

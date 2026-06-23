@@ -38,6 +38,7 @@ export interface JWTPayload {
   sub: string // user ID
   email: string
   role: UserRole
+  did?: string // Discord ID (for periodic role re-checks on OAuth sessions)
   iat: number
   exp: number
 }
@@ -90,6 +91,7 @@ function generateJWT(user: User, expiresIn = JWT_EXPIRY): string {
     sub: user.id,
     email: user.email,
     role: user.role,
+    ...(user.discordId ? { did: user.discordId } : {}),
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + expiresIn,
   }
