@@ -221,3 +221,219 @@
     animation: none;
   }
 }
+
+/* ── Command page: bento tile grid ──────────────────────────────── */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 0.75rem;
+  align-items: stretch;
+}
+.bento-grid .bento-stat {
+  grid-column: span 3;
+}
+.bento-health {
+  grid-column: span 5;
+}
+.bento-leaderboard {
+  grid-column: span 4;
+}
+.bento-activity {
+  grid-column: span 3;
+}
+.bento-announce {
+  grid-column: span 12;
+}
+.bento-health,
+.bento-leaderboard,
+.bento-activity {
+  min-height: 320px;
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+.bento-announce {
+  padding: 1.1rem 1.25rem;
+}
+
+/* Compact metric tiles */
+.bento-stat {
+  padding: 0.85rem 1.05rem 0.9rem;
+}
+.bento-stat .stat-label {
+  margin-bottom: 0.35rem;
+}
+.bento-stat .stat-value {
+  font-size: 1.85rem;
+}
+
+/* Panel head (title + control) */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.9rem;
+}
+.panel-head > h3,
+.bento-health > h3,
+.bento-announce > h3 {
+  margin: 0;
+}
+.bento-health > h3,
+.bento-announce > h3 {
+  margin-bottom: 0.9rem;
+}
+
+/* Key/value lists (health, leaderboard) */
+.kv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+.kv-key {
+  color: var(--text-secondary);
+}
+.kv-val {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+.kv-online {
+  color: var(--success);
+  font-weight: 700;
+  text-shadow: 0 0 8px var(--success);
+}
+.kv-mono {
+  color: var(--nd-blue-bright);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+.muted-center {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 1rem;
+}
+.panel-divider {
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+.panel-sublabel {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: 0.6rem;
+}
+
+/* Mini controls */
+.mini-select {
+  font-size: 0.68rem;
+  padding: 3px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.mini-btn {
+  font-size: 0.62rem;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-tertiary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.mini-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--nd-blue);
+}
+
+/* Real-time indicator */
+.rt-indicator {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.rt-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse 2s ease-in-out infinite;
+}
+.rt-label {
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.08em;
+}
+.activity-scroll {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Announcement row */
+.announce-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.field {
+  padding: 7px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.8rem;
+}
+.field:focus {
+  outline: none;
+  border-color: var(--nd-blue);
+  box-shadow: 0 0 0 3px var(--nd-blue-soft);
+}
+.announce-channel {
+  flex: 1;
+  min-width: 200px;
+}
+.announce-text {
+  flex: 3;
+  min-width: 280px;
+  resize: vertical;
+}
+.announce-send {
+  white-space: nowrap;
+}
+
+/* Responsive bento */
+@media (max-width: 1200px) {
+  .bento-health {
+    grid-column: span 7;
+  }
+  .bento-leaderboard {
+    grid-column: span 5;
+  }
+  .bento-activity {
+    grid-column: span 12;
+    min-height: 240px;
+  }
+}
+@media (max-width: 760px) {
+  .bento-grid .bento-stat {
+    grid-column: span 6;
+  }
+  .bento-health,
+  .bento-leaderboard {
+    grid-column: span 12;
+  }
+}

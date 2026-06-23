@@ -274,82 +274,79 @@
       <div class="dashboard-content">
         <!-- Dashboard Page -->
         <div id="page-dashboard" class="page">
-          <div class="stat-grid">
-            <div class="stat-card" id="stat-messages">
+          <div class="bento-grid">
+            <!-- Compact metric tiles -->
+            <div class="stat-card bento-stat" id="stat-messages">
               <div class="stat-label">Messages (30d)</div>
               <div class="stat-value">0</div>
             </div>
-            <div class="stat-card" id="stat-responses">
+            <div class="stat-card bento-stat" id="stat-responses">
               <div class="stat-label">AI Responses</div>
               <div class="stat-value">0</div>
             </div>
-            <div class="stat-card" id="stat-users">
+            <div class="stat-card bento-stat" id="stat-users">
               <div class="stat-label">Active Users</div>
               <div class="stat-value">0</div>
             </div>
-            <div class="stat-card" id="stat-commands">
+            <div class="stat-card bento-stat" id="stat-commands">
               <div class="stat-label">Custom Commands</div>
               <div class="stat-value">0</div>
             </div>
-          </div>
 
-          <!-- Two-column layout: health + leaderboard -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem;">
-            <!-- Server Health -->
-            <div style="background:rgba(15,23,42,0.65);border:1px solid rgba(148,163,184,0.10);border-radius:10px;padding:1.25rem;">
-              <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:1rem;">Server Health</div>
-              <div id="health-grid" style="display:flex;flex-direction:column;gap:.5rem;">
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Bot Status</span><span id="h-bot-status" style="color:#34d399;font-weight:600;">●  Online</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Uptime</span><span id="h-uptime" style="color:#e2e8f0;">-</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Open Tickets</span><span id="h-open-tickets" style="color:#e2e8f0;">-</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">Active Members</span><span id="h-active-members" style="color:#e2e8f0;">-</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#94a3b8;">AI Model</span><span id="h-ai-model" style="color:#60a5fa;font-size:11px;font-family:monospace;">-</span></div>
+            <!-- Server Health (wide tile) -->
+            <div class="glass-panel bento-health">
+              <h3>Server Health</h3>
+              <div id="health-grid" class="kv-list">
+                <div class="kv-row"><span class="kv-key">Bot Status</span><span id="h-bot-status" class="kv-val kv-online">● Online</span></div>
+                <div class="kv-row"><span class="kv-key">Uptime</span><span id="h-uptime" class="kv-val">-</span></div>
+                <div class="kv-row"><span class="kv-key">Open Tickets</span><span id="h-open-tickets" class="kv-val">-</span></div>
+                <div class="kv-row"><span class="kv-key">Active Members</span><span id="h-active-members" class="kv-val">-</span></div>
+                <div class="kv-row"><span class="kv-key">AI Model</span><span id="h-ai-model" class="kv-val kv-mono">-</span></div>
               </div>
-              <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid rgba(148,163,184,0.10);">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:.75rem;">Alerts</div>
-                <div id="dashboard-alerts" style="display:flex;flex-direction:column;gap:.35rem;"></div>
+              <div class="panel-divider">
+                <div class="panel-sublabel">Alerts</div>
+                <div id="dashboard-alerts" class="kv-list"></div>
               </div>
             </div>
 
-            <!-- Reputation Leaderboard -->
-            <div style="background:rgba(15,23,42,0.65);border:1px solid rgba(148,163,184,0.10);border-radius:10px;padding:1.25rem;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-                <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;">Leaderboard</div>
-                <select id="lb-stat-select" onchange="loadLeaderboard(this.value)" style="font-size:11px;padding:3px 6px;border:1px solid rgba(148,163,184,0.15);border-radius:4px;background:rgba(2,6,23,0.6);color:#94a3b8;">
+            <!-- Leaderboard (tile) -->
+            <div class="glass-panel bento-leaderboard">
+              <div class="panel-head">
+                <h3>Leaderboard</h3>
+                <select id="lb-stat-select" class="mini-select" onchange="loadLeaderboard(this.value)">
                   <option value="reputation">Reputation</option>
                   <option value="messages">Messages</option>
                   <option value="level">Level</option>
                 </select>
               </div>
-              <div id="lb-list" style="display:flex;flex-direction:column;gap:.4rem;">
-                <div style="color:#475569;font-size:12px;text-align:center;padding:1rem;">Loading…</div>
+              <div id="lb-list" class="kv-list">
+                <div class="muted-center">Loading...</div>
               </div>
             </div>
-          </div>
 
-          <!-- Live Activity Feed -->
-          <div style="margin-top:1rem;background:rgba(15,23,42,0.65);border:1px solid rgba(148,163,184,0.10);border-radius:10px;padding:1.25rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
-              <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;">Live Activity</div>
-              <div style="display:flex;gap:.5rem;align-items:center;">
-                <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #34d399;"></span>
-                <span style="font-size:10px;color:#64748b;letter-spacing:.05em;">REAL-TIME</span>
-                <button onclick="window.activityFeed.clear()" style="font-size:10px;padding:2px 8px;background:transparent;border:1px solid rgba(148,163,184,0.2);color:#64748b;border-radius:4px;cursor:pointer;">Clear</button>
+            <!-- Live Activity (tall narrow tile) -->
+            <div class="glass-panel bento-activity">
+              <div class="panel-head">
+                <h3>Live Activity</h3>
+                <div class="rt-indicator">
+                  <span class="rt-dot"></span>
+                  <span class="rt-label">REAL-TIME</span>
+                  <button onclick="window.activityFeed.clear()" class="mini-btn">Clear</button>
+                </div>
               </div>
+              <div id="activity-feed-root" class="activity-scroll"></div>
             </div>
-            <div id="activity-feed-root" style="max-height:340px;overflow-y:auto;"></div>
-          </div>
 
-          <!-- Announcement Sender -->
-          <div style="margin-top:1rem;background:rgba(15,23,42,0.65);border:1px solid rgba(148,163,184,0.10);border-radius:10px;padding:1.25rem;">
-            <div style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#64748b;margin-bottom:.75rem;">Send Announcement</div>
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-start;">
-              <select id="announce-channel" style="flex:1;min-width:200px;padding:7px 10px;border:1px solid rgba(148,163,184,0.15);border-radius:6px;background:rgba(2,6,23,0.6);color:#e2e8f0;font:inherit;font-size:13px;">
-                <option value="">Loading channels…</option>
-              </select>
-              <textarea id="announce-content" placeholder="Announcement message…" rows="2"
-                style="flex:3;min-width:280px;padding:7px 10px;border:1px solid rgba(148,163,184,0.15);border-radius:6px;background:rgba(2,6,23,0.6);color:#e2e8f0;font:inherit;font-size:13px;resize:vertical;"></textarea>
-              <button class="btn btn-primary" onclick="sendAnnouncement()" style="white-space:nowrap;">Send</button>
+            <!-- Announcement (full width) -->
+            <div class="glass-panel bento-announce">
+              <h3>Send Announcement</h3>
+              <div class="announce-row">
+                <select id="announce-channel" class="field announce-channel">
+                  <option value="">Loading channels...</option>
+                </select>
+                <textarea id="announce-content" class="field announce-text" placeholder="Announcement message..." rows="2"></textarea>
+                <button class="btn btn-primary announce-send" onclick="sendAnnouncement()">Send</button>
+              </div>
             </div>
           </div>
         </div>
