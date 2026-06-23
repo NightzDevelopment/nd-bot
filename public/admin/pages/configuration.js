@@ -341,7 +341,7 @@ function renderConfigFields(filter) {
                 <div class="field-badges">
                   ${isSensitive ? '<span class="pill sensitive">sensitive</span>' : ''}
                   ${perfBadge}
-                  ${needsRestart ? '<span class="badge-restart" title="Sentinel must be restarted for this change to take effect">⚡ restart</span>' : ''}
+                  ${needsRestart ? '<span class="badge-restart" title="The bot must be restarted for this change to take effect">⚡ restart</span>' : ''}
                 </div>
               </div>
               ${f.description ? `<p class="field-help">${escapeHtml(f.description)}</p>` : ''}

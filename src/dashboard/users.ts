@@ -287,6 +287,37 @@ export async function upsertDiscordUser(
 }
 
 /**
+ * Sign in a Discord-authenticated admin (already authorized by OAuth + allowlist/
+ * role check): upsert them as an admin user and return a freshly signed JWT.
+ */
+export async function loginDiscordAdmin(discordId: string, discordTag: string): Promise<string> {
+  const users = await loadUsers()
+  let user = users.find((u) => u.discordId === discordId)
+  if (user) {
+    user.role = 'admin'
+    user.discordTag = discordTag
+    user.lastLogin = Date.now()
+    user.active = true
+  } else {
+    user = {
+      id: randomBytes(16).toString('hex'),
+      email: `${discordId}@discord.local`,
+      passwordHash: '',
+      role: 'admin',
+      createdAt: Date.now(),
+      lastLogin: Date.now(),
+      servers: [],
+      discordId,
+      discordTag,
+      active: true,
+    }
+    users.push(user)
+  }
+  await saveUsers(users)
+  return generateJWT(user)
+}
+
+/**
  * Authenticate with email and password
  */
 export async function authenticatePassword(

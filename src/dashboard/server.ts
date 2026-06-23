@@ -569,6 +569,66 @@ export function startDashboard(): void {
           }
         }
 
+        // ===== DISCORD OAUTH LOGIN =====
+        if (pathname === '/auth/discord' && req.method === 'GET') {
+          const { oauthConfigured, buildAuthorizeUrl } = await import('./oauth-discord.ts')
+          if (!oauthConfigured()) {
+            return new Response(null, {
+              status: 302,
+              headers: { Location: '/pages/splash.html?error=oauth_not_configured' },
+            })
+          }
+          const state = crypto.randomUUID()
+          return new Response(null, {
+            status: 302,
+            headers: {
+              Location: buildAuthorizeUrl(state),
+              'Set-Cookie': `nd_oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600`,
+            },
+          })
+        }
+
+        if (pathname === '/auth/discord/callback' && req.method === 'GET') {
+          const clearCookie = 'nd_oauth_state=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'
+          const fail = (reason: string) =>
+            new Response(null, {
+              status: 302,
+              headers: { Location: `/pages/splash.html?error=${reason}`, 'Set-Cookie': clearCookie },
+            })
+          const code = url.searchParams.get('code')
+          const state = url.searchParams.get('state')
+          const cookieState = (req.headers.get('cookie') || '')
+            .split(';')
+            .map((c) => c.trim())
+            .find((c) => c.startsWith('nd_oauth_state='))
+            ?.slice('nd_oauth_state='.length)
+          if (!code || !state || !cookieState || state !== cookieState) return fail('oauth_state')
+
+          const { exchangeCode, fetchDiscordUser, isAdminDiscordUser } = await import(
+            './oauth-discord.ts'
+          )
+          const accessToken = await exchangeCode(code)
+          if (!accessToken) return fail('oauth_exchange')
+          const du = await fetchDiscordUser(accessToken)
+          if (!du) return fail('oauth_user')
+          if (!(await isAdminDiscordUser(du.id))) return fail('not_authorized')
+
+          const { loginDiscordAdmin } = await import('./users.ts')
+          const jwt = await loginDiscordAdmin(du.id, du.global_name || du.username)
+          try {
+            await logAudit(du.id, du.global_name || du.username, 'oauth_login', 'dashboard', {})
+          } catch {
+            /* audit optional */
+          }
+          return new Response(null, {
+            status: 302,
+            headers: {
+              Location: `/pages/splash.html#token=${encodeURIComponent(jwt)}`,
+              'Set-Cookie': clearCookie,
+            },
+          })
+        }
+
         if (pathname === '/api/servers' && req.method === 'GET') {
           return json({
             servers: [{ id: 'nightz-network', name: 'Nightz Network' }],

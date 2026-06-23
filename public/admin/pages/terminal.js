@@ -1,6 +1,6 @@
 /**
  * Live Terminal Page
- * Polished, glassmorphic terminal log viewer for ND-Sentinel
+ * Polished, glassmorphic terminal log viewer for Nightz
  */
 
 let terminalPollInterval = null
@@ -158,7 +158,7 @@ function renderLogs(rawText) {
         '<span style="color:#ef4444;font-weight:700;">$1</span>',
       )
       escaped = escaped.replace(
-        /(ND-Sentinel)/g,
+        /(Nightz)/g,
         '<span style="color:#f472b6;font-weight:700;">$1</span>',
       )
 

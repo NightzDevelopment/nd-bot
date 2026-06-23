@@ -4,117 +4,46 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="referrer" content="no-referrer" />
-  <meta name="color-scheme" content="dark light" />
-  <title>nd-bot Dashboard - Sign In</title>
+  <meta name="color-scheme" content="dark" />
+  <title>Nightz Development - Control Panel</title>
   <link rel="stylesheet" href="/styles/splash.css" />
 </head>
 <body class="splash-page">
   <div class="splash-container">
     <div class="splash-card">
-      <!-- Logo & Branding -->
+      <!-- Branding -->
       <div class="splash-header">
         <div class="splash-logo">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-            <!-- Simple bot icon -->
-            <rect x="12" y="12" width="24" height="24" rx="4" stroke="currentColor" stroke-width="2" />
-            <circle cx="18" cy="20" r="2" fill="currentColor" />
-            <circle cx="30" cy="20" r="2" fill="currentColor" />
-            <path d="M 18 28 Q 24 30 30 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-          </svg>
+          <img src="/nightz-logo.png" alt="Nightz Development" width="56" height="56"
+            onerror="this.style.display='none'" />
         </div>
-        <h1>nd-bot</h1>
-        <p class="splash-tagline">Discord Bot Configuration</p>
+        <h1>Nightz Development</h1>
+        <p class="splash-tagline">Bot Control Panel</p>
       </div>
 
-      <!-- Auth Tabs -->
-      <div class="auth-tabs">
-        <button class="auth-tab active" data-tab="password">Email</button>
-        <button class="auth-tab" data-tab="oauth">Discord</button>
-      </div>
+      <!-- Error Message -->
+      <div id="errorBanner" class="error-banner" role="alert" style="display: none"></div>
 
-      <!-- Password Login Form -->
-      <form id="passwordForm" class="auth-form active" data-tab="password">
-        <div class="form-group">
-          <label for="email-input">Email</label>
-          <input
-            id="email-input"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
-            required
-            autocomplete="off"
-          />
-        </div>
-
-        <div class="form-group">
-          <label for="password-input">Password</label>
-          <div style="position:relative">
-            <input
-              id="password-input"
-              name="password"
-              type="password"
-              placeholder="••••••••"
-              required
-              autocomplete="off"
-              style="width:100%;padding-right:44px"
-            />
-            <button type="button" id="toggle-pw"
-              style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#8892b0;font-size:13px;padding:4px">
-              Show
-            </button>
-          </div>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block">Sign In</button>
-
-        <p class="form-help">
-          <a href="#forgot">Forgot password?</a>
-        </p>
-      </form>
-
-      <!-- OAuth Login Form -->
-      <form id="oauthForm" class="auth-form" data-tab="oauth" style="display: none">
-        <p class="oauth-help">Sign in with your Discord account. We'll request server configuration access.</p>
-
+      <!-- Discord-only login -->
+      <div id="oauthForm" class="auth-form active">
+        <p class="oauth-help">Sign in with Discord. Access is limited to authorized staff.</p>
         <a href="/auth/discord" class="btn btn-discord btn-block">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-            <!-- Discord logo -->
-            <path d="M16.98 2a1.5 1.5 0 0 0-1.46-1H2.48a1.5 1.5 0 0 0-1.45 1.5v14c0 .83.67 1.5 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-14z" />
+          <svg width="20" height="20" viewBox="0 0 71 55" fill="currentColor" aria-hidden="true">
+            <path d="M60.1 4.9A58.5 58.5 0 0 0 45.6.4a.2.2 0 0 0-.2.1c-.6 1.1-1.3 2.6-1.8 3.7a54 54 0 0 0-16.2 0c-.5-1.2-1.2-2.6-1.9-3.7a.2.2 0 0 0-.2-.1A58.4 58.4 0 0 0 10.6 4.9a.2.2 0 0 0-.1.1C1.3 18.7-1.2 32.1.1 45.4a.2.2 0 0 0 .1.2 58.9 58.9 0 0 0 17.7 9 .2.2 0 0 0 .2-.1c1.4-1.9 2.6-3.9 3.6-6a.2.2 0 0 0-.1-.3c-2-.7-3.8-1.6-5.6-2.6a.2.2 0 0 1 0-.4l1.1-.9a.2.2 0 0 1 .2 0 42 42 0 0 0 35.6 0 .2.2 0 0 1 .2 0l1.1.9a.2.2 0 0 1 0 .4 36.8 36.8 0 0 1-5.6 2.6.2.2 0 0 0-.1.3c1 2.1 2.3 4.1 3.6 6a.2.2 0 0 0 .2.1 58.7 58.7 0 0 0 17.8-9 .2.2 0 0 0 .1-.2c1.5-15.3-2.4-28.6-10.4-40.4a.2.2 0 0 0-.1-.1zM23.7 37.3c-3.5 0-6.4-3.2-6.4-7.1s2.8-7.1 6.4-7.1c3.6 0 6.5 3.2 6.4 7.1 0 3.9-2.8 7.1-6.4 7.1zm23.6 0c-3.5 0-6.4-3.2-6.4-7.1s2.8-7.1 6.4-7.1c3.6 0 6.5 3.2 6.4 7.1 0 3.9-2.8 7.1-6.4 7.1z" />
           </svg>
-          Continue with Discord
+          Login with Discord
         </a>
-
-        <p class="form-help">
-          <a href="#">Don't have a Discord account?</a>
-        </p>
-      </form>
+      </div>
 
       <!-- Loading State -->
       <div id="loadingState" class="auth-form" style="display: none">
         <div class="spinner"></div>
         <p>Signing in...</p>
       </div>
-
-      <!-- Error Message -->
-      <div id="errorBanner" class="error-banner" role="alert" style="display: none"></div>
-
-      <!-- Server Selection (shown after auth) -->
-      <div id="serverSelect" class="server-select" style="display: none">
-        <label for="server-dropdown">Select a Server</label>
-        <select id="server-dropdown">
-          <option>Loading servers...</option>
-        </select>
-        <button type="button" class="btn btn-primary btn-block" id="continueBtn">Continue</button>
-      </div>
     </div>
 
     <!-- Footer -->
     <footer class="splash-footer">
-      <p>
-        <a href="https://github.com/yourrepo/nd-bot">GitHub</a> •
-        <a href="/docs">Documentation</a> •
-        <a href="https://discord.gg/yourserver">Support</a>
-      </p>
       <p class="version" id="version">v2.0.0</p>
     </footer>
   </div>

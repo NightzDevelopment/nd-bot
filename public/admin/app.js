@@ -158,8 +158,8 @@ function showToast(message, type = 'info') {
   if (!toastContainer) return
 
   const tag =
-    { info: 'SENTINEL', success: 'SENTINEL ✓', warning: 'SENTINEL ⚠', error: 'SENTINEL ✗' }[type] ||
-    'SENTINEL'
+    { info: 'NIGHTZ', success: 'NIGHTZ ✓', warning: 'NIGHTZ ⚠', error: 'NIGHTZ ✗' }[type] ||
+    'NIGHTZ'
   const toast = document.createElement('div')
   toast.className = `toast toast--${type}`
   toast.innerHTML = `<div style="font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--text-tertiary);margin-bottom:3px;">${tag}</div><div>${message}</div>`

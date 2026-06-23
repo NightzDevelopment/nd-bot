@@ -865,6 +865,26 @@ export const aiResponseCacheTtlSec =
 /** Maximum number of cached classifier responses (oldest evicted). */
 export const aiResponseCacheMax = parseInt(process.env.AI_RESPONSE_CACHE_MAX ?? '500', 10) || 500
 
+/**
+ * Dashboard "Login with Discord" (OAuth2). Admin access = a user whose Discord ID
+ * is in DASHBOARD_ADMIN_USER_IDS, OR who holds DASHBOARD_ADMIN_ROLE_ID in
+ * DASHBOARD_ADMIN_GUILD_ID. Inert unless client id + secret are set.
+ */
+export const dashboardDiscordClientId =
+  process.env.DASHBOARD_DISCORD_CLIENT_ID?.trim() || undefined
+export const dashboardDiscordClientSecret =
+  process.env.DASHBOARD_DISCORD_CLIENT_SECRET?.trim() || undefined
+/** Public base URL of the dashboard, used to build the OAuth redirect_uri. */
+export const dashboardPublicUrl = (
+  process.env.DASHBOARD_PUBLIC_URL?.trim() || ''
+).replace(/\/+$/, '')
+/** Discord user IDs always granted admin dashboard access. */
+export const dashboardAdminUserIds = parseIdSet(process.env.DASHBOARD_ADMIN_USER_IDS)
+/** Holding this role in DASHBOARD_ADMIN_GUILD_ID grants admin dashboard access. */
+export const dashboardAdminRoleId = process.env.DASHBOARD_ADMIN_ROLE_ID?.trim() || undefined
+/** Guild the admin role is checked in (defaults to the bot's primary guild). */
+export const dashboardAdminGuildId = process.env.DASHBOARD_ADMIN_GUILD_ID?.trim() || undefined
+
 /** Starboard: repost highly-reacted messages to a highlights channel. */
 export const starboardEnabled = !isEnvOff(process.env.STARBOARD_ENABLED ?? '0')
 export const starboardChannelId = process.env.STARBOARD_CHANNEL_ID?.trim() || undefined

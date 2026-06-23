@@ -177,7 +177,7 @@ function renderRankCardMockup() {
   card.innerHTML = `
     <div style="background:${cardBg}; border:1px solid ${border}; box-shadow:0 8px 32px 0 ${glow}; padding:25px; border-radius:12px; width:100%; max-width:480px; display:flex; gap:20px; align-items:center; position:relative; overflow:hidden; backdrop-filter:blur(8px); margin:0 auto;">
       <!-- Corner branding mark -->
-      <div style="position:absolute; top:8px; right:12px; font-family:var(--font-mono); font-size:8px; color:${accent}; opacity:0.6; letter-spacing:0.1em; font-weight:700;">ND-SENTINEL PREMIUM PROFILE</div>
+      <div style="position:absolute; top:8px; right:12px; font-family:var(--font-mono); font-size:8px; color:${accent}; opacity:0.6; letter-spacing:0.1em; font-weight:700;">NIGHTZ DEV PROFILE</div>
       
       <!-- Avatar mock -->
       <div style="width:72px; height:72px; border-radius:50%; background:linear-gradient(135deg, ${accent}, #8b5cf6); border:2px solid ${accent}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
