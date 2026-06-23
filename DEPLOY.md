@@ -88,41 +88,63 @@ The SQLite database and `data/` directory are created automatically on first boo
 
 ---
 
-## 5. Install dependencies + PM2
+## 5. Install dependencies + screen
 
 ```bash
 bun install
-npm install -g pm2     # PM2 runs under Node; that's fine, it only supervises the bun process
+sudo apt-get install -y screen        # the session manager (if not already present)
 ```
+
+`scripts/run.sh` is a resilient wrapper that **auto-restarts the bot if it crashes**
+(the part `screen` does not do on its own) and stops cleanly when you press Ctrl+C.
 
 ---
 
-## 6. Start it under PM2 + survive reboots
+## 6. Start it in a screen session
 
 ```bash
-pm2 start ecosystem.config.cjs
-pm2 save               # remember the current process list
-pm2 startup            # prints a command - copy/paste/run it once (sets up boot service)
+chmod +x scripts/run.sh
+screen -dmS ndbot bash scripts/run.sh   # start, detached (survives logout)
 ```
 
-`pm2 startup` + `pm2 save` is what makes it **truly always-online**: the VPS restarts the
-bot automatically on crash AND on server reboot.
+Or interactively (matches the Weblutions guide style):
+```bash
+screen -S ndbot          # create + enter the session
+bash scripts/run.sh      # start the bot
+# detach and leave it running: press Ctrl+A then D
+```
+
+screen cheatsheet:
+```bash
+screen -r ndbot          # reattach to watch live logs
+# Ctrl+A then D          # detach again (bot keeps running)
+# Ctrl+C (while attached)# stop the bot gracefully (the run loop then exits)
+screen -ls               # list sessions
+screen -S ndbot -X quit  # force-kill the session
+```
+
+### Survive a server reboot
+A screen session does **not** come back on its own after a reboot. Add a cron entry:
+```bash
+crontab -e
+```
+add this line (adjust the path), then save:
+```
+@reboot screen -dmS ndbot bash /home/nd-bot/scripts/run.sh
+```
+Now: crash → `run.sh` restarts it; reboot → cron relaunches the screen session. That is
+the full "always online" guarantee, the screen way.
 
 ---
 
 ## 7. Verify
 
 ```bash
-pm2 logs nd-bot --lines 40
+screen -r ndbot          # attach; you should see "Logged in as <your new bot>#1234"
 ```
-You want to see `Logged in as <your new bot>#1234` and `registered N slash commands`.
-
-Handy commands:
+(`Ctrl+A` then `D` to detach.) Logs are also appended to `logs/bot.log`:
 ```bash
-pm2 status            # is it online?
-pm2 restart nd-bot    # apply changes
-pm2 stop nd-bot
-pm2 logs nd-bot       # live logs
+tail -f logs/bot.log
 ```
 
 ---
@@ -131,9 +153,11 @@ pm2 logs nd-bot       # live logs
 
 ```bash
 cd /home/nd-bot
-git pull              # (or re-upload changed files via WinSCP)
-bun install           # only if dependencies changed
-pm2 restart nd-bot --update-env
+git pull                 # (or re-upload changed files via WinSCP)
+bun install              # only if dependencies changed
+screen -r ndbot          # attach, Ctrl+C to stop, then re-run:
+bash scripts/run.sh
+# (or: screen -S ndbot -X quit && screen -dmS ndbot bash scripts/run.sh)
 ```
 
 ---
@@ -146,5 +170,7 @@ pm2 restart nd-bot --update-env
   tunnel (`ssh -L 3853:localhost:3853 user@vps`) - do **not** bind it to `0.0.0.0` /
   expose it publicly without auth.
 - **Secrets:** `.env` is gitignored. Never commit it; never paste tokens/passwords into chat.
-- **Memory:** PM2 restarts the bot if it exceeds `max_memory_restart` (set in
-  ecosystem.config.cjs) - protects a small VPS from OOM.
+- **screen vs PM2:** this guide uses `screen` + `scripts/run.sh` (crash-restart) + a
+  `@reboot` cron (reboot-survival). PM2 (`pm2 start ecosystem.config.cjs && pm2 save &&
+  pm2 startup`) is an equivalent alternative and is still what the local Windows PC uses;
+  pick one supervisor on the VPS, not both (they would fight over the port + single-instance lock).

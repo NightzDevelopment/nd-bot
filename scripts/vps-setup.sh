@@ -42,26 +42,33 @@ fi
 echo "==> Installing dependencies..."
 bun install
 
-# 5. PM2 (supervisor). Installed via npm if missing.
-if ! command -v pm2 >/dev/null 2>&1; then
-  echo "==> Installing PM2..."
-  npm install -g pm2
+# 5. screen (session manager) + resilient runner.
+if ! command -v screen >/dev/null 2>&1; then
+  echo "==> Installing screen..."
+  sudo apt-get install -y screen || echo "!! install screen manually: sudo apt-get install -y screen"
+fi
+chmod +x scripts/run.sh
+
+# 6. (Re)start the bot in a detached screen session named 'ndbot'.
+if screen -ls 2>/dev/null | grep -q "\.ndbot"; then
+  echo "==> Restarting existing 'ndbot' screen session..."
+  screen -S ndbot -X quit || true
+  sleep 1
+fi
+echo "==> Starting bot in screen session 'ndbot'..."
+screen -dmS ndbot bash scripts/run.sh
+
+# 7. Reboot survival via crontab (@reboot relaunches the screen session).
+RUN_PATH="$ROOT/scripts/run.sh"
+CRON_LINE="@reboot screen -dmS ndbot bash $RUN_PATH"
+if ! crontab -l 2>/dev/null | grep -qF "$RUN_PATH"; then
+  ( crontab -l 2>/dev/null; echo "$CRON_LINE" ) | crontab - && \
+    echo "==> Added @reboot cron so the bot comes back after a server reboot." || \
+    echo "!! Could not set crontab; add manually:  $CRON_LINE"
 fi
 
-# 6. Start or reload under PM2.
-if pm2 describe nd-bot >/dev/null 2>&1; then
-  echo "==> Reloading nd-bot..."
-  pm2 restart nd-bot --update-env
-else
-  echo "==> Starting nd-bot..."
-  pm2 start ecosystem.config.cjs
-fi
-
-# 7. Persist process list so it survives reboots.
-pm2 save
-
 echo ""
-echo "==> Done. If this is the first ever boot, run ONCE to survive server reboots:"
-echo "      pm2 startup    # then copy/paste/run the command it prints"
-echo ""
-echo "==> Check it:  pm2 logs nd-bot --lines 40   (look for 'Logged in as ...')"
+echo "==> Done. The bot runs in a detached screen session (auto-restarts on crash)."
+echo "==> Watch logs:   screen -r ndbot     (Ctrl+A then D to detach)"
+echo "==>           or:  tail -f logs/bot.log"
+echo "==> Stop:         screen -r ndbot, then Ctrl+C   (or: screen -S ndbot -X quit)"
