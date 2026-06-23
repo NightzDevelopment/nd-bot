@@ -49,18 +49,18 @@ if ! command -v screen >/dev/null 2>&1; then
 fi
 chmod +x scripts/run.sh
 
-# 6. (Re)start the bot in a detached screen session named 'ndbot'.
-if screen -ls 2>/dev/null | grep -q "\.ndbot"; then
-  echo "==> Restarting existing 'ndbot' screen session..."
-  screen -S ndbot -X quit || true
+# 6. (Re)start the bot in a detached screen session named 'nd-bot'.
+if screen -ls 2>/dev/null | grep -q "\.nd-bot"; then
+  echo "==> Restarting existing 'nd-bot' screen session..."
+  screen -S nd-bot -X quit || true
   sleep 1
 fi
-echo "==> Starting bot in screen session 'ndbot'..."
-screen -dmS ndbot bash scripts/run.sh
+echo "==> Starting bot in screen session 'nd-bot'..."
+screen -dmS nd-bot bash scripts/run.sh
 
 # 7. Reboot survival via crontab (@reboot relaunches the screen session).
 RUN_PATH="$ROOT/scripts/run.sh"
-CRON_LINE="@reboot screen -dmS ndbot bash $RUN_PATH"
+CRON_LINE="@reboot screen -dmS nd-bot bash $RUN_PATH"
 if ! crontab -l 2>/dev/null | grep -qF "$RUN_PATH"; then
   ( crontab -l 2>/dev/null; echo "$CRON_LINE" ) | crontab - && \
     echo "==> Added @reboot cron so the bot comes back after a server reboot." || \
@@ -69,6 +69,6 @@ fi
 
 echo ""
 echo "==> Done. The bot runs in a detached screen session (auto-restarts on crash)."
-echo "==> Watch logs:   screen -r ndbot     (Ctrl+A then D to detach)"
+echo "==> Watch logs:   screen -r nd-bot     (Ctrl+A then D to detach)"
 echo "==>           or:  tail -f logs/bot.log"
-echo "==> Stop:         screen -r ndbot, then Ctrl+C   (or: screen -S ndbot -X quit)"
+echo "==> Stop:         screen -r nd-bot, then Ctrl+C   (or: screen -S nd-bot -X quit)"

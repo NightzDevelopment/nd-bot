@@ -1,7 +1,8 @@
 # Deploying the bot to an always-online Linux VPS
 
 This runs the bot 24/7 on a Linux server (so it stays online when your PC is off),
-under PM2 with reboot-survival. The bot uses the **Bun** runtime and a local
+kept alive in a `screen` session with crash-restart + reboot-survival. The bot uses
+the **Bun** runtime and a local
 **SQLite** database file. It does **not** use MySQL, so you do not need any MySQL
 credentials (the `faxstore` DB is unrelated and should be left alone).
 
@@ -104,23 +105,23 @@ sudo apt-get install -y screen        # the session manager (if not already pres
 
 ```bash
 chmod +x scripts/run.sh
-screen -dmS ndbot bash scripts/run.sh   # start, detached (survives logout)
+screen -dmS nd-bot bash scripts/run.sh   # start, detached (survives logout)
 ```
 
 Or interactively (matches the Weblutions guide style):
 ```bash
-screen -S ndbot          # create + enter the session
+screen -S nd-bot          # create + enter the session
 bash scripts/run.sh      # start the bot
 # detach and leave it running: press Ctrl+A then D
 ```
 
 screen cheatsheet:
 ```bash
-screen -r ndbot          # reattach to watch live logs
+screen -r nd-bot          # reattach to watch live logs
 # Ctrl+A then D          # detach again (bot keeps running)
 # Ctrl+C (while attached)# stop the bot gracefully (the run loop then exits)
 screen -ls               # list sessions
-screen -S ndbot -X quit  # force-kill the session
+screen -S nd-bot -X quit  # force-kill the session
 ```
 
 ### Survive a server reboot
@@ -130,7 +131,7 @@ crontab -e
 ```
 add this line (adjust the path), then save:
 ```
-@reboot screen -dmS ndbot bash /home/nd-bot/scripts/run.sh
+@reboot screen -dmS nd-bot bash /home/nd-bot/scripts/run.sh
 ```
 Now: crash → `run.sh` restarts it; reboot → cron relaunches the screen session. That is
 the full "always online" guarantee, the screen way.
@@ -140,7 +141,7 @@ the full "always online" guarantee, the screen way.
 ## 7. Verify
 
 ```bash
-screen -r ndbot          # attach; you should see "Logged in as <your new bot>#1234"
+screen -r nd-bot          # attach; you should see "Logged in as <your new bot>#1234"
 ```
 (`Ctrl+A` then `D` to detach.) Logs are also appended to `logs/bot.log`:
 ```bash
@@ -155,9 +156,9 @@ tail -f logs/bot.log
 cd /home/nd-bot
 git pull                 # (or re-upload changed files via WinSCP)
 bun install              # only if dependencies changed
-screen -r ndbot          # attach, Ctrl+C to stop, then re-run:
+screen -r nd-bot          # attach, Ctrl+C to stop, then re-run:
 bash scripts/run.sh
-# (or: screen -S ndbot -X quit && screen -dmS ndbot bash scripts/run.sh)
+# (or: screen -S nd-bot -X quit && screen -dmS nd-bot bash scripts/run.sh)
 ```
 
 ---
