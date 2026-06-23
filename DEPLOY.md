@@ -163,13 +163,43 @@ bash scripts/run.sh
 
 ---
 
+## 9. Optional: HTTPS on a domain via NGINX
+
+By default the dashboard is localhost-only (reach it with the SSH tunnel in Notes).
+To serve it on a real domain with HTTPS, put NGINX in front as a reverse proxy. A
+ready-made config (with the WebSocket plumbing the live feed needs) is in
+`deploy/nginx/nd-bot.conf`.
+
+```bash
+sudo apt-get install -y nginx
+sudo cp deploy/nginx/nd-bot.conf /etc/nginx/sites-available/nd-bot.conf
+sudo ln -s /etc/nginx/sites-available/nd-bot.conf /etc/nginx/sites-enabled/nd-bot.conf
+# edit server_name to your domain, and confirm proxy_pass port == DASHBOARD_PORT
+sudo nano /etc/nginx/sites-available/nd-bot.conf
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Then add free auto-renewing HTTPS (certbot rewrites the config to add the 443 block
+and an HTTP->HTTPS redirect):
+```bash
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d bot.example.com
+```
+
+Point your domain's DNS A record at the VPS first. Keep `DASHBOARD_HOST=127.0.0.1`
+(the default) so the bot is reachable **only** through NGINX, never directly. The
+config also supports an IP allowlist or NGINX basic-auth as extra hardening
+(commented at the bottom of the file).
+
+---
+
 ## Notes
 
 - **Database:** a local SQLite file under `data/`. Back it up periodically
   (`cp data/*.sqlite ~/backups/`). Do not point the bot at MySQL/FaxStore.
 - **Dashboard:** binds to `127.0.0.1:3853` by default. Reach it from your PC with an SSH
-  tunnel (`ssh -L 3853:localhost:3853 user@vps`) - do **not** bind it to `0.0.0.0` /
-  expose it publicly without auth.
+  tunnel (`ssh -L 3853:localhost:3853 user@vps`), or expose it on a domain with HTTPS via
+  NGINX (section 9). Do **not** bind it to `0.0.0.0` / expose the raw port publicly.
 - **Secrets:** `.env` is gitignored. Never commit it; never paste tokens/passwords into chat.
 - **screen vs PM2:** this guide uses `screen` + `scripts/run.sh` (crash-restart) + a
   `@reboot` cron (reboot-survival). PM2 (`pm2 start ecosystem.config.cjs && pm2 save &&
