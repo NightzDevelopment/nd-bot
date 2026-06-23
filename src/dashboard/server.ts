@@ -55,6 +55,12 @@ import { broadcastBotRestarted, broadcastConfigChanged, wsManager } from './webs
 const PUBLIC_DIR = join(import.meta.dir, '../../public/admin')
 const PROJECT_ROOT = join(import.meta.dir, '../..')
 
+// Cache-buster for static assets. NGINX serves /lib, /styles, /pages with no
+// cache validators, so browsers heuristically cache stale JS/CSS across deploys.
+// Stamping a per-boot version onto the asset URLs (the bot restarts on every
+// deploy) forces a fresh fetch without needing a hard refresh.
+const ASSET_VERSION = Date.now().toString(36)
+
 const MAX_LOG_TAIL_BYTES = 5 * 1024 * 1024
 
 /** PM2 log paths relative to repo root (see ecosystem.config.cjs `logs/`). */
@@ -366,6 +372,11 @@ async function readIndexHtmlWithToken(viaProxy = false): Promise<Response | null
   } catch {
     return null
   }
+  // Cache-bust local JS/CSS so a deploy is picked up without a hard refresh.
+  html = html.replace(
+    /(src|href)="(\/[^"?]+\.(?:js|css))"/g,
+    (_m, attr, path) => `${attr}="${path}?v=${ASSET_VERSION}"`,
+  )
   const token = expectedToken()
   // SECURITY: never inject the token on a PUBLIC deployment - DASHBOARD_PUBLIC_URL set,
   // OR the request arrived through a reverse proxy (X-Forwarded-For, e.g. NGINX). Else
