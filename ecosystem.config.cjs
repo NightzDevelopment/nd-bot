@@ -22,6 +22,8 @@ module.exports = {
       exp_backoff_restart_delay: 100,
       max_restarts: 30,
       restart_delay: 3000,
+      /** Restart if memory exceeds this (protects a small VPS from OOM). */
+      max_memory_restart: '768M',
       /** Optional: restart daily at low traffic (comment out if you do not want this). */
       // cron_restart: '0 5 * * *',
       error_file: './logs/pm2-error.log',
