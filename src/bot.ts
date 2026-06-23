@@ -66,7 +66,16 @@ import { acquireInstanceLock } from './utils/single-instance.ts'
 
 validateConfigOrExit()
 /** Listens as soon as env is valid; does not wait for Discord `ready` (so you can use it with an invalid/missing bot token). */
-startDashboard()
+// The dashboard is secondary: a bind failure (e.g. port already in use by another
+// instance) must NOT crash the bot - Discord connectivity is the primary job.
+try {
+  startDashboard()
+} catch (e) {
+  console.error(
+    '[dashboard] failed to start (continuing without it; is the port already in use?):',
+    e instanceof Error ? e.message : e,
+  )
+}
 
 const client = new Client({
   intents: [
