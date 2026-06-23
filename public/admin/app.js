@@ -28,9 +28,121 @@ const PAGES = {
 }
 
 let currentPage = 'dashboard'
+let currentGroup = null
+
+// Merged nav: a "group" is one sidebar item that shows a tab bar to switch
+// between several existing sub-pages (their markup + init logic are unchanged).
+const GROUPS = {
+  mod: {
+    title: 'Moderation',
+    tabs: [
+      { id: 'members', label: 'Members' },
+      { id: 'moderation', label: 'Enforcement' },
+    ],
+  },
+  econ: {
+    title: 'Economy',
+    tabs: [
+      { id: 'levels', label: 'Levels' },
+      { id: 'economy', label: 'Economy' },
+      { id: 'shop', label: 'Shop' },
+    ],
+  },
+  community: {
+    title: 'Community',
+    tabs: [
+      { id: 'suggestions', label: 'Suggestions' },
+      { id: 'giveaways', label: 'Giveaways' },
+      { id: 'polls', label: 'Polls' },
+      { id: 'counters', label: 'Counters' },
+    ],
+  },
+  tools: {
+    title: 'Developer Tools',
+    tabs: [
+      { id: 'terminal', label: 'Terminal' },
+      { id: 'rag-manager', label: 'RAG Manager' },
+      { id: 'db-editor', label: 'Database' },
+      { id: 'theme-builder', label: 'Theme' },
+    ],
+  },
+  sys: {
+    title: 'Settings',
+    tabs: [
+      { id: 'configuration', label: 'Configuration' },
+      { id: 'settings', label: 'Preferences' },
+    ],
+  },
+}
+
+function ensureTabbar() {
+  let bar = document.getElementById('group-tabbar')
+  if (!bar) {
+    bar = document.createElement('div')
+    bar.id = 'group-tabbar'
+    bar.className = 'group-tabbar'
+    const content = document.querySelector('.dashboard-content')
+    if (content) content.insertBefore(bar, content.firstChild)
+  }
+  return bar
+}
+
+function showGroup(groupKey, subId) {
+  const group = GROUPS[groupKey]
+  if (!group) return
+  currentGroup = groupKey
+
+  let saved = null
+  try {
+    saved = localStorage.getItem(`group-${groupKey}`)
+  } catch {}
+  const valid = (id) => group.tabs.some((t) => t.id === id)
+  const sub = valid(subId) ? subId : valid(saved) ? saved : group.tabs[0].id
+  try {
+    localStorage.setItem(`group-${groupKey}`, sub)
+  } catch {}
+
+  // Tab bar
+  const bar = ensureTabbar()
+  bar.innerHTML = group.tabs
+    .map((t) => `<button class="group-tab${t.id === sub ? ' active' : ''}" data-sub="${t.id}">${t.label}</button>`)
+    .join('')
+  bar.style.display = 'flex'
+  bar.querySelectorAll('.group-tab').forEach((btn) => {
+    btn.addEventListener('click', () => showGroup(groupKey, btn.dataset.sub))
+  })
+
+  // Show the active sub-page
+  Object.keys(PAGES).forEach((name) => {
+    const el = document.querySelector(PAGES[name].selector)
+    if (el) el.style.display = 'none'
+  })
+  const pageElem = document.querySelector(PAGES[sub] ? PAGES[sub].selector : `#page-${sub}`)
+  if (pageElem) pageElem.style.display = 'block'
+
+  // Active nav = the group button
+  document.querySelectorAll('.nav-link').forEach((l) => l.classList.remove('active'))
+  const navBtn = document.querySelector(`[data-group="${groupKey}"]`)
+  if (navBtn) navBtn.classList.add('active')
+
+  const titleEl = document.getElementById('topbar-title')
+  if (titleEl) titleEl.textContent = group.title
+
+  try {
+    localStorage.setItem('dashboardPage', `g:${groupKey}`)
+  } catch {}
+  if (window.location.hash !== `#${groupKey}`) {
+    history.replaceState(null, '', `#${groupKey}`)
+  }
+
+  loadPageLogic(sub)
+}
 
 function showPage(pageName) {
   if (!PAGES[pageName]) return
+  currentGroup = null
+  const tabbar = document.getElementById('group-tabbar')
+  if (tabbar) tabbar.style.display = 'none'
 
   // Hide all pages
   Object.keys(PAGES).forEach((name) => {
@@ -68,16 +180,26 @@ function showPage(pageName) {
 }
 
 function getInitialPage() {
-  // 1) URL hash takes priority (allows linking)
+  // 1) URL hash takes priority (page OR group)
   const hash = window.location.hash.replace('#', '')
-  if (hash && PAGES[hash]) return hash
-  // 2) Then localStorage
+  if (hash && (PAGES[hash] || GROUPS[hash])) return hash
+  // 2) Then localStorage (groups stored as "g:<key>")
   try {
     const saved = localStorage.getItem('dashboardPage')
-    if (saved && PAGES[saved]) return saved
+    if (saved) {
+      if (saved.startsWith('g:') && GROUPS[saved.slice(2)]) return saved.slice(2)
+      if (PAGES[saved]) return saved
+    }
   } catch {}
   // 3) Default
   return 'dashboard'
+}
+
+// Dispatch a target to the right handler (group tab page vs single page).
+function navigateTo(target) {
+  if (GROUPS[target]) showGroup(target)
+  else if (PAGES[target]) showPage(target)
+  else showPage('dashboard')
 }
 
 async function loadPageLogic(pageName) {
@@ -194,12 +316,42 @@ function applyTheme(theme) {
 }
 
 function setupNavigation() {
-  const navLinks = document.querySelectorAll('[data-page]')
-  navLinks.forEach((link) => {
+  document.querySelectorAll('[data-page]').forEach((link) => {
     link.addEventListener('click', (e) => {
       e.preventDefault()
-      const page = link.getAttribute('data-page')
-      showPage(page)
+      showPage(link.getAttribute('data-page'))
+    })
+  })
+  document.querySelectorAll('[data-group]').forEach((link) => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault()
+      showGroup(link.getAttribute('data-group'))
+    })
+  })
+}
+
+// Collapsible sidebar sections: click a section label to fold its group away.
+function setupCollapsibleSections() {
+  document.querySelectorAll('.sidebar-section-label[data-section]').forEach((label) => {
+    const key = label.getAttribute('data-section')
+    const body = document.querySelector(`[data-section-body="${key}"]`)
+    if (!body) return
+    let collapsed = false
+    try {
+      collapsed = localStorage.getItem(`section-${key}`) === '1'
+    } catch {}
+    const apply = () => {
+      body.style.display = collapsed ? 'none' : ''
+      label.classList.toggle('collapsed', collapsed)
+    }
+    apply()
+    label.style.cursor = 'pointer'
+    label.addEventListener('click', () => {
+      collapsed = !collapsed
+      try {
+        localStorage.setItem(`section-${key}`, collapsed ? '1' : '0')
+      } catch {}
+      apply()
     })
   })
 }
@@ -228,9 +380,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   initializeTheme()
   setupNavigation()
+  setupCollapsibleSections()
   setupThemeToggle()
   setupAutoLogout()
-  showPage(getInitialPage())
+  navigateTo(getInitialPage())
 })
 
 // ── Auto sign-out: clear the token and return to login after inactivity ──────
@@ -262,8 +415,9 @@ function setupAutoLogout() {
 
 // Handle browser back/forward: sync with hash
 window.addEventListener('hashchange', () => {
-  const page = window.location.hash.replace('#', '')
-  if (PAGES[page] && page !== currentPage) showPage(page)
+  const target = window.location.hash.replace('#', '')
+  if (GROUPS[target] && target !== currentGroup) showGroup(target)
+  else if (PAGES[target] && target !== currentPage) showPage(target)
 })
 
 // Export for use in page scripts

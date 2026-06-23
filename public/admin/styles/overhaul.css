@@ -437,3 +437,53 @@
     grid-column: span 12;
   }
 }
+
+/* ── Merged-page tab bar ────────────────────────────────────────── */
+.group-tabbar {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+.group-tab {
+  padding: 0.5rem 1rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.group-tab:hover {
+  color: var(--text-primary);
+}
+.group-tab.active {
+  color: var(--nd-blue-bright);
+  border-bottom-color: var(--nd-blue);
+  font-weight: 600;
+}
+
+/* ── Collapsible sidebar sections ───────────────────────────────── */
+.sidebar-section-label[data-section] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+}
+.sidebar-section-label[data-section]::after {
+  content: "\25BE";
+  font-size: 0.7em;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+.sidebar-section-label[data-section].collapsed::after {
+  transform: rotate(-90deg);
+}
+.sidebar-section-label[data-section]:hover {
+  color: var(--text-secondary);
+}

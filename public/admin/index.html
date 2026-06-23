@@ -212,45 +212,35 @@
     <aside class="dashboard-sidebar">
       <div class="dashboard-logo"><strong>DASHBOARD</strong></div>
 
-      <div class="sidebar-section-label">Overview</div>
-      <nav class="dashboard-nav">
+      <div class="sidebar-section-label" data-section="overview">Overview</div>
+      <nav class="dashboard-nav" data-section-body="overview">
         <button class="nav-link active" data-page="dashboard">⬡ Command</button>
         <button class="nav-link" data-page="analytics">▤ Telemetry</button>
       </nav>
 
-      <div class="sidebar-section-label">Operations</div>
-      <nav class="dashboard-nav">
-        <button class="nav-link" data-page="members">◇ Members</button>
-        <button class="nav-link" data-page="moderation">⚔ Enforcement</button>
+      <div class="sidebar-section-label" data-section="operations">Operations</div>
+      <nav class="dashboard-nav" data-section-body="operations">
+        <button class="nav-link" data-group="mod">⚔ Moderation</button>
         <button class="nav-link" data-page="commands">⌘ Commands</button>
         <button class="nav-link" data-page="tickets">◉ Tickets</button>
-        <button class="nav-link" data-page="levels">★ Levels</button>
-        <button class="nav-link" data-page="economy">$ Economy</button>
-        <button class="nav-link" data-page="shop">◆ Shop</button>
-        <button class="nav-link" data-page="counters">◇ Counters</button>
-        <button class="nav-link" data-page="suggestions">◆ Suggestions</button>
-        <button class="nav-link" data-page="giveaways">◇ Giveaways</button>
-        <button class="nav-link" data-page="polls">▤ Polls</button>
+        <button class="nav-link" data-group="econ">$ Economy</button>
+        <button class="nav-link" data-group="community">◆ Community</button>
         <button class="nav-link" data-page="scheduler">◆ Scheduler</button>
       </nav>
 
-      <div class="sidebar-section-label">Logs</div>
-      <nav class="dashboard-nav">
+      <div class="sidebar-section-label" data-section="logs">Logs</div>
+      <nav class="dashboard-nav" data-section-body="logs">
         <button class="nav-link" data-page="audit-logs">◈ Audit Logs</button>
       </nav>
 
-      <div class="sidebar-section-label">Control Room</div>
-      <nav class="dashboard-nav">
-        <button class="nav-link" data-page="terminal">▤ Terminal</button>
-        <button class="nav-link" data-page="rag-manager">◇ RAG Manager</button>
-        <button class="nav-link" data-page="db-editor">◆ Database Edit</button>
-        <button class="nav-link" data-page="theme-builder">⬡ Theme Builder</button>
+      <div class="sidebar-section-label" data-section="tools">Tools</div>
+      <nav class="dashboard-nav" data-section-body="tools">
+        <button class="nav-link" data-group="tools">▤ Developer Tools</button>
       </nav>
 
-      <div class="sidebar-section-label">System</div>
-      <nav class="dashboard-nav">
-        <button class="nav-link" data-page="configuration">⚙ Configuration</button>
-        <button class="nav-link" data-page="settings">▣ Preferences</button>
+      <div class="sidebar-section-label" data-section="system">System</div>
+      <nav class="dashboard-nav" data-section-body="system">
+        <button class="nav-link" data-group="sys">⚙ Settings</button>
       </nav>
 
       <div class="dashboard-footer">
