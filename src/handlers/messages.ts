@@ -429,11 +429,8 @@ export function registerMessageHandler(client: Client): void {
       if (imageAtt) {
         try {
           console.log(`[ocr] preprocessing image attachment: ${imageAtt.name}`)
-          const base64Image = await fetchAttachmentAsBase64(imageAtt)
-          ocrText = await performOcr({
-            mimeType: imageAtt.contentType || 'image/png',
-            dataBase64: base64Image,
-          })
+          const image = await fetchAttachmentAsBase64(imageAtt)
+          ocrText = await performOcr(image)
           if (ocrText.trim()) {
             console.log(
               `[ocr] extracted ${ocrText.split('\n').length} lines of text from image attachment`,
