@@ -16,14 +16,23 @@ window.openMemberCard = async function openMemberCard(userId, opts = {}) {
     width: '640px',
   })
 
+  // Time-box each request: a hung fetch (e.g. a Discord lookup that never
+  // settles) must not freeze the modal on "Loading..." forever. On timeout we
+  // fall back so the card still renders with whatever resolved.
+  const withTimeout = (p, ms, fallback) =>
+    Promise.race([
+      Promise.resolve(p).catch(() => fallback),
+      new Promise((res) => setTimeout(() => res(fallback), ms)),
+    ])
+
   try {
     const [memberRes, ticketsRes, econRes, usersRes] = await Promise.all([
-      window.apiClient.getMember(userId).catch((e) => ({ ok: false, error: String(e) })),
-      window.apiClient
-        .get(`/api/members/${encodeURIComponent(userId)}/tickets`)
-        .catch(() => ({ ok: false })),
-      window.apiClient.getEconomyUser(userId).catch(() => ({ ok: false })),
-      window.apiClient.resolveUsers([userId]).catch(() => ({ ok: false })),
+      withTimeout(window.apiClient.getMember(userId), 12000, { ok: false, error: 'Request timed out' }),
+      withTimeout(window.apiClient.get(`/api/members/${encodeURIComponent(userId)}/tickets`), 8000, {
+        ok: false,
+      }),
+      withTimeout(window.apiClient.getEconomyUser(userId), 8000, { ok: false }),
+      withTimeout(window.apiClient.resolveUsers([userId]), 8000, { ok: false }),
     ])
 
     if (!memberRes.ok) {

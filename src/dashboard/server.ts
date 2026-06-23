@@ -2508,7 +2508,12 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
               await Promise.all(
                 ids.map(async (id) => {
                   try {
-                    const member = guild ? await guild.members.fetch(id).catch(() => null) : null
+                    // Cache-first: a bulk members.fetch already populated the cache,
+                    // so this avoids a fresh Discord fetch that could queue/hang.
+                    const member = guild
+                      ? (guild.members.cache.get(id) ??
+                        (await guild.members.fetch(id).catch(() => null)))
+                      : null
                     if (member) {
                       result[id] = {
                         username: member.user.username,
@@ -2517,7 +2522,9 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
                       }
                     } else {
                       // Try fetching user directly (may not be in guild)
-                      const user = await client.users.fetch(id).catch(() => null)
+                      const user =
+                        client.users.cache.get(id) ??
+                        (await client.users.fetch(id).catch(() => null))
                       if (user) {
                         result[id] = {
                           username: user.username,
