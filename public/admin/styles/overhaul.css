@@ -21,6 +21,33 @@
   /* Amber config-alert accent. */
   --warning: #f59e0b;
   --warn: #f59e0b;
+  /* Softer shadows (the old ones read too heavy on the flat terminal base). */
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.34);
+}
+
+/* ── Sidebar + topbar: match the #0f1015 terminal base ──────────── */
+.dashboard-sidebar {
+  background: linear-gradient(180deg, rgba(18, 19, 26, 0.92) 0%, rgba(13, 14, 19, 0.96) 100%);
+  border-right: 1px solid var(--border-color);
+}
+.dashboard-topbar {
+  background: linear-gradient(180deg, rgba(18, 19, 26, 0.82), rgba(13, 14, 19, 0.6));
+  border-bottom: 1px solid var(--border-color);
+}
+/* Active nav item: electric-blue wash + glowing left rail. */
+.nav-link.active {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.14) 0%, transparent 100%);
+  color: var(--nd-blue-bright);
+}
+.nav-link.active::before {
+  background: var(--nd-blue);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+}
+/* Section labels: slightly wider tracking for the cyber feel. */
+.sidebar-section-label {
+  letter-spacing: 0.14em;
 }
 
 /* ── The core component: the premium glass panel ────────────────── */
