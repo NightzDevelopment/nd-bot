@@ -29,6 +29,15 @@ fi
 # 3. Dirs the bot writes to.
 mkdir -p logs data
 
+# 3b. Fonts for canvas image cards (best-effort; needs apt + sudo).
+if command -v apt-get >/dev/null 2>&1; then
+  if ! fc-list 2>/dev/null | grep -qi liberation; then
+    echo "==> Installing fonts (image cards)..."
+    sudo apt-get install -y fonts-liberation fontconfig || \
+      echo "!! Could not install fonts automatically; run: sudo apt-get install -y fonts-liberation fontconfig"
+  fi
+fi
+
 # 4. Dependencies.
 echo "==> Installing dependencies..."
 bun install

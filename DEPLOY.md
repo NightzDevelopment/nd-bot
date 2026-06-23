@@ -56,6 +56,13 @@ bun --version    # confirm it works
 
 `node .` will NOT work for this bot - it requires Bun (uses bun:sqlite + Bun.serve).
 
+Also install fonts so image cards (profile/level/stock/casino cards) render instead of
+showing blank boxes - the renderers use Arial/Courier New which a bare Linux server lacks:
+```bash
+sudo apt-get install -y fonts-liberation fontconfig
+```
+The bot registers these under the Arial/Courier New aliases at startup automatically.
+
 ---
 
 ## 4. Create the `.env` on the server

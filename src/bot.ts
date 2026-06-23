@@ -121,6 +121,9 @@ function syncPresenceStats(c: Client): void {
 client.once(Events.ClientReady, async (c) => {
   setDiscordReady(c.user.tag)
   setDiscordClient(c)
+  // Register canvas fonts (Arial/Courier New aliases) so image cards render on Linux.
+  const { registerCanvasFonts } = await import('./lib/fonts.ts')
+  registerCanvasFonts()
   syncPresenceStats(c)
   setInterval(() => syncPresenceStats(c), 30_000).unref?.()
   await ensureDataDir()
