@@ -4,7 +4,7 @@
  * Incorporates safe automatic migrations from legacy JSON stores.
  */
 import { Database } from 'bun:sqlite'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { readFile, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { DATA_DIR } from '../config.ts'
@@ -15,6 +15,11 @@ let dbInstance: Database | null = null
 export function getDb(): Database {
   if (dbInstance) return dbInstance
 
+  // bun:sqlite's create:true makes the FILE but not a missing parent dir; on a
+  // fresh VPS DATA_DIR may not exist yet (dashboard routes can hit getDb before
+  // ensureDataDir runs). mkdirSync is idempotent and removes the ordering race.
+  mkdirSync(DATA_DIR, { recursive: true })
+
   dbInstance = new Database(DB_PATH, { create: true })
   // Enable WAL mode for high concurrency
   dbInstance.exec('PRAGMA journal_mode = WAL;')
@@ -24,6 +29,21 @@ export function getDb(): Database {
   runMigrations(dbInstance)
 
   return dbInstance
+}
+
+/**
+ * Checkpoint the WAL and close the DB cleanly. Call from graceful shutdown so a
+ * PM2 restart/reboot does not leave the WAL growing uncheckpointed across cycles.
+ */
+export function closeDb(): void {
+  if (!dbInstance) return
+  try {
+    dbInstance.exec('PRAGMA wal_checkpoint(TRUNCATE);')
+    dbInstance.close()
+  } catch {
+    // best-effort; process is exiting anyway
+  }
+  dbInstance = null
 }
 
 function initSchema(db: Database): void {

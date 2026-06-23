@@ -10,7 +10,15 @@ import { captureException, flushSentry, initSentry } from './lib/sentry.ts'
 
 const log = childLogger('process')
 
-let unhandledRejectionCount = 0
+/**
+ * Timestamps of recent unhandled rejections. We only force-exit on a genuine
+ * crash *loop* (many within a short window), not on sparse transient errors
+ * accumulated over days of uptime - an unbounded lifetime counter would slowly
+ * guarantee a self-kill on a 24/7 bot.
+ */
+const rejectionTimes: number[] = []
+const REJECTION_WINDOW_MS = 60_000
+const REJECTION_BURST_LIMIT = 8
 
 export function installProcessGuards(): void {
   initSentry()
@@ -22,16 +30,21 @@ export function installProcessGuards(): void {
   })
 
   process.on('unhandledRejection', (reason, promise) => {
-    unhandledRejectionCount += 1
+    const now = Date.now()
+    // Drop timestamps outside the sliding window.
+    while (rejectionTimes.length > 0 && now - (rejectionTimes[0] as number) > REJECTION_WINDOW_MS) {
+      rejectionTimes.shift()
+    }
+    rejectionTimes.push(now)
     const err = reason instanceof Error ? reason : new Error(String(reason))
     log.error(
-      { err, count: unhandledRejectionCount, promise },
-      `[process] unhandledRejection #${unhandledRejectionCount}`,
+      { err, recent: rejectionTimes.length, promise },
+      `[process] unhandledRejection (${rejectionTimes.length} in last ${REJECTION_WINDOW_MS / 1000}s)`,
     )
-    captureException(err, { source: 'unhandledRejection', count: unhandledRejectionCount })
+    captureException(err, { source: 'unhandledRejection', recent: rejectionTimes.length })
 
-    if (unhandledRejectionCount >= 5) {
-      log.fatal('[process] too many unhandled rejections, exiting so supervisor can restart')
+    if (rejectionTimes.length >= REJECTION_BURST_LIMIT) {
+      log.fatal('[process] unhandled-rejection burst, exiting so supervisor can restart')
       void flushSentry().finally(() => process.exit(1))
     }
   })

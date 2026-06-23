@@ -119,13 +119,10 @@ export function acquireInstanceLock(): void {
     }
   }
 
-  process.once('SIGINT', () => {
-    release()
-    process.exit(0)
-  })
-  process.once('SIGTERM', () => {
-    release()
-    process.exit(0)
-  })
+  // Release the lock on ANY exit (including the graceful process.exit(0) from
+  // bot.ts's shutdown handler). We intentionally do NOT register SIGINT/SIGTERM
+  // handlers here: bot.ts owns signal handling so it can run async cleanup
+  // (flush audit, destroy the gateway, checkpoint+close the DB) BEFORE exiting.
+  // A synchronous process.exit(0) here would preempt that cleanup.
   process.on('exit', release)
 }

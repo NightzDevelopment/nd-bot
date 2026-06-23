@@ -209,6 +209,39 @@ client.once(Events.ClientReady, async (c) => {
   startAuditAlertPoller(c)
 })
 
+// Graceful shutdown: PM2 sends SIGINT on restart and SIGTERM on stop/reboot. Flush
+// the audit buffer, close the Discord gateway, and checkpoint+close SQLite cleanly
+// so restarts don't drop audit entries, leave a zombie session, or grow the WAL.
+// A hard-timeout fallback guarantees we still exit even if a step hangs.
+let shuttingDown = false
+async function gracefulShutdown(signal: string): Promise<void> {
+  if (shuttingDown) return
+  shuttingDown = true
+  console.log(`[bot] ${signal} received; shutting down gracefully...`)
+  const hardExit = setTimeout(() => process.exit(0), 5000)
+  hardExit.unref?.()
+  try {
+    const { flushAuditBuffer } = await import('./dashboard/audit.ts')
+    await flushAuditBuffer().catch(() => {})
+  } catch {
+    /* audit optional */
+  }
+  try {
+    await client.destroy()
+  } catch {
+    /* best-effort */
+  }
+  try {
+    const { closeDb } = await import('./services/nd-db.ts')
+    closeDb()
+  } catch {
+    /* best-effort */
+  }
+  process.exit(0)
+}
+process.once('SIGINT', () => void gracefulShutdown('SIGINT'))
+process.once('SIGTERM', () => void gracefulShutdown('SIGTERM'))
+
 void (async () => {
   await ensureDataDir()
   acquireInstanceLock()
