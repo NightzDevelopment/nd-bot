@@ -35,6 +35,7 @@ const ERROR_MESSAGES = {
   oauth_user: 'Could not read your Discord profile. Please try again.',
   oauth_not_configured: 'Discord login is not configured yet. Contact an admin.',
   no_dashboard_token: 'Server is missing DASHBOARD_TOKEN. Contact an admin.',
+  idle: 'You were signed out after a period of inactivity. Please sign in again.',
 }
 
 // 1. Success: the callback handed us a token in the URL fragment.

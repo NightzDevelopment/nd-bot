@@ -229,8 +229,36 @@ document.addEventListener('DOMContentLoaded', () => {
   initializeTheme()
   setupNavigation()
   setupThemeToggle()
+  setupAutoLogout()
   showPage(getInitialPage())
 })
+
+// ── Auto sign-out: clear the token and return to login after inactivity ──────
+const IDLE_LOGOUT_MS = 30 * 60 * 1000 // 30 minutes
+let lastActivity = Date.now()
+
+function logout(reason) {
+  try {
+    localStorage.removeItem('dashboardToken')
+    sessionStorage.clear()
+  } catch {}
+  window.location.replace(`/pages/splash.html${reason ? `?error=${reason}` : ''}`)
+}
+// Expose for a manual "Sign out" control if one is added.
+window.ndLogout = () => logout()
+
+function setupAutoLogout() {
+  const mark = () => {
+    lastActivity = Date.now()
+  }
+  for (const ev of ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart']) {
+    window.addEventListener(ev, mark, { passive: true })
+  }
+  // Check once a minute; sign out after the idle window elapses.
+  setInterval(() => {
+    if (Date.now() - lastActivity > IDLE_LOGOUT_MS) logout('idle')
+  }, 60 * 1000)
+}
 
 // Handle browser back/forward: sync with hash
 window.addEventListener('hashchange', () => {

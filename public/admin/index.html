@@ -198,6 +198,15 @@
   </style>
 </head>
 <body>
+  <!-- Auth gate: runs before the dashboard renders. No token => login page first, no flash. -->
+  <script>
+    (function () {
+      var hasToken =
+        (window.__ND_DASH_CONFIG__ && window.__ND_DASH_CONFIG__.preloadedToken) ||
+        localStorage.getItem('dashboardToken')
+      if (!hasToken) location.replace('/pages/splash.html')
+    })()
+  </script>
   <div class="dashboard-container">
     <!-- Sidebar -->
     <aside class="dashboard-sidebar">
