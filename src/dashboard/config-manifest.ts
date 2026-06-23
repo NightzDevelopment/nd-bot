@@ -137,7 +137,7 @@ const ALL_KEYS: readonly string[] = [
   'DASHBOARD_DISCORD_CLIENT_SECRET',
   'DASHBOARD_PUBLIC_URL',
   'DASHBOARD_ADMIN_USER_IDS',
-  'DASHBOARD_ADMIN_ROLE_ID',
+  'DASHBOARD_ADMIN_ROLE_IDS',
   'DASHBOARD_ADMIN_GUILD_ID',
   'DATA_DIR',
   'DEV_BUILD_PATH',
@@ -544,7 +544,7 @@ const HELP: Readonly<Record<string, string>> = {
   DASHBOARD_PUBLIC_URL:
     'Public base URL of the dashboard (e.g. https://bot.nightz.dev). Used to build the OAuth redirect_uri.',
   DASHBOARD_ADMIN_USER_IDS: 'Comma-separated Discord user IDs always granted dashboard admin access.',
-  DASHBOARD_ADMIN_ROLE_ID: 'Holding this role (in DASHBOARD_ADMIN_GUILD_ID) grants dashboard admin access.',
+  DASHBOARD_ADMIN_ROLE_IDS: 'Comma-separated role IDs; holding ANY of them (in DASHBOARD_ADMIN_GUILD_ID) grants dashboard admin access.',
   DASHBOARD_ADMIN_GUILD_ID: 'Guild the admin role is checked in. Defaults to the bot’s primary guild.',
   DASHBOARD_READ_ONLY: 'When on, blocks all writes (PUT/POST). View-only.',
   DASHBOARD_RESTART_ENABLED: 'Allow the Restart button to spawn the restart command.',

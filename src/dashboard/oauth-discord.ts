@@ -6,7 +6,7 @@
  */
 import {
   dashboardAdminGuildId,
-  dashboardAdminRoleId,
+  dashboardAdminRoleIds,
   dashboardAdminUserIds,
   dashboardDiscordClientId,
   dashboardDiscordClientSecret,
@@ -97,10 +97,10 @@ export async function isStillAdmin(discordId: string): Promise<boolean> {
   return ok
 }
 
-/** Admin if allowlisted, OR holding the admin role in the configured guild. */
+/** Admin if allowlisted, OR holding ANY of the admin roles in the configured guild. */
 export async function isAdminDiscordUser(discordId: string): Promise<boolean> {
   if (dashboardAdminUserIds.has(discordId)) return true
-  if (!dashboardAdminRoleId) return false
+  if (dashboardAdminRoleIds.size === 0) return false
   // biome-ignore lint/suspicious/noExplicitAny: discord.js client is type-erased in runtime-state
   const client = getDiscordClient<any>()
   if (!client) return false
@@ -111,7 +111,10 @@ export async function isAdminDiscordUser(discordId: string): Promise<boolean> {
     if (!guild) return false
     const member = await guild.members.fetch(discordId).catch(() => null)
     if (!member) return false
-    return member.roles.cache.has(dashboardAdminRoleId)
+    for (const roleId of dashboardAdminRoleIds) {
+      if (member.roles.cache.has(roleId)) return true
+    }
+    return false
   } catch (e) {
     log.warn({ err: e, discordId }, 'admin role check failed')
     return false

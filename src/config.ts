@@ -880,8 +880,16 @@ export const dashboardPublicUrl = (
 ).replace(/\/+$/, '')
 /** Discord user IDs always granted admin dashboard access. */
 export const dashboardAdminUserIds = parseIdSet(process.env.DASHBOARD_ADMIN_USER_IDS)
-/** Holding this role in DASHBOARD_ADMIN_GUILD_ID grants admin dashboard access. */
-export const dashboardAdminRoleId = process.env.DASHBOARD_ADMIN_ROLE_ID?.trim() || undefined
+/**
+ * Holding ANY of these roles in DASHBOARD_ADMIN_GUILD_ID grants admin dashboard
+ * access. Comma-separated DASHBOARD_ADMIN_ROLE_IDS (plural); the legacy singular
+ * DASHBOARD_ADMIN_ROLE_ID is merged in for backward compatibility.
+ */
+export const dashboardAdminRoleIds = parseIdSet(
+  [process.env.DASHBOARD_ADMIN_ROLE_IDS, process.env.DASHBOARD_ADMIN_ROLE_ID]
+    .filter(Boolean)
+    .join(','),
+)
 /** Guild the admin role is checked in (defaults to the bot's primary guild). */
 export const dashboardAdminGuildId = process.env.DASHBOARD_ADMIN_GUILD_ID?.trim() || undefined
 
