@@ -1,0 +1,14 @@
+# Normalize line endings. The bot deploys to a Linux VPS, where shell scripts
+# MUST be LF (a CRLF shebang line breaks execution). Force LF for scripts and
+# other text so files committed on Windows still work on the server.
+* text=auto eol=lf
+*.sh text eol=lf
+*.cjs text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
+
+# Binary-ish assets: leave untouched.
+*.png binary
+*.jpg binary
+*.zip binary
+*.sqlite binary
