@@ -159,14 +159,26 @@ tail -f logs/bot.log
 
 ## 8. Updating later
 
+A Discord bot has no hot-reload: an update = new code on the VPS + a restart (a few
+seconds). Your **`.env` and `data/` are preserved** every time (git ignores them; the
+zip never contains them), so config + database are never lost.
+
+**One command** (after the new code is on the VPS, by either method below):
 ```bash
-cd /home/nd-discord-gemini-bot
-git pull                 # (or re-upload changed files via WinSCP)
-bun install              # only if dependencies changed
-screen -r nd-bot          # attach, Ctrl+C to stop, then re-run:
-bash scripts/run.sh
-# (or: screen -S nd-bot -X quit && screen -dmS nd-bot bash scripts/run.sh)
+cd /home/nd-bot
+bash scripts/update.sh     # git pull (if a git checkout) + bun install + graceful restart
 ```
+Just restart without pulling: `bash scripts/restart.sh`.
+
+How to get the new code there:
+
+- **Git (recommended)** - the folder must be a `git clone` (has a `.git`). Then on your PC
+  `git push`, and on the VPS just `bash scripts/update.sh`.
+- **WinSCP zip** - on your PC rebuild the bundle and drag it over, then unzip on top:
+  ```bash
+  cd /home && unzip -o nd-bot-deploy.zip   # -o overwrites source files; leaves .env/data alone
+  cd nd-bot && bash scripts/update.sh
+  ```
 
 ---
 
