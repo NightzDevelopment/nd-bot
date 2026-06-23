@@ -34,14 +34,21 @@ Keep the token secret. It goes only in `.env` on the server (never in git, never
 
 ## 2. Get the code onto the VPS
 
+> Folder vs name: the project folder is **`nd-discord-gemini-bot`** (the repo name) - that
+> is what you'll see on the server. The name **`nd-bot`** used elsewhere in this guide is only
+> the *runtime* name (the `screen` session / PM2 process), not the folder. Paths below assume
+> `/home/nd-discord-gemini-bot`; adjust if you put it somewhere else. `scripts/vps-setup.sh`
+> auto-detects its own folder, so the `@reboot` cron line it writes is always correct.
+
 **Option A - git (recommended):** push this repo to GitHub (private), then on the server:
 ```bash
 cd /home
-git clone <your-repo-url> nd-bot && cd nd-bot
+git clone <your-repo-url>        # creates the nd-discord-gemini-bot/ folder
+cd nd-discord-gemini-bot
 ```
 
 **Option B - WinSCP upload:** zip the project folder **excluding** `node_modules/`,
-`.env`, `data/`, and `logs/`, upload it to e.g. `/home/nd-bot`, and unzip there.
+`.env`, `data/`, and `logs/`, upload it to e.g. `/home/nd-discord-gemini-bot`, and unzip there.
 (Those folders are machine-specific or secret; never upload `.env`.)
 
 ---
@@ -69,7 +76,7 @@ The bot registers these under the Arial/Courier New aliases at startup automatic
 ## 4. Create the `.env` on the server
 
 ```bash
-cd /home/nd-bot
+cd /home/nd-discord-gemini-bot
 cp .env.example .env
 nano .env
 ```
@@ -131,7 +138,7 @@ crontab -e
 ```
 add this line (adjust the path), then save:
 ```
-@reboot screen -dmS nd-bot bash /home/nd-bot/scripts/run.sh
+@reboot screen -dmS nd-bot bash /home/nd-discord-gemini-bot/scripts/run.sh
 ```
 Now: crash → `run.sh` restarts it; reboot → cron relaunches the screen session. That is
 the full "always online" guarantee, the screen way.
@@ -153,7 +160,7 @@ tail -f logs/bot.log
 ## 8. Updating later
 
 ```bash
-cd /home/nd-bot
+cd /home/nd-discord-gemini-bot
 git pull                 # (or re-upload changed files via WinSCP)
 bun install              # only if dependencies changed
 screen -r nd-bot          # attach, Ctrl+C to stop, then re-run:
