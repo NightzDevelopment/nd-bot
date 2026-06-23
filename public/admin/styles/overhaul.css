@@ -1,14 +1,31 @@
 /**
- * ND Sentinel v2 - elevation layer.
- * Loaded LAST. Additive premium polish on top of the existing design system,
- * using the established CSS tokens. The headline fix: .glass-panel was referenced
- * across every page but never actually styled (transparent, no border/radius), so
- * the main content panels looked unfinished. This defines it and elevates the rest.
+ * Nightz Development dashboard - elevation + dark-cyber palette layer.
+ * Loaded LAST so these tokens win over styles.css. Deep #0f1015 terminal base,
+ * hairline white/5 borders, neon-green active indicators, electric-blue accents.
  */
 
-/* ── The missing core component: the premium glass panel ─────────── */
+/* ── Palette lock: dark cyber terminal ──────────────────────────── */
+:root {
+  --bg-primary: #0f1015;
+  --bg: #0f1015;
+  --bg-surface: #15161d;
+  --success: #00ff00;
+  --success-bg: rgba(0, 255, 0, 0.08);
+  --border-color: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.1);
+  /* Electric-blue interactive accent. */
+  --nd-blue: #3b82f6;
+  --nd-blue-bright: #60a5fa;
+  --accent: #3b82f6;
+  /* Amber config-alert accent. */
+  --warning: #f59e0b;
+  --warn: #f59e0b;
+}
+
+/* ── The core component: the premium glass panel ────────────────── */
 .glass-panel {
-  background: linear-gradient(180deg, rgba(20, 30, 56, 0.55) 0%, rgba(11, 18, 37, 0.62) 100%);
+  background: linear-gradient(180deg, rgba(22, 24, 33, 0.55) 0%, rgba(15, 16, 21, 0.62) 100%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(18px) saturate(125%);
@@ -66,7 +83,7 @@
 .stat-card {
   background:
     radial-gradient(120% 140% at 100% 0%, var(--nd-blue-soft) 0%, transparent 45%),
-    linear-gradient(180deg, rgba(20, 30, 56, 0.55) 0%, rgba(11, 18, 37, 0.6) 100%);
+    linear-gradient(180deg, rgba(22, 24, 33, 0.55) 0%, rgba(15, 16, 21, 0.6) 100%);
 }
 .stat-value {
   font-size: 2.25rem;
@@ -83,7 +100,7 @@
     0 12px 32px rgba(59, 130, 246, 0.12);
 }
 
-/* ── Sidebar brand: glow the SENTINEL wordmark ──────────────────── */
+/* ── Sidebar brand: glow the wordmark ──────────────────── */
 .dashboard-logo strong {
   text-shadow: 0 0 18px var(--nd-blue-glow);
 }
@@ -106,7 +123,7 @@
 
 /* ── Charts: lift the containers to match panels ────────────────── */
 .chart-container {
-  background: linear-gradient(180deg, rgba(20, 30, 56, 0.5) 0%, rgba(11, 18, 37, 0.58) 100%);
+  background: linear-gradient(180deg, rgba(22, 24, 33, 0.5) 0%, rgba(15, 16, 21, 0.58) 100%);
   border-radius: var(--radius-lg);
   transition:
     border-color 0.2s ease,
@@ -140,9 +157,9 @@
 
 /* ── Motion: pages fade up on activation ────────────────────────── */
 .page.active {
-  animation: sentinel-page-in 0.32s ease both;
+  animation: nd-page-in 0.32s ease both;
 }
-@keyframes sentinel-page-in {
+@keyframes nd-page-in {
   from {
     opacity: 0;
     transform: translateY(8px);
@@ -155,9 +172,9 @@
 .stat-card,
 .glass-panel,
 .chart-container {
-  animation: sentinel-rise 0.4s ease both;
+  animation: nd-rise 0.4s ease both;
 }
-@keyframes sentinel-rise {
+@keyframes nd-rise {
   from {
     opacity: 0;
     transform: translateY(10px);

@@ -24,29 +24,30 @@
   --slate-200: #cbd5e1;
   --slate-100: #e2e8f0;
 
-  /* Semantic tokens: Sentinel default = dark */
-  --bg-primary: #020617;
-  --bg-secondary: rgba(15, 23, 42, 0.72);
-  --bg-tertiary: rgba(30, 41, 59, 0.55);
-  --bg-card: rgba(15, 23, 42, 0.65);
-  --bg-elevated: rgba(20, 30, 56, 0.75);
-  --bg-input: rgba(2, 6, 23, 0.6);
+  /* Semantic tokens: dark cyber terminal (deep #0f1015 base) */
+  --bg-primary: #0f1015;
+  --bg-secondary: rgba(20, 22, 30, 0.72);
+  --bg-tertiary: rgba(30, 33, 44, 0.55);
+  --bg-card: rgba(20, 22, 30, 0.6);
+  --bg-elevated: rgba(26, 29, 40, 0.78);
+  --bg-input: rgba(10, 11, 16, 0.7);
 
-  --text-primary: #e2e8f0;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --text-muted: #475569;
+  --text-primary: #e6e9ef;
+  --text-secondary: #9aa3b2;
+  --text-tertiary: #6b7280;
+  --text-muted: #4b5563;
 
-  --border-color: rgba(148, 163, 184, 0.1);
-  --border-strong: rgba(148, 163, 184, 0.2);
+  /* Hairline borders: white/5 with a slightly stronger variant. */
+  --border-color: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.1);
   --border-focus: var(--nd-blue);
 
   --accent-primary: var(--nd-blue);
   --accent-secondary: var(--nd-blue-bright);
 
-  /* Status: Sentinel grade */
-  --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.1);
+  /* Status: neon green for active/online indicators */
+  --success: #00ff00;
+  --success-bg: rgba(0, 255, 0, 0.08);
   --warning: #f59e0b;
   --warning-bg: rgba(245, 158, 11, 0.1);
   --error: #ef4444;
@@ -55,10 +56,10 @@
   --info-bg: var(--nd-blue-soft);
 
   /* Map old design system names so styles.css cards still render correctly */
-  --bg: #020617;
-  --bg-surface: #0a1024;
+  --bg: #0f1015;
+  --bg-surface: #15161d;
   --bg-hover: rgba(255, 255, 255, 0.04);
-  --border: rgba(148, 163, 184, 0.1);
+  --border: rgba(255, 255, 255, 0.05);
   --text: #e2e8f0;
   --accent: var(--nd-blue);
   --accent-hover: var(--nd-blue-bright);
@@ -123,12 +124,11 @@ body {
   color: var(--text-primary);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  /* Sentinel ambient lighting */
+  /* Deep low-contrast terminal: flat #0f1015 with a faint electric-blue haze. */
   background-image:
-    radial-gradient(ellipse 80% 50% at 80% -10%, var(--nd-blue-soft), transparent 60%),
-    radial-gradient(ellipse 60% 40% at 0% 20%, rgba(56, 189, 248, 0.06), transparent 55%),
-    radial-gradient(ellipse 70% 60% at 50% 110%, rgba(99, 102, 241, 0.05), transparent 60%),
-    linear-gradient(180deg, #020617, #0a1024);
+    radial-gradient(ellipse 70% 45% at 85% -10%, rgba(59, 130, 246, 0.06), transparent 60%),
+    radial-gradient(ellipse 60% 50% at 0% 110%, rgba(0, 255, 0, 0.02), transparent 60%),
+    linear-gradient(180deg, #0f1015, #0c0d12);
   background-attachment: fixed;
   transition: background-color 0.3s ease;
 }
