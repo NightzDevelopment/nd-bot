@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from 'node:child_process'
 import { readFile, stat } from 'node:fs/promises'
 import { join, normalize } from 'node:path'
-import { DATA_DIR } from '../config.ts'
+import { DATA_DIR, dashboardPublicUrl } from '../config.ts'
 import { getUserBadges } from '../services/achievements.ts'
 import {
   allManifestFields,
@@ -327,7 +327,7 @@ function clientKey(
  * Inject the dashboard token for same-origin only (localhost by default) so the UI can authenticate
  * without pasting. Do not bind the dashboard to a public interface without additional protection.
  */
-async function readIndexHtmlWithToken(): Promise<Response | null> {
+async function readIndexHtmlWithToken(viaProxy = false): Promise<Response | null> {
   const abs = join(PUBLIC_DIR, 'index.html')
   if (!abs.startsWith(PUBLIC_DIR)) return null
   let html: string
@@ -337,7 +337,11 @@ async function readIndexHtmlWithToken(): Promise<Response | null> {
     return null
   }
   const token = expectedToken()
-  if (token) {
+  // SECURITY: never inject the token on a PUBLIC deployment - DASHBOARD_PUBLIC_URL set,
+  // OR the request arrived through a reverse proxy (X-Forwarded-For, e.g. NGINX). Else
+  // anyone loading the page would get admin access. Public users log in via Discord
+  // OAuth, which hands the token to verified admins. Direct loopback access still injects.
+  if (token && !dashboardPublicUrl && !viaProxy) {
     // Encode the token as a JSON string only so an XSS-y character in the env
     // can't break out of the script tag.
     const safeJson = JSON.stringify({ preloadedToken: token }).replace(/</g, '\\u003c')
@@ -362,14 +366,14 @@ async function readIndexHtmlWithToken(): Promise<Response | null> {
   })
 }
 
-async function readStatic(pathname: string): Promise<Response | null> {
+async function readStatic(pathname: string, viaProxy = false): Promise<Response | null> {
   if (pathname === '/' || pathname === '') {
-    return readIndexHtmlWithToken()
+    return readIndexHtmlWithToken(viaProxy)
   }
   const rel = normalize(pathname).replace(/^[\\/]+/, '')
   if (rel.includes('..')) return null
   if (rel === 'index.html' || rel === 'dashboard' || rel === 'dashboard.html') {
-    return readIndexHtmlWithToken()
+    return readIndexHtmlWithToken(viaProxy)
   }
   // v2 page routes without .html extension
   const pageRoutes: Record<string, string> = {
@@ -613,8 +617,10 @@ export function startDashboard(): void {
           if (!du) return fail('oauth_user')
           if (!(await isAdminDiscordUser(du.id))) return fail('not_authorized')
 
-          const { loginDiscordAdmin } = await import('./users.ts')
-          const jwt = await loginDiscordAdmin(du.id, du.global_name || du.username)
+          // OAuth just GATES access; the dashboard's API auth is the DASHBOARD_TOKEN,
+          // so hand that to the verified admin (the SPA stores + sends it).
+          const dashToken = expectedToken()
+          if (!dashToken) return fail('no_dashboard_token')
           try {
             await logAudit(du.id, du.global_name || du.username, 'oauth_login', 'dashboard', {})
           } catch {
@@ -623,7 +629,7 @@ export function startDashboard(): void {
           return new Response(null, {
             status: 302,
             headers: {
-              Location: `/pages/splash.html#token=${encodeURIComponent(jwt)}`,
+              Location: `/pages/splash.html#token=${encodeURIComponent(dashToken)}`,
               'Set-Cookie': clearCookie,
             },
           })
@@ -3162,7 +3168,8 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
         }
 
         if (req.method === 'GET') {
-          const r = await readStatic(pathname)
+          const viaProxy = Boolean(req.headers.get('x-forwarded-for'))
+          const r = await readStatic(pathname, viaProxy)
           if (r) return r
           return new Response('Not found', { status: 404 })
         }

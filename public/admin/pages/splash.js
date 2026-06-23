@@ -34,6 +34,7 @@ const ERROR_MESSAGES = {
   oauth_exchange: 'Could not complete Discord sign-in. Please try again.',
   oauth_user: 'Could not read your Discord profile. Please try again.',
   oauth_not_configured: 'Discord login is not configured yet. Contact an admin.',
+  no_dashboard_token: 'Server is missing DASHBOARD_TOKEN. Contact an admin.',
 }
 
 // 1. Success: the callback handed us a token in the URL fragment.
@@ -42,7 +43,8 @@ function handleTokenFragment() {
   const m = hash.match(/token=([^&]+)/)
   if (!m) return false
   const token = decodeURIComponent(m[1])
-  sessionStorage.setItem('token', token)
+  // Store where the dashboard's api-client reads it from.
+  localStorage.setItem('dashboardToken', token)
   // Scrub the token out of the address bar, then enter the dashboard.
   history.replaceState(null, '', window.location.pathname)
   showLoading('Loading dashboard...')
@@ -61,7 +63,7 @@ function handleErrorParam() {
 
 // 3. Already signed in? Skip straight to the dashboard.
 function handleExistingSession() {
-  if (sessionStorage.getItem('token')) {
+  if (localStorage.getItem('dashboardToken')) {
     window.location.href = '/dashboard'
     return true
   }

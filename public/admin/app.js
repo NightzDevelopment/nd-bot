@@ -217,6 +217,15 @@ function setupThemeToggle() {
 
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
+  // Auth gate: with no token (e.g. public deploy where the token is NOT injected),
+  // send the user to the Discord login page instead of showing the dashboard.
+  const hasToken = Boolean(
+    window.__ND_DASH_CONFIG__?.preloadedToken || localStorage.getItem('dashboardToken'),
+  )
+  if (!hasToken) {
+    window.location.href = '/pages/splash.html'
+    return
+  }
   initializeTheme()
   setupNavigation()
   setupThemeToggle()
