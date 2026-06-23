@@ -99,24 +99,56 @@ export async function isStillAdmin(discordId: string): Promise<boolean> {
 
 /** Admin if allowlisted, OR holding ANY of the admin roles in the configured guild. */
 export async function isAdminDiscordUser(discordId: string): Promise<boolean> {
-  if (dashboardAdminUserIds.has(discordId)) return true
-  if (dashboardAdminRoleIds.size === 0) return false
+  if (dashboardAdminUserIds.has(discordId)) {
+    log.info({ discordId }, '[oauth] authorized via DASHBOARD_ADMIN_USER_IDS allowlist')
+    return true
+  }
+  if (dashboardAdminRoleIds.size === 0) {
+    log.warn(
+      { discordId, allowlistSize: dashboardAdminUserIds.size },
+      '[oauth] DENIED: no DASHBOARD_ADMIN_ROLE_IDS or DASHBOARD_ADMIN_USER_IDS configured (set them in .env and restart)',
+    )
+    return false
+  }
   // biome-ignore lint/suspicious/noExplicitAny: discord.js client is type-erased in runtime-state
   const client = getDiscordClient<any>()
-  if (!client) return false
+  if (!client) {
+    log.warn({ discordId }, '[oauth] DENIED: Discord client not ready for role check')
+    return false
+  }
   try {
     const guild = dashboardAdminGuildId
       ? await client.guilds.fetch(dashboardAdminGuildId)
       : client.guilds.cache.first()
-    if (!guild) return false
-    const member = await guild.members.fetch(discordId).catch(() => null)
-    if (!member) return false
-    for (const roleId of dashboardAdminRoleIds) {
-      if (member.roles.cache.has(roleId)) return true
+    if (!guild) {
+      log.warn(
+        { discordId, dashboardAdminGuildId, guildCount: client.guilds.cache.size },
+        '[oauth] DENIED: no guild for role check (set DASHBOARD_ADMIN_GUILD_ID?)',
+      )
+      return false
     }
-    return false
+    const member = await guild.members.fetch(discordId).catch(() => null)
+    if (!member) {
+      log.warn(
+        { discordId, guildId: guild.id },
+        '[oauth] DENIED: you are not a member of that guild (check DASHBOARD_ADMIN_GUILD_ID)',
+      )
+      return false
+    }
+    const has = [...dashboardAdminRoleIds].some((r) => member.roles.cache.has(r))
+    log.info(
+      {
+        discordId,
+        guildId: guild.id,
+        adminRoleIds: [...dashboardAdminRoleIds],
+        yourRoleIds: [...member.roles.cache.keys()],
+        authorized: has,
+      },
+      `[oauth] role check: ${has ? 'AUTHORIZED' : 'DENIED (none of the admin roles found on your account)'}`,
+    )
+    return has
   } catch (e) {
-    log.warn({ err: e, discordId }, 'admin role check failed')
+    log.warn({ err: e, discordId }, '[oauth] admin role check threw')
     return false
   }
 }
