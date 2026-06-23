@@ -18,10 +18,17 @@ export interface AnalyticsEvent {
 
 /**
  * Read analytics.jsonl as NDJSON (one event per line).
- * The previous readJson() helper expected a single JSON array, but this file
- * is line-delimited, so it always parsed as empty.
+ *
+ * Cached for a short TTL: the Telemetry page fires ~6 analytics endpoints that
+ * each used to re-read and re-parse the whole (growing) file, so one page load
+ * meant reading the file 6 times. Now the parse is shared within the window.
  */
+let eventsCache: { at: number; events: AnalyticsEvent[] } | null = null
+const EVENTS_TTL_MS = 30_000
+
 async function readAnalyticsEvents(): Promise<AnalyticsEvent[]> {
+  const now = Date.now()
+  if (eventsCache && now - eventsCache.at < EVENTS_TTL_MS) return eventsCache.events
   try {
     const filePath = join(DATA_DIR, 'analytics.jsonl')
     const raw = await readFile(filePath, 'utf8')
@@ -35,6 +42,7 @@ async function readAnalyticsEvents(): Promise<AnalyticsEvent[]> {
         // skip malformed lines
       }
     }
+    eventsCache = { at: now, events }
     return events
   } catch {
     return []

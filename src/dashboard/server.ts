@@ -253,6 +253,26 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0
 }
 
+/**
+ * Cached full guild member list. guild.members.fetch() pulls every member over
+ * the gateway (slow on big servers), so we do it at most once per TTL and serve
+ * the cached Collection in between - a main cause of slow Members page loads.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: discord.js Collection is type-erased here
+let memberListCache: { at: number; members: any } | null = null
+const MEMBER_LIST_TTL_MS = 60_000
+// biome-ignore lint/suspicious/noExplicitAny: discord.js guild/collection
+async function getGuildMembersCached(guild: any): Promise<any> {
+  if (!guild) return new Map()
+  const now = Date.now()
+  if (memberListCache && now - memberListCache.at < MEMBER_LIST_TTL_MS) {
+    return memberListCache.members
+  }
+  const members = await guild.members.fetch().catch(() => guild.members.cache)
+  memberListCache = { at: now, members }
+  return members
+}
+
 function json(data: unknown, init?: ResponseInit): Response {
   return new Response(JSON.stringify(data), {
     ...init,
@@ -1663,7 +1683,8 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
           // Enriched list: joins profile + reputation + warnings + notes + badges
           if (req.method === 'GET' && pathname === '/api/members/full') {
             try {
-              const limit = parseInt(url.searchParams.get('limit') ?? '200', 10)
+              const reqLimit = parseInt(url.searchParams.get('limit') ?? '200', 10)
+              const limit = Math.min(500, Math.max(1, Number.isFinite(reqLimit) ? reqLimit : 200))
               const sortBy = (url.searchParams.get('sort') as string) || 'lastActivityAt'
 
               const { getDiscordClient } = await import('./runtime-state.ts')
@@ -1673,11 +1694,8 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
               const profiles = await getAllProfiles()
               const profilesMap = new Map(profiles.map((p) => [p.userId, p]))
 
-              let fetchedMembers: any = new Map()
-              if (guild) {
-                fetchedMembers = await guild.members.fetch().catch(() => new Map())
-              }
-
+              // Cached (not per-request) Discord fetch - the old slow part.
+              const fetchedMembers = await getGuildMembersCached(guild)
               for (const [userId, gm] of fetchedMembers.entries()) {
                 if (!profilesMap.has(userId) && !gm.user.bot) {
                   profilesMap.set(userId, {
@@ -1697,8 +1715,22 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
 
               const combinedProfiles = Array.from(profilesMap.values())
 
+              // Pre-sort by a profile-available key, then enrich ONLY the top
+              // `limit` members. The old code enriched EVERY member (4 lookups
+              // each) before slicing - an N+1 blowup that scaled with the server.
+              const preFallback = (p: any) => p.stats.lastActivityAt || 0
+              const preKey: Record<string, (p: any) => number> = {
+                lastActivityAt: preFallback,
+                messages: (p) => p.stats.messages || 0,
+                level: (p) => p.stats.level || 0,
+                reputation: (p) => p.stats.reputation || 0,
+              }
+              const pre = preKey[sortBy] ?? preFallback
+              combinedProfiles.sort((a, b) => pre(b) - pre(a))
+              const top = combinedProfiles.slice(0, limit)
+
               const enriched = await Promise.all(
-                combinedProfiles.map(async (p) => {
+                top.map(async (p) => {
                   const [rep, warns, notes, badges] = await Promise.all([
                     getReputation(p.userId).catch(() => null),
                     getWarnings(p.userId).catch(() => null),
@@ -1722,19 +1754,20 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
                 }),
               )
 
-              // Sort by requested column (default: lastActivityAt desc)
+              // Final sort by the requested column (accurate within the top set).
+              const sortFallback = (m: any) => m.lastActivityAt || 0
               const sortable: Record<string, (m: any) => number> = {
-                lastActivityAt: (m) => m.lastActivityAt || 0,
+                lastActivityAt: sortFallback,
                 messages: (m) => m.messages,
                 level: (m) => m.level,
                 reputation: (m) => m.reputation,
                 warnings: (m) => m.warnings,
                 badgeCount: (m) => m.badgeCount,
               }
-              const fn = sortable[sortBy] || sortable.lastActivityAt
+              const fn = sortable[sortBy] ?? sortFallback
               enriched.sort((a, b) => fn(b) - fn(a))
 
-              const sliced = enriched.slice(0, limit)
+              const sliced = enriched
 
               // Resolve Discord usernames for the sliced active view
               for (const m of sliced as any[]) {
