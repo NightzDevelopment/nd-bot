@@ -40,34 +40,38 @@ async function applyAfkNickname(msg: Message, enable: boolean): Promise<void> {
 export function registerAfk(client: Client): void {
   if (!isFeatureEnabled('afk')) return
   client.on('messageCreate', async (msg) => {
-    if (!msg.guild || msg.author.bot || msg.channel.type === ChannelType.DM) return
+    try {
+      if (!msg.guild || msg.author.bot || msg.channel.type === ChannelType.DM) return
 
-    const mentioned = [...msg.mentions.users.values()].filter((u) => u.id !== msg.author.id)
-    for (const user of mentioned.slice(0, 5)) {
-      const rec = await getAfk(msg.guild.id, user.id)
-      if (!rec) continue
-      const key = `${msg.channel.id}:${user.id}`
-      const now = Date.now()
-      if (now - (mentionCooldown.get(key) ?? 0) < 30_000) continue
-      mentionCooldown.set(key, now)
-      await msg
-        .reply({
-          embeds: [
-            ndEmbed()
-              .setTitle('AFK')
-              .setDescription(`<@${user.id}> is AFK: **${rec.reason}**`)
-              .addFields({ name: 'Away for', value: duration(rec.since), inline: true }),
-          ],
-        })
-        .catch(() => {})
+      const mentioned = [...msg.mentions.users.values()].filter((u) => u.id !== msg.author.id)
+      for (const user of mentioned.slice(0, 5)) {
+        const rec = await getAfk(msg.guild.id, user.id)
+        if (!rec) continue
+        const key = `${msg.channel.id}:${user.id}`
+        const now = Date.now()
+        if (now - (mentionCooldown.get(key) ?? 0) < 30_000) continue
+        mentionCooldown.set(key, now)
+        await msg
+          .reply({
+            embeds: [
+              ndEmbed()
+                .setTitle('AFK')
+                .setDescription(`<@${user.id}> is AFK: **${rec.reason}**`)
+                .addFields({ name: 'Away for', value: duration(rec.since), inline: true }),
+            ],
+          })
+          .catch(() => {})
+      }
+
+      if (!afkAutoClear) return
+      const own = await getAfk(msg.guild.id, msg.author.id)
+      if (!own) return
+      await clearAfk(msg.guild.id, msg.author.id)
+      await applyAfkNickname(msg, false)
+      await msg.reply(`Welcome back, <@${msg.author.id}>. I cleared your AFK.`).catch(() => {})
+    } catch (e) {
+      console.warn('[afk] messageCreate handler error:', e)
     }
-
-    if (!afkAutoClear) return
-    const own = await getAfk(msg.guild.id, msg.author.id)
-    if (!own) return
-    await clearAfk(msg.guild.id, msg.author.id)
-    await applyAfkNickname(msg, false)
-    await msg.reply(`Welcome back, <@${msg.author.id}>. I cleared your AFK.`).catch(() => {})
   })
 }
 

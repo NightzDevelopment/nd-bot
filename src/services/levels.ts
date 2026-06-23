@@ -137,31 +137,37 @@ async function sendLevelUp(msg: Message, level: number): Promise<void> {
 export function registerLevels(client: Client): void {
   if (!isFeatureEnabled('levels')) return
   client.on('messageCreate', async (msg) => {
-    if (shouldIgnoreMessage(msg)) return
-    const current = await getLevelRecord(msg.guild!.id, msg.author.id)
-    const now = Date.now()
-    if (now - current.lastXpAt < levelsCooldownMs) return
-
-    const { currentSeasonalMultipliers } = await import('./seasonal-events.ts')
-    const xpAward = Math.round(randomXp() * currentSeasonalMultipliers().xp)
-    const { after, leveledUp } = await addLevelXp(msg.guild!.id, msg.author.id, xpAward, now)
-    if (!leveledUp) return
-    await maybeApplyLevelRoles(msg, after.level)
-    // Also apply roles from the command-configured store
-    void applyLevelRoles(msg.client, msg.guild!.id, msg.author.id, after.level).catch(() => {})
-    await sendLevelUp(msg, after.level)
-    // Broadcast level-up to dashboard activity feed
+    // A throw here (e.g. a transient SQLite read error on a hot path) would become
+    // an unhandled rejection, so the whole body is guarded.
     try {
-      const { broadcastActivity } = await import('../dashboard/websocket.ts')
-      broadcastActivity('level_up', {
-        userId: msg.author.id,
-        username: msg.author.username,
-        displayName: msg.member?.displayName || msg.author.username,
-        level: after.level,
-        channelName: 'name' in msg.channel ? (msg.channel as any).name : undefined,
-      })
-    } catch {
-      /* ignore */
+      if (shouldIgnoreMessage(msg)) return
+      const current = await getLevelRecord(msg.guild!.id, msg.author.id)
+      const now = Date.now()
+      if (now - current.lastXpAt < levelsCooldownMs) return
+
+      const { currentSeasonalMultipliers } = await import('./seasonal-events.ts')
+      const xpAward = Math.round(randomXp() * currentSeasonalMultipliers().xp)
+      const { after, leveledUp } = await addLevelXp(msg.guild!.id, msg.author.id, xpAward, now)
+      if (!leveledUp) return
+      await maybeApplyLevelRoles(msg, after.level)
+      // Also apply roles from the command-configured store
+      void applyLevelRoles(msg.client, msg.guild!.id, msg.author.id, after.level).catch(() => {})
+      await sendLevelUp(msg, after.level)
+      // Broadcast level-up to dashboard activity feed
+      try {
+        const { broadcastActivity } = await import('../dashboard/websocket.ts')
+        broadcastActivity('level_up', {
+          userId: msg.author.id,
+          username: msg.author.username,
+          displayName: msg.member?.displayName || msg.author.username,
+          level: after.level,
+          channelName: 'name' in msg.channel ? (msg.channel as any).name : undefined,
+        })
+      } catch {
+        /* ignore */
+      }
+    } catch (e) {
+      console.warn('[levels] messageCreate handler error:', e)
     }
   })
 }

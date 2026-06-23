@@ -39,6 +39,22 @@ const fastMsg = new Map<string, number[]>()
 // Per-user-channel duplicate text (same normalized content)
 const dupes = new Map<string, { count: number; firstAt: number }>()
 
+// Both maps gain a key per distinct (user, channel) / message and were never
+// swept, so over long 24/7 uptime they grew unbounded. Prune stale entries
+// periodically (the spam windows are seconds, so a 10-minute TTL is safe).
+const SWEEP_EVERY_MS = 5 * 60_000
+const ENTRY_TTL_MS = 10 * 60_000
+setInterval(() => {
+  const now = Date.now()
+  for (const [k, v] of dupes) {
+    if (now - v.firstAt > ENTRY_TTL_MS) dupes.delete(k)
+  }
+  for (const [k, stamps] of fastMsg) {
+    const newest = stamps.length > 0 ? (stamps[stamps.length - 1] as number) : 0
+    if (now - newest > ENTRY_TTL_MS) fastMsg.delete(k)
+  }
+}, SWEEP_EVERY_MS).unref?.()
+
 function key(userId: string, channelId: string): string {
   return `${userId}:${channelId}`
 }

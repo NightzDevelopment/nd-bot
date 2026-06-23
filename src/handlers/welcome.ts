@@ -19,23 +19,31 @@ function channelRef(id: string | undefined, plain: string): string {
 export function registerWelcomeHandler(client: Client): void {
   // Always register activity-feed broadcasts even if welcome features are disabled
   client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
-    broadcastActivity('member_joined', {
-      userId: member.id,
-      username: member.user.username,
-      displayName: member.displayName,
-      avatarUrl: member.user.displayAvatarURL({ size: 32 }),
-      memberCount: member.guild.memberCount,
-    })
+    try {
+      broadcastActivity('member_joined', {
+        userId: member.id,
+        username: member.user.username,
+        displayName: member.displayName,
+        avatarUrl: member.user.displayAvatarURL({ size: 32 }),
+        memberCount: member.guild.memberCount,
+      })
+    } catch (e) {
+      console.error('[welcome] member_joined broadcast:', e)
+    }
   })
 
   client.on(Events.GuildMemberRemove, async (member: GuildMember | PartialGuildMember) => {
-    broadcastActivity('member_left', {
-      userId: member.id,
-      username: member.user?.username || 'unknown',
-      displayName: member.displayName || member.user?.username || 'unknown',
-      avatarUrl: member.user?.displayAvatarURL({ size: 32 }),
-      memberCount: member.guild.memberCount,
-    })
+    try {
+      broadcastActivity('member_left', {
+        userId: member.id,
+        username: member.user?.username || 'unknown',
+        displayName: member.displayName || member.user?.username || 'unknown',
+        avatarUrl: member.user?.displayAvatarURL({ size: 32 }),
+        memberCount: member.guild.memberCount,
+      })
+    } catch (e) {
+      console.error('[welcome] member_left broadcast:', e)
+    }
   })
 
   if (!WELCOME_CHANNEL_ID && !WELCOME_ROLE_ID) return
