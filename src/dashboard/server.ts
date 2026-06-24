@@ -416,16 +416,6 @@ async function readStatic(pathname: string, viaProxy = false): Promise<Response 
   if (rel === 'index.html' || rel === 'dashboard' || rel === 'dashboard.html') {
     return readIndexHtmlWithToken(viaProxy)
   }
-  // v2 page routes without .html extension
-  const pageRoutes: Record<string, string> = {
-    users: 'pages/users.html',
-    audit: 'pages/audit.html',
-    settings: 'pages/settings.html',
-    docs: 'pages/docs.html',
-  }
-  if (pageRoutes[rel]) {
-    return readStaticFile(pageRoutes[rel])
-  }
   return readStaticFile(rel)
 }
 

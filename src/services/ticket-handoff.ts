@@ -7,7 +7,6 @@ import {
   type ButtonInteraction,
   ButtonStyle,
   ChannelType,
-  type Client,
   type Message,
   MessageFlags,
 } from 'discord.js'
@@ -173,12 +172,6 @@ export async function tryHandleTicketButton(interaction: ButtonInteraction): Pro
   }
 
   return false
-}
-
-export function registerTicketClient(client: Client): void {
-  client.on('interactionCreate', (i) => {
-    if (i.isButton()) void tryHandleTicketButton(i)
-  })
 }
 
 async function openTicketFlow(triggerMsg: Message): Promise<void> {
