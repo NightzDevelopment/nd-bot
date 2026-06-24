@@ -530,8 +530,10 @@ const HELP: Readonly<Record<string, string>> = {
   GEMINI_FALLBACK_MODELS: 'Comma-separated Gemini model IDs tried in order if the primary fails.',
   AI_RESPONSE_CACHE_ENABLED:
     'Cache identical AI classifier prompts (AutoMod, scam-link, appeal triage) for a short time to cut API cost and latency. Chat replies are never cached (1/0).',
-  AI_RESPONSE_CACHE_TTL_SEC: 'How long a cached classifier response is reused, in seconds. Default 300.',
-  AI_RESPONSE_CACHE_MAX: 'Maximum cached classifier responses kept in memory (oldest evicted). Default 500.',
+  AI_RESPONSE_CACHE_TTL_SEC:
+    'How long a cached classifier response is reused, in seconds. Default 300.',
+  AI_RESPONSE_CACHE_MAX:
+    'Maximum cached classifier responses kept in memory (oldest evicted). Default 500.',
   DATA_DIR: 'On-disk directory for JSON state (memory, levels, afk, overrides). Default: ./data.',
 
   // Dashboard
@@ -539,13 +541,17 @@ const HELP: Readonly<Record<string, string>> = {
   DASHBOARD_HOST: 'Bind interface. Keep 127.0.0.1 unless you understand the risk of exposing it.',
   DASHBOARD_PORT: 'TCP port for the admin server. Default 3849.',
   DASHBOARD_TOKEN: 'Bearer token required by every /api/* call. Use 32+ random characters.',
-  DASHBOARD_DISCORD_CLIENT_ID: 'Discord application client ID for "Login with Discord" (Developer Portal).',
+  DASHBOARD_DISCORD_CLIENT_ID:
+    'Discord application client ID for "Login with Discord" (Developer Portal).',
   DASHBOARD_DISCORD_CLIENT_SECRET: 'Discord application client secret for OAuth login.',
   DASHBOARD_PUBLIC_URL:
     'Public base URL of the dashboard (e.g. https://bot.nightz.dev). Used to build the OAuth redirect_uri.',
-  DASHBOARD_ADMIN_USER_IDS: 'Comma-separated Discord user IDs always granted dashboard admin access.',
-  DASHBOARD_ADMIN_ROLE_IDS: 'Comma-separated role IDs; holding ANY of them (in DASHBOARD_ADMIN_GUILD_ID) grants dashboard admin access.',
-  DASHBOARD_ADMIN_GUILD_ID: 'Guild the admin role is checked in. Defaults to the bot’s primary guild.',
+  DASHBOARD_ADMIN_USER_IDS:
+    'Comma-separated Discord user IDs always granted dashboard admin access.',
+  DASHBOARD_ADMIN_ROLE_IDS:
+    'Comma-separated role IDs; holding ANY of them (in DASHBOARD_ADMIN_GUILD_ID) grants dashboard admin access.',
+  DASHBOARD_ADMIN_GUILD_ID:
+    'Guild the admin role is checked in. Defaults to the bot’s primary guild.',
   DASHBOARD_READ_ONLY: 'When on, blocks all writes (PUT/POST). View-only.',
   DASHBOARD_RESTART_ENABLED: 'Allow the Restart button to spawn the restart command.',
   DASHBOARD_RESTART_CMD: 'Optional shell command run by the Restart button (overrides PM2).',
@@ -619,7 +625,8 @@ const HELP: Readonly<Record<string, string>> = {
 
   // Logging channels
   STAFF_LOG_CHANNEL_ID: 'Channel ID for staff-only mod/system logs.',
-  APPEALS_CHANNEL_ID: 'Channel where ban appeals are posted for staff review. Defaults to staff log.',
+  APPEALS_CHANNEL_ID:
+    'Channel where ban appeals are posted for staff review. Defaults to staff log.',
   APPEALS_ENABLED: 'DM banned users an appeal button so they can request a review (1/0).',
   APPEALS_AI_TRIAGE_ENABLED:
     'AI pre-assesses each submitted appeal and adds a one-line advisory to the staff review embed. Advisory only; staff still decide (1/0).',
@@ -629,7 +636,8 @@ const HELP: Readonly<Record<string, string>> = {
     'Channel for the weekly mod report. Defaults to STAFF_LOG_CHANNEL_ID.',
   MODMAIL_ENABLED: 'Let users DM the bot `nd!modmail <msg>` to open a private staff relay (1/0).',
   MODMAIL_CATEGORY_ID: 'Category under which per-user modmail channels are created.',
-  MODMAIL_STAFF_ROLE_IDS: 'Extra role IDs (comma-separated) that can see/reply in modmail, beyond MOD_ROLE_ID.',
+  MODMAIL_STAFF_ROLE_IDS:
+    'Extra role IDs (comma-separated) that can see/reply in modmail, beyond MOD_ROLE_ID.',
   VERIFY_ENABLED: 'Require new members to click a Verify button before gaining access (1/0).',
   VERIFY_CHANNEL_ID: 'Channel where the verification panel lives (post it with nd!verifypanel).',
   VERIFY_ROLE_ID: 'Role granted when a member verifies.',
@@ -639,22 +647,29 @@ const HELP: Readonly<Record<string, string>> = {
   RAID_AUTOLOCK_DURATION_MS: 'Auto-unlock after this many ms (0 = stay locked until staff unlock).',
   ALT_DETECTION_ENABLED: 'Score new joins for bot/ban-evasion signals and alert staff (1/0).',
   ALT_ALERT_THRESHOLD: 'Risk score at or above which an alt/bot alert is posted.',
-  ALT_ACTION_ENABLED: 'Take tiered auto-action (quarantine/kick/ban) on suspected bot/alt joins (1/0).',
+  ALT_ACTION_ENABLED:
+    'Take tiered auto-action (quarantine/kick/ban) on suspected bot/alt joins (1/0).',
   ALT_DRY_RUN: 'Log/alert what auto-action WOULD happen but take no action (1/0).',
   ALT_QUARANTINE_AT: 'Risk score at or above which to quarantine (add holding role). Default 4.',
   ALT_KICK_AT: 'Risk score at or above which to kick. Default 6.',
   ALT_BAN_AT: 'Risk score at or above which to ban. Default 8.',
   ALT_QUARANTINE_ROLE_ID: 'Role added on quarantine. Falls back to VERIFY_UNVERIFIED_ROLE_ID.',
   ALT_AUTOBAN_MAX_PER_MIN: 'Cap auto-bans per 60s to avoid mass false positives. Default 5.',
-  ALT_AVATAR_AI_CHECK: 'Use Gemini vision to flag AI-generated/bot-like avatars on borderline joiners (1/0).',
-  ALT_AVATAR_AI_MIN_CONFIDENCE: 'Min confidence (0.5-0.99) for the avatar check to add to the score. Default 0.75.',
-  SCAM_LINK_AI_ENABLED: 'AI-classify unknown links (not caught by heuristics) for scam/phishing (1/0).',
+  ALT_AVATAR_AI_CHECK:
+    'Use Gemini vision to flag AI-generated/bot-like avatars on borderline joiners (1/0).',
+  ALT_AVATAR_AI_MIN_CONFIDENCE:
+    'Min confidence (0.5-0.99) for the avatar check to add to the score. Default 0.75.',
+  SCAM_LINK_AI_ENABLED:
+    'AI-classify unknown links (not caught by heuristics) for scam/phishing (1/0).',
   SCAM_LINK_AI_DELETE: 'Delete + timeout on an AI scam-link verdict (1), or log only (0).',
-  SCAM_LINK_AI_MIN_CONFIDENCE: 'Min confidence (0.5-0.99) to act on a scam-link verdict. Default 0.8.',
+  SCAM_LINK_AI_MIN_CONFIDENCE:
+    'Min confidence (0.5-0.99) to act on a scam-link verdict. Default 0.8.',
   SCAM_LINK_AI_MAX_PER_MIN: 'Cap AI link classifications per 60s (cost guard). Default 8.',
-  QUARANTINE_ROLESWAP_ENABLED: 'When the quarantine role is added, remove the member role; restore it when quarantine is lifted (1/0).',
+  QUARANTINE_ROLESWAP_ENABLED:
+    'When the quarantine role is added, remove the member role; restore it when quarantine is lifted (1/0).',
   QUARANTINE_ROLE_ID: 'The quarantine role to watch.',
-  QUARANTINE_TOGGLE_ROLE_ID: 'The member role removed on quarantine and restored when it is lifted.',
+  QUARANTINE_TOGGLE_ROLE_ID:
+    'The member role removed on quarantine and restored when it is lifted.',
   QUARANTINE_NAME_FILTER_ENABLED:
     'Auto-quarantine members whose username, display name, or server nickname is flagged (Discord automod-quarantine flag, profanity/abuse filter, custom flag terms, or an invite link). Applies QUARANTINE_ROLE_ID and alerts staff. Runs even if PROFILE_SCAN_TEXT is off (1/0).',
   QUARANTINE_NAME_EXEMPT_USER_IDS:
@@ -669,7 +684,8 @@ const HELP: Readonly<Record<string, string>> = {
   TWITCH_CLIENT_ID: 'Twitch app client ID (dev.twitch.tv) for go-live detection.',
   TWITCH_CLIENT_SECRET: 'Twitch app client secret.',
   TWITCH_WATCH_LOGINS: 'Comma-separated Twitch login names to watch.',
-  YOUTUBE_WATCH_CHANNELS: 'Comma-separated YouTube channel IDs to watch (uploads via RSS, no API key).',
+  YOUTUBE_WATCH_CHANNELS:
+    'Comma-separated YouTube channel IDs to watch (uploads via RSS, no API key).',
   DM_LOG_CHANNEL_ID: 'Channel ID for DM transcripts copy.',
   AUDIT_LOG_CHANNEL_ID: 'Channel ID for the audit feed (joins/leaves/edits/deletes).',
   AUDIT_IGNORED_CHANNELS: 'Comma-separated channel IDs the audit feed ignores.',

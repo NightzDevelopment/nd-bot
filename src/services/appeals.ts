@@ -213,7 +213,11 @@ export async function tryHandleAppealInteraction(interaction: Interaction): Prom
             )
             .setTimestamp()
           if (triage) {
-            embed.addFields({ name: 'AI triage (advisory)', value: triage.slice(0, 1024), inline: false })
+            embed.addFields({
+              name: 'AI triage (advisory)',
+              value: triage.slice(0, 1024),
+              inline: false,
+            })
           }
           const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
@@ -234,7 +238,8 @@ export async function tryHandleAppealInteraction(interaction: Interaction): Prom
     }
 
     await interaction.reply({
-      content: 'Your appeal has been submitted for staff review. You will be notified of the decision.',
+      content:
+        'Your appeal has been submitted for staff review. You will be notified of the decision.',
       flags: MessageFlags.Ephemeral,
     })
     return true

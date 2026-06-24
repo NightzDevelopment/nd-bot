@@ -651,9 +651,7 @@ export const slashCommands = [
   new SlashCommandBuilder()
     .setName('dossier')
     .setDescription('Staff: full history for a user (warnings, cases, notes, reputation, tickets)')
-    .addUserOption((o) =>
-      o.setName('user').setDescription('User to look up').setRequired(true),
-    ),
+    .addUserOption((o) => o.setName('user').setDescription('User to look up').setRequired(true)),
   new SlashCommandBuilder()
     .setName('event')
     .setDescription('Community events with RSVP')
@@ -971,7 +969,9 @@ export const slashCommands = [
     ),
   new SlashCommandBuilder()
     .setName('scan_names')
-    .setDescription('Staff: scan every member profile (names, status, avatars); report and optionally quarantine')
+    .setDescription(
+      'Staff: scan every member profile (names, status, avatars); report and optionally quarantine',
+    )
     .addBooleanOption((o) =>
       o
         .setName('apply')
@@ -981,7 +981,9 @@ export const slashCommands = [
     .addBooleanOption((o) =>
       o
         .setName('avatars')
-        .setDescription('Also run AI avatar vision (NSFW/scam/hate); slower, capped at 500 (default: off)')
+        .setDescription(
+          'Also run AI avatar vision (NSFW/scam/hate); slower, capped at 500 (default: off)',
+        )
         .setRequired(false),
     ),
 ]

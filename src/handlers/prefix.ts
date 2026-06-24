@@ -60,7 +60,11 @@ import {
 } from '../services/mod-actions.ts'
 import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 import { containsProfanity } from '../services/profanity.ts'
-import { applyNameQuarantine, AVATAR_SCAN_CAP, collectProfileFlags } from '../services/profile-scan.ts'
+import {
+  applyNameQuarantine,
+  AVATAR_SCAN_CAP,
+  collectProfileFlags,
+} from '../services/profile-scan.ts'
 import { formatProductLookupReply } from '../services/store-catalog.ts'
 import {
   buildStoreCommandBody,
@@ -454,8 +458,10 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       const text = await generateOnce(model, prompt)
       const chunks = chunkText(text)
       for (let i = 0; i < chunks.length; i++) {
-        if (i === 0) await msg.reply({ content: chunks[i] })
-        else await msg.channel.send({ content: chunks[i] })
+        const chunk = chunks[i] ?? ''
+        if (i === 0) await msg.reply({ content: chunk })
+        else if (msg.channel.isTextBased() && 'send' in msg.channel)
+          await msg.channel.send({ content: chunk })
       }
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e)
@@ -506,7 +512,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
         await msg.reply('Unknown macro.')
         return
       }
-      await msg.channel.send(body.slice(0, 2000))
+      if (msg.channel.isTextBased() && 'send' in msg.channel)
+        await msg.channel.send(body.slice(0, 2000))
       return
     }
     if (sub === 'set') {
@@ -642,7 +649,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     }
 
     const quarantinedCount = apply
-      ? flagged.filter((f) => f.status === 'quarantined' || f.status === 'already quarantined').length
+      ? flagged.filter((f) => f.status === 'quarantined' || f.status === 'already quarantined')
+          .length
       : 0
     const scopeNote = includeAvatars
       ? ` Avatar checks: ${avatarChecks}${avatarCapped ? ` (capped at ${AVATAR_SCAN_CAP})` : ''}.`
@@ -810,7 +818,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
 
     const member = await guildMemberForModCheck(msg)
     if (!member || !isGuildMod(member)) {
-      await msg.reply('Moderator only. Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>`')
+      await msg.reply(
+        'Moderator only. Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>`',
+      )
       return
     }
 
@@ -828,7 +838,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
       const dur = parseDuration(durRaw)
       const name = parts.join(' ') || 'Seasonal Event'
       if (!isFinite(xpMult) || !isFinite(ndcMult) || !dur) {
-        await msg.reply('Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>`, e.g. `nd!season start 2 2 2d Double Weekend`')
+        await msg.reply(
+          'Usage: `nd!season start <xpMult> <ndcMult> <duration> <name>`, e.g. `nd!season start 2 2 2d Double Weekend`',
+        )
         return
       }
       const now = Date.now()
@@ -872,7 +884,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
 
   if (cmd === 'modmail') {
     if (msg.channel.type !== ChannelType.DM) {
-      await msg.reply('DM me `nd!modmail <your message>` to start a private conversation with staff.')
+      await msg.reply(
+        'DM me `nd!modmail <your message>` to start a private conversation with staff.',
+      )
       return
     }
     const { modmailEnabled } = await import('../config.ts')
@@ -898,7 +912,9 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
     const sub = args.trim().toLowerCase()
     if (sub === 'on' || sub === 'enable') {
       await setCopilotDraftsEnabled(true, msg.author.tag)
-      await msg.reply('AI Draft Suggestions are now **ON**. Staff will see draft-for-approval posts.')
+      await msg.reply(
+        'AI Draft Suggestions are now **ON**. Staff will see draft-for-approval posts.',
+      )
       return
     }
     if (sub === 'off' || sub === 'disable' || sub === 'stop') {

@@ -46,7 +46,10 @@ export async function startModmail(
   if (!modmailEnabled) return { ok: false, msg: 'Modmail is not enabled on this bot.' }
   if (!modmailCategoryId) return { ok: false, msg: 'Modmail is not configured (no category).' }
   if (await getSessionByUser(user.id)) {
-    return { ok: true, msg: 'You already have an open modmail. Just keep typing here and staff will see it.' }
+    return {
+      ok: true,
+      msg: 'You already have an open modmail. Just keep typing here and staff will see it.',
+    }
   }
 
   const category = await client.channels.fetch(modmailCategoryId).catch(() => null)
@@ -111,7 +114,9 @@ export async function startModmail(
       .setLabel('Close modmail')
       .setStyle(ButtonStyle.Danger),
   )
-  const ping = staffRoleIds().map((r) => `<@&${r}>`).join(' ')
+  const ping = staffRoleIds()
+    .map((r) => `<@&${r}>`)
+    .join(' ')
   await channel.send({
     ...(ping ? { content: ping } : {}),
     embeds: [header],
@@ -128,7 +133,10 @@ export async function startModmail(
       ],
     })
   }
-  return { ok: true, msg: 'Staff have been notified. Keep replying here and they will respond in your DMs.' }
+  return {
+    ok: true,
+    msg: 'Staff have been notified. Keep replying here and they will respond in your DMs.',
+  }
 }
 
 /** Relay a user's DM into their open modmail channel. Returns true if handled. */

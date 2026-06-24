@@ -473,9 +473,7 @@ export function startDashboard(): void {
   if (!dashboardEnabled()) return
   const token = expectedToken()
   if (!token) {
-    console.error(
-      '[dashboard] DASHBOARD_ENABLED is set but DASHBOARD_TOKEN is empty, not starting',
-    )
+    console.error('[dashboard] DASHBOARD_ENABLED is set but DASHBOARD_TOKEN is empty, not starting')
     return
   }
 
@@ -628,7 +626,10 @@ export function startDashboard(): void {
           const fail = (reason: string) =>
             new Response(null, {
               status: 302,
-              headers: { Location: `/pages/splash.html?error=${reason}`, 'Set-Cookie': clearCookie },
+              headers: {
+                Location: `/pages/splash.html?error=${reason}`,
+                'Set-Cookie': clearCookie,
+              },
             })
           const code = url.searchParams.get('code')
           const state = url.searchParams.get('state')
@@ -1259,7 +1260,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
               const totalCpuMs = (cpuEnd.user + cpuEnd.system) / 1000
               cpuUsage = Math.min(100, Math.max(0, (totalCpuMs / (elapsedMs * cpus.length)) * 100))
             } else {
-              cpuUsage = (loadAvg[0] / cpus.length) * 100
+              cpuUsage = ((loadAvg[0] ?? 0) / cpus.length) * 100
             }
 
             return json({
@@ -2857,7 +2858,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
               void logAudit(
                 jwtUser?.sub ?? 'dashboard',
                 jwtUser?.email ?? 'dashboard',
-                'suggestion_' + action,
+                ('suggestion_' + action) as Parameters<typeof logAudit>[2],
                 `suggestion:${id}`,
                 {},
                 ip,

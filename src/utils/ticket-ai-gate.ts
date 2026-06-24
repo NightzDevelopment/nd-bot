@@ -1,4 +1,4 @@
-import { ChannelType, type Message } from 'discord.js'
+import { ChannelType, type Collection, type FetchMessagesOptions, type Message } from 'discord.js'
 
 const MAX_HISTORY_FETCH_ROUNDS = 25
 
@@ -12,9 +12,10 @@ export async function getGuildChannelCategoryId(
   if (!('guild' in channel) || !channel.guild) return null
 
   if (channel.isThread()) {
-    let parent = channel.parent
+    let parent: typeof channel.parent = channel.parent
     if (!parent && channel.parentId) {
-      parent = (await channel.guild.channels.fetch(channel.parentId).catch(() => null)) ?? null
+      const fetched = await channel.guild.channels.fetch(channel.parentId).catch(() => null)
+      parent = fetched && 'parentId' in fetched ? (fetched as typeof channel.parent) : null
     }
     if (!parent) return null
     if ('parentId' in parent && parent.parentId) {
@@ -23,12 +24,7 @@ export async function getGuildChannelCategoryId(
     return null
   }
 
-  if (
-    channel.type === ChannelType.GuildText ||
-    channel.type === ChannelType.GuildAnnouncement ||
-    channel.type === ChannelType.GuildForum ||
-    channel.type === ChannelType.GuildMedia
-  ) {
+  if (channel.type === ChannelType.GuildText || channel.type === ChannelType.GuildAnnouncement) {
     return channel.parentId
   }
 
@@ -45,7 +41,8 @@ export async function isFirstMessageFromUserInChannel(msg: Message): Promise<boo
 
   while (rounds < MAX_HISTORY_FETCH_ROUNDS) {
     rounds++
-    const batch = await msg.channel.messages.fetch({ limit: 100, before })
+    const opts: FetchMessagesOptions = before ? { limit: 100, before } : { limit: 100 }
+    const batch: Collection<string, Message<boolean>> = await msg.channel.messages.fetch(opts)
     if (batch.size === 0) return true
     for (const m of batch.values()) {
       if (m.author.id === authorId) return false

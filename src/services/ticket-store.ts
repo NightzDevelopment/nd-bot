@@ -153,8 +153,16 @@ export async function listOpenTicketsForUser(
   return out
 }
 
-/** Patch type that permits explicit `undefined` to clear an optional field. */
-export type TicketPatch = { [K in keyof TicketRecord]?: TicketRecord[K] | undefined }
+/**
+ * Patch type that permits explicit `undefined` to clear an optional field.
+ * Required fields keep their exact type so spreading a patch onto an existing
+ * record cannot widen them to `T | undefined`.
+ */
+export type TicketPatch = {
+  [K in keyof TicketRecord]?: undefined extends TicketRecord[K]
+    ? TicketRecord[K] | undefined
+    : TicketRecord[K]
+}
 
 export async function updateTicketPartial(
   channelId: string,
@@ -163,7 +171,15 @@ export async function updateTicketPartial(
   const data = await load()
   const cur = data.records[channelId]
   if (!cur) return undefined
-  const next = { ...cur, ...patch }
+  const next: TicketRecord = { ...cur }
+  for (const key of Object.keys(patch) as (keyof TicketPatch)[]) {
+    const value = patch[key]
+    if (value === undefined) {
+      delete next[key]
+    } else {
+      next[key] = value as never
+    }
+  }
   data.records[channelId] = next
   await save(data)
   return next

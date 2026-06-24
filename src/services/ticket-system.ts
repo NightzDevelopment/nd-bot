@@ -457,10 +457,12 @@ export async function deployTicketPanel(client: Client): Promise<void> {
         (m) =>
           m.author.id === client.user?.id &&
           m.components.length > 0 &&
-          m.components.some((r) =>
-            r.components.some(
-            (c: any) => 'customId' in c && c.customId === `${TICKET_PREFIX}:reason`,
-          ),
+          m.components.some(
+            (r) =>
+              'components' in r &&
+              r.components.some(
+                (c: any) => 'customId' in c && c.customId === `${TICKET_PREFIX}:reason`,
+              ),
           ),
       )
       if (existing) {
@@ -1312,10 +1314,12 @@ async function handleIntakeModal(interaction: ModalSubmitInteraction): Promise<v
 
 async function handleOpenButton(interaction: Interaction): Promise<void> {
   if (!interaction.isButton() || !interaction.guild) {
-    await interaction.reply({
-      content: 'Use the support panel in the **server**, not in DMs.',
-      flags: MessageFlags.Ephemeral,
-    })
+    if (interaction.isRepliable()) {
+      await interaction.reply({
+        content: 'Use the support panel in the **server**, not in DMs.',
+        flags: MessageFlags.Ephemeral,
+      })
+    }
     return
   }
 
@@ -1530,7 +1534,9 @@ function buildCsatRow(channelId: string): ActionRowBuilder<ButtonBuilder> {
       new ButtonBuilder()
         .setCustomId(`${TICKET_PREFIX}:csat:${channelId}:${n}`)
         .setLabel(String(n))
-        .setStyle(n >= 4 ? ButtonStyle.Success : n <= 2 ? ButtonStyle.Danger : ButtonStyle.Secondary),
+        .setStyle(
+          n >= 4 ? ButtonStyle.Success : n <= 2 ? ButtonStyle.Danger : ButtonStyle.Secondary,
+        ),
     )
   }
   return row
@@ -1645,7 +1651,7 @@ async function runCloseTicket(
     const { broadcastActivity } = await import('../dashboard/websocket.ts')
     broadcastActivity('ticket_closed', {
       userId: ticket.userId,
-      username: closedBy.username,
+      username: closedBy.tag,
       displayName: closedBy.tag,
       ticketId: ticket.id,
       channelId: channel.id,
@@ -1689,11 +1695,7 @@ async function runCloseTicket(
         convo,
       ].join('\n')
       const raw = await generateOnce(_triageModel, prompt)
-      const aiTags = raw
-        .split(/[,\n]/)
-        .map(normalizeTag)
-        .filter(Boolean)
-        .slice(0, 5)
+      const aiTags = raw.split(/[,\n]/).map(normalizeTag).filter(Boolean).slice(0, 5)
       if (aiTags.length) await addTicketTags(channel.id, aiTags)
     } catch (e) {
       console.warn('[tickets] AI tagging failed:', e)
@@ -1721,7 +1723,7 @@ async function runCloseTicket(
     .setColor(0xed4245)
     .setAuthor({
       name: 'Nightz Network · Ticket closed',
-      iconURL: icon ?? undefined,
+      ...(icon ? { iconURL: icon } : {}),
     })
     .setTitle(`Support Ticket #${padId(ticket.id)}: Closed`)
     .setDescription(transcriptHint)
@@ -1906,9 +1908,7 @@ async function runCloseTicket(
 
       // CSAT prompt via DM (separate message so rating buttons can be disabled
       // cleanly without touching the transcript message).
-      await u
-        .send({ content: CSAT_PROMPT, components: [buildCsatRow(channel.id)] })
-        .catch(() => {})
+      await u.send({ content: CSAT_PROMPT, components: [buildCsatRow(channel.id)] }).catch(() => {})
     } catch {
       /* DMs closed */
     }

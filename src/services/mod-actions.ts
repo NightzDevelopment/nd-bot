@@ -185,7 +185,10 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
   const parts = args.trim().split(/\s+/)
   const userRaw = parts[0]
   if (!userRaw) {
-    await modReply(msg, 'Usage: `nd!ban @user [duration] [reason]`, e.g. `nd!ban @user 7d spamming`')
+    await modReply(
+      msg,
+      'Usage: `nd!ban @user [duration] [reason]`, e.g. `nd!ban @user 7d spamming`',
+    )
     return
   }
   // Optional duration as the 2nd token (e.g. 7d, 2h) makes this a temp-ban.

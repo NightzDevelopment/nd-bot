@@ -39,10 +39,10 @@ async function save(store: ProfileStore): Promise<void> {
  */
 async function getOrCreate(userId: string): Promise<MemberProfile> {
   const store = await load()
-  if (!store[userId]) {
-    store[userId] = {
+  let profile = store[userId]
+  if (!profile) {
+    profile = {
       userId,
-      bio: undefined,
       badges: [],
       stats: {
         messages: 0,
@@ -53,9 +53,10 @@ async function getOrCreate(userId: string): Promise<MemberProfile> {
         lastActivityAt: Date.now(),
       },
     }
+    store[userId] = profile
     await save(store)
   }
-  return store[userId]
+  return profile
 }
 
 /**

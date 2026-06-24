@@ -63,7 +63,10 @@ export async function hasOpenAppeal(guildId: string, userId: string): Promise<bo
   )
 }
 
-export async function updateAppeal(id: number, patch: Partial<Appeal>): Promise<Appeal | undefined> {
+export async function updateAppeal(
+  id: number,
+  patch: Partial<Appeal>,
+): Promise<Appeal | undefined> {
   const data = await load()
   const cur = data.appeals.find((a) => a.id === id)
   if (!cur) return undefined

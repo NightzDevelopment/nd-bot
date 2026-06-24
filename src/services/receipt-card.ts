@@ -47,7 +47,7 @@ export async function generateReceiptCard(data: ReceiptCardData): Promise<Buffer
   // Draw a subtle left accent vertical bar
   ctx.fillStyle = themeColor
   ctx.beginPath()
-  ctx.roundRect(8, 8, 6, 134, { topLeft: 10, bottomLeft: 10, topRight: 0, bottomRight: 0 })
+  ctx.roundRect(8, 8, 6, 134, [10, 0, 0, 10])
   ctx.fill()
 
   // 4. Draw Avatar with rounded clipping mask

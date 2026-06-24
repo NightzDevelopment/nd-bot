@@ -15,7 +15,10 @@ const FILE = 'leaderboard-snapshots.json'
 const MAX_DAYS = 40
 
 // date -> guildId -> userId -> xp
-type Store = { snapshots: Record<string, Record<string, Record<string, number>>>; lastDate?: string }
+type Store = {
+  snapshots: Record<string, Record<string, Record<string, number>>>
+  lastDate?: string
+}
 let cache: Store | null = null
 
 async function load(): Promise<Store> {
@@ -99,9 +102,10 @@ export async function getXpWindowLeaderboard(
   const baseline = data.snapshots[baseDate]?.[guildId] ?? {}
 
   const db = getDb()
-  const rows = db
-    .prepare('SELECT userId, xp FROM users_levels WHERE guildId = ?')
-    .all(guildId) as { userId: string; xp: number }[]
+  const rows = db.prepare('SELECT userId, xp FROM users_levels WHERE guildId = ?').all(guildId) as {
+    userId: string
+    xp: number
+  }[]
 
   const result = rows
     .map((r) => ({ userId: r.userId, gained: r.xp - (baseline[r.userId] ?? 0) }))

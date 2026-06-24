@@ -1,7 +1,15 @@
 /**
  * Staff reactions on bot AI messages for quality review (+1 / flag).
  */
-import { type Client, Events, type Message, type MessageReaction, type User } from 'discord.js'
+import {
+  type Client,
+  Events,
+  type Message,
+  type MessageReaction,
+  type PartialMessageReaction,
+  type PartialUser,
+  type User,
+} from 'discord.js'
 import {
   aiFeedbackNegativeEmoji,
   aiFeedbackPositiveEmoji,
@@ -25,28 +33,35 @@ function emojiMatches(reaction: MessageReaction, expected: string): boolean {
 export function registerAiFeedbackHandler(client: Client): void {
   if (!aiFeedbackReactionsEnabled) return
 
-  client.on(Events.MessageReactionAdd, async (reaction: MessageReaction, user: User) => {
-    try {
-      if (user.bot) return
-      if (!reaction.message.guild) return
-      const msg = reaction.message.partial ? await reaction.message.fetch() : reaction.message
-      if (!msg.author.bot || msg.author.id !== client.user?.id) return
-      if (!msg.content?.trim() && msg.embeds.length === 0) return
+  client.on(
+    Events.MessageReactionAdd,
+    async (reaction: MessageReaction | PartialMessageReaction, user: User | PartialUser) => {
+      try {
+        if (user.bot) return
+        const fullReaction = reaction.partial ? await reaction.fetch() : reaction
+        if (!fullReaction.message.guild) return
+        const msg = fullReaction.message.partial
+          ? await fullReaction.message.fetch()
+          : fullReaction.message
+        if (!msg.author.bot || msg.author.id !== client.user?.id) return
+        if (!msg.content?.trim() && msg.embeds.length === 0) return
 
-      const member = await reaction.message.guild.members.fetch(user.id).catch(() => null)
-      if (!member || !isGuildMod(member)) return
+        const fullUser = user.partial ? await user.fetch() : user
+        const member = await fullReaction.message.guild.members.fetch(fullUser.id).catch(() => null)
+        if (!member || !isGuildMod(member)) return
 
-      const isNeg = emojiMatches(reaction, aiFeedbackNegativeEmoji)
-      const isPos = emojiMatches(reaction, aiFeedbackPositiveEmoji)
-      if (!isNeg && !isPos) return
+        const isNeg = emojiMatches(fullReaction, aiFeedbackNegativeEmoji)
+        const isPos = emojiMatches(fullReaction, aiFeedbackPositiveEmoji)
+        if (!isNeg && !isPos) return
 
-      if (isNeg) {
-        await reportAiFeedbackNegative(user.tag, user.id, msg as Message)
-      } else if (isPos) {
-        await reportAiFeedbackPositive(user.tag, user.id, msg as Message)
+        if (isNeg) {
+          await reportAiFeedbackNegative(fullUser.tag, fullUser.id, msg as Message)
+        } else if (isPos) {
+          await reportAiFeedbackPositive(fullUser.tag, fullUser.id, msg as Message)
+        }
+      } catch (e) {
+        console.error('[ai-feedback]', e)
       }
-    } catch (e) {
-      console.error('[ai-feedback]', e)
-    }
-  })
+    },
+  )
 }

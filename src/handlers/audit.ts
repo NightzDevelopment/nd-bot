@@ -9,6 +9,7 @@ import {
   type Guild,
   type GuildChannel,
   type GuildMember,
+  type Message,
   type PartialMessage,
   type Role,
   type TextChannel,
@@ -276,9 +277,9 @@ function collectChannelChanges(oldCh: GuildChannel, newCh: GuildChannel): string
     )
   }
   if ('topic' in oldCh && 'topic' in newCh && oldCh.topic !== newCh.topic) {
-    lines.push(
-      `**Topic:** ${(oldCh.topic ?? '(none)').slice(0, 250)} → ${(newCh.topic ?? '(none)').slice(0, 250)}`,
-    )
+    const oldTopic = (oldCh as { topic?: string | null }).topic ?? '(none)'
+    const newTopic = (newCh as { topic?: string | null }).topic ?? '(none)'
+    lines.push(`**Topic:** ${oldTopic.slice(0, 250)} → ${newTopic.slice(0, 250)}`)
   }
   if (
     'rateLimitPerUser' in oldCh &&
@@ -346,7 +347,8 @@ export function registerAuditHandler(client: Client): void {
     await sendAudit(embed, 'message')
   })
 
-  client.on(Events.MessageDelete, async (msg: PartialMessage) => {
+  client.on(Events.MessageDelete, async (rawMsg: Message | PartialMessage) => {
+    const msg = rawMsg as PartialMessage
     if (!hasAnyAuditTarget('message') || msg.author?.bot) return
     if (shouldIgnoreMessageAudit(msg)) return
 
@@ -496,7 +498,7 @@ export function registerAuditHandler(client: Client): void {
   })
 
   client.on(Events.ChannelCreate, async (ch) => {
-    if (!hasAnyAuditTarget('channel') || ch.type === ChannelType.DM) return
+    if (!hasAnyAuditTarget('channel') || ch.isDMBased()) return
     const gch = ch as GuildChannel
     const guild = gch.guild
     const lookup = await lookupChannelCreateActor(guild, gch.id)
@@ -523,18 +525,19 @@ export function registerAuditHandler(client: Client): void {
   })
 
   client.on(Events.ChannelDelete, async (ch) => {
-    if (!hasAnyAuditTarget('channel')) return
-    const guild = ch.guild
-    const lookup = await lookupChannelDeleteActor(guild, ch.id)
+    if (!hasAnyAuditTarget('channel') || ch.isDMBased()) return
+    const gch = ch as GuildChannel
+    const guild = gch.guild
+    const lookup = await lookupChannelDeleteActor(guild, gch.id)
     const embed = new EmbedBuilder()
       .setColor(0xed4245)
       .setTitle('Channel deleted')
-      .setDescription(`**${ch.name}**`)
+      .setDescription(`**${gch.name}**`)
       .addFields(
         guildIdsField(guild, [
-          `**Channel ID:** \`${ch.id}\``,
-          `**Type:** ${channelTypeLabel(ch.type)}`,
-          ch.parentId ? `**Parent/category ID:** \`${ch.parentId}\`` : `**Parent:** -`,
+          `**Channel ID:** \`${gch.id}\``,
+          `**Type:** ${channelTypeLabel(gch.type)}`,
+          gch.parentId ? `**Parent/category ID:** \`${gch.parentId}\`` : `**Parent:** -`,
         ]),
         {
           name: 'Deleted by (audit)',
@@ -615,7 +618,7 @@ export function registerAuditHandler(client: Client): void {
   client.on(Events.GuildMemberUpdate, async (oldM, newM) => {
     if (!hasAnyAuditTarget('member') || !auditLogProfileUpdates) return
     if (newM.user.bot) return
-    const { lines, thumbUrl } = collectGuildMemberChanges(oldM, newM)
+    const { lines, thumbUrl } = collectGuildMemberChanges(oldM as GuildMember, newM)
     if (lines.length === 0) return
     const guild = newM.guild
     const embed = new EmbedBuilder()

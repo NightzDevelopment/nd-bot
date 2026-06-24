@@ -97,11 +97,12 @@ export function checkLuaSyntax(code: string): SyntaxCheckResult {
 
   if (stack.length > 0) {
     const unclosed = stack.pop()!
+    const context = lines[unclosed.line - 1]?.trim()
     return {
       valid: false,
       error: `Unclosed opening character "${unclosed.char}"`,
       line: unclosed.line,
-      context: lines[unclosed.line - 1]?.trim(),
+      ...(context !== undefined ? { context } : {}),
     }
   }
 
@@ -162,11 +163,12 @@ export function checkLuaSyntax(code: string): SyntaxCheckResult {
   }
 
   if (blockCount > 0) {
+    const context = lines[lines.length - 1]?.trim()
     return {
       valid: false,
       error: `Missing "end" statement. ${blockCount} unclosed block structures detected.`,
       line: lines.length,
-      context: lines[lines.length - 1]?.trim(),
+      ...(context !== undefined ? { context } : {}),
     }
   }
 

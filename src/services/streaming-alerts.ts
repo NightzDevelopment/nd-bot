@@ -83,7 +83,14 @@ async function pollTwitch(client: Client): Promise<void> {
     })
     if (!res.ok) return
     const data = (await res.json()) as {
-      data: { id: string; user_name: string; user_login: string; title: string; game_name: string; thumbnail_url: string }[]
+      data: {
+        id: string
+        user_name: string
+        user_login: string
+        title: string
+        game_name: string
+        thumbnail_url: string
+      }[]
     }
     const liveNow = new Set(data.data.map((s) => s.user_login.toLowerCase()))
     const store = await load()
@@ -102,7 +109,9 @@ async function pollTwitch(client: Client): Promise<void> {
           .setDescription(s.title?.slice(0, 1000) || '')
           .addFields({ name: 'Playing', value: s.game_name || 'Unknown', inline: true })
           .setImage(thumb)
-        await announceCh.send({ content: `https://twitch.tv/${s.user_login}`, embeds: [embed] }).catch(() => {})
+        await announceCh
+          .send({ content: `https://twitch.tv/${s.user_login}`, embeds: [embed] })
+          .catch(() => {})
       }
     }
     // Clear sessions that went offline so the next go-live re-announces.

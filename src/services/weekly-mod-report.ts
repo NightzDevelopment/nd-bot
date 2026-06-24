@@ -49,7 +49,10 @@ async function buildReport(sinceMs: number): Promise<EmbedBuilder | null> {
   const byMod = new Map<string, number>()
   for (const c of cases) {
     byAction.set(c.action, (byAction.get(c.action) ?? 0) + 1)
-    byMod.set(c.moderatorTag || c.moderatorId, (byMod.get(c.moderatorTag || c.moderatorId) ?? 0) + 1)
+    byMod.set(
+      c.moderatorTag || c.moderatorId,
+      (byMod.get(c.moderatorTag || c.moderatorId) ?? 0) + 1,
+    )
   }
   const actionLines = [...byAction.entries()]
     .sort((a, b) => b[1] - a[1])
@@ -94,10 +97,18 @@ async function buildReport(sinceMs: number): Promise<EmbedBuilder | null> {
       { name: 'Users warned', value: String(warned.length), inline: true },
     )
   if (actionLines.length) {
-    embed.addFields({ name: 'By action', value: actionLines.join('\n').slice(0, 1024), inline: false })
+    embed.addFields({
+      name: 'By action',
+      value: actionLines.join('\n').slice(0, 1024),
+      inline: false,
+    })
   }
   if (topMods.length) {
-    embed.addFields({ name: 'Top moderators', value: topMods.join('\n').slice(0, 1024), inline: false })
+    embed.addFields({
+      name: 'Top moderators',
+      value: topMods.join('\n').slice(0, 1024),
+      inline: false,
+    })
   }
   if (narrative) {
     embed.setDescription(narrative.slice(0, 4000))
@@ -118,7 +129,10 @@ async function postReport(client: Client, sinceMs: number): Promise<boolean> {
       await ch.send({ embeds: [embed] })
       return true
     }
-    log.warn({ channelId: weeklyModReportChannelId }, 'report channel is not a sendable text channel')
+    log.warn(
+      { channelId: weeklyModReportChannelId },
+      'report channel is not a sendable text channel',
+    )
   } catch (e) {
     log.warn({ err: e }, 'failed to post weekly report')
   }

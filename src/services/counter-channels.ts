@@ -370,7 +370,7 @@ export async function handleCountersSlash(interaction: ChatInputCommandInteracti
       return
     }
 
-    if (!('name' in ch) || ch.guildId !== guildId) {
+    if (!('name' in ch) || !('guildId' in ch) || ch.guildId !== guildId) {
       await interaction.reply({
         content: 'Pick a channel in this server.',
         flags: MessageFlags.Ephemeral,

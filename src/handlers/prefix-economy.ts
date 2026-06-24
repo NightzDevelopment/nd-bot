@@ -28,7 +28,7 @@ function parseAmount(arg: string): number | null {
   // Support 1k, 2.5m, etc.
   const match = /^([\d.]+)\s*([kmb])?$/.exec(cleaned)
   if (!match) return null
-  let n = parseFloat(match[1])
+  let n = parseFloat(match[1]!)
   if (!isFinite(n) || n < 0) return null
   const suffix = match[2]
   if (suffix === 'k') n *= 1_000
@@ -346,7 +346,9 @@ async function replyWithReceiptPrefix(
         .setCustomId(`econ_repeat_${action}_${msg.author.id}`)
         .setLabel(label)
         .setStyle(ButtonStyle.Primary)
-      components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(repeatButton))
+      components.push(
+        new ActionRowBuilder<InstanceType<typeof ButtonBuilder>>().addComponents(repeatButton),
+      )
     }
 
     await msg.reply({ files: [file], components })

@@ -870,14 +870,14 @@ export const aiResponseCacheMax = parseInt(process.env.AI_RESPONSE_CACHE_MAX ?? 
  * is in DASHBOARD_ADMIN_USER_IDS, OR who holds DASHBOARD_ADMIN_ROLE_ID in
  * DASHBOARD_ADMIN_GUILD_ID. Inert unless client id + secret are set.
  */
-export const dashboardDiscordClientId =
-  process.env.DASHBOARD_DISCORD_CLIENT_ID?.trim() || undefined
+export const dashboardDiscordClientId = process.env.DASHBOARD_DISCORD_CLIENT_ID?.trim() || undefined
 export const dashboardDiscordClientSecret =
   process.env.DASHBOARD_DISCORD_CLIENT_SECRET?.trim() || undefined
 /** Public base URL of the dashboard, used to build the OAuth redirect_uri. */
-export const dashboardPublicUrl = (
-  process.env.DASHBOARD_PUBLIC_URL?.trim() || ''
-).replace(/\/+$/, '')
+export const dashboardPublicUrl = (process.env.DASHBOARD_PUBLIC_URL?.trim() || '').replace(
+  /\/+$/,
+  '',
+)
 /** Discord user IDs always granted admin dashboard access. */
 export const dashboardAdminUserIds = parseIdSet(process.env.DASHBOARD_ADMIN_USER_IDS)
 /**

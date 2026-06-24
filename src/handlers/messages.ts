@@ -357,7 +357,7 @@ export function registerMessageHandler(client: Client): void {
 
       // Handle custom commands (e.g., !hello, !mycommand)
       if (rawText && rawText.startsWith('!')) {
-        const cmdName = rawText.slice(1).split(/\s+/)[0]
+        const cmdName = rawText.slice(1).split(/\s+/)[0] ?? ''
         const cmd = getCommand(cmdName)
         if (cmd) {
           try {
@@ -745,7 +745,9 @@ export function registerMessageHandler(client: Client): void {
           if (i === 0) await msg.reply({ content: chunk })
           else {
             await sleep(Math.min(2000, chunk.length * MS_PER_CHAR))
-            await msg.channel.send({ content: chunk })
+            if (msg.channel.isTextBased() && 'send' in msg.channel) {
+              await msg.channel.send({ content: chunk })
+            }
           }
         }
         pushTurn(

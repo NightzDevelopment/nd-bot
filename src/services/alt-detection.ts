@@ -302,7 +302,13 @@ export function registerAltDetection(client: Client): void {
         .addFields(
           { name: 'Risk score', value: `${score}`, inline: true },
           { name: 'Action', value: action, inline: true },
-          { name: 'Signals', value: reasons.map((r) => `• ${r}`).join('\n').slice(0, 1024) },
+          {
+            name: 'Signals',
+            value: reasons
+              .map((r) => `• ${r}`)
+              .join('\n')
+              .slice(0, 1024),
+          },
         )
         .setTimestamp()
       if (matchedBan) {

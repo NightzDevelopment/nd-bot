@@ -214,13 +214,18 @@ export async function tryHandleCopilotButton(interaction: Interaction): Promise<
   if (action === 'copilot_reject') {
     // Disable buttons and update message
     const message = interaction.message
-    const updatedEmbed = EmbedBuilder.from(message.embeds[0])
-      .setColor(0xef4444)
-      .setFooter({ text: `Draft declined by ${interaction.user.tag}` })
+    const baseEmbed = message.embeds[0]
+    const updatedEmbeds = baseEmbed
+      ? [
+          EmbedBuilder.from(baseEmbed)
+            .setColor(0xef4444)
+            .setFooter({ text: `Draft declined by ${interaction.user.tag}` }),
+        ]
+      : []
 
     await interaction.update({
       content: `[AI Copilot Draft] Declined by ${interaction.user.tag}.`,
-      embeds: [updatedEmbed],
+      embeds: updatedEmbeds,
       components: [],
     })
     return true
@@ -246,13 +251,20 @@ export async function tryHandleCopilotButton(interaction: Interaction): Promise<
         await customerChannel.send(draftText)
 
         // Update staff view
-        const updatedEmbed = EmbedBuilder.from(message.embeds[0])
-          .setColor(0x10b981)
-          .setFooter({ text: `Approved and sent by ${interaction.user.tag}` })
+        const baseEmbed = message.embeds[0]
+        const updatedEmbeds = baseEmbed
+          ? [
+              EmbedBuilder.from(baseEmbed)
+                .setColor(0x10b981)
+                .setFooter({
+                  text: `Approved and sent by ${interaction.user.tag}`,
+                }),
+            ]
+          : []
 
         await interaction.update({
           content: `[AI Copilot Draft] Approved and sent to ticket channel by ${interaction.user.tag}.`,
-          embeds: [updatedEmbed],
+          embeds: updatedEmbeds,
           components: [],
         })
       } else {
@@ -325,8 +337,9 @@ export async function tryHandleCopilotModal(interaction: ModalSubmitInteraction)
       // Since the button interaction is different from the modal submit,
       // we might want to update the original thread message if we can find it.
       // Let's attempt to update the thread message components/embed.
-      if (interaction.message) {
-        const updatedEmbed = new EmbedBuilder(interaction.message.embeds[0].data)
+      const baseEmbed = interaction.message?.embeds[0]
+      if (interaction.message && baseEmbed) {
+        const updatedEmbed = EmbedBuilder.from(baseEmbed)
           .setColor(0x10b981)
           .setDescription(editedText)
           .setFooter({ text: `Edited and sent by ${interaction.user.tag}` })

@@ -255,7 +255,11 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
           .then(({ classifyMessageLinks }) => classifyMessageLinks(content))
           .catch(() => null)
         if (verdict) {
-          const rule = `AI scam link (${Math.round(verdict.confidence * 100)}%): ${verdict.reason || verdict.url}`.slice(0, 240)
+          const rule =
+            `AI scam link (${Math.round(verdict.confidence * 100)}%): ${verdict.reason || verdict.url}`.slice(
+              0,
+              240,
+            )
           if (scamLinkAiDelete) {
             try {
               await deleteAutomodMessage(msg, rule)

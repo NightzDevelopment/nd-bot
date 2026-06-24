@@ -77,6 +77,7 @@ export async function maybeSendTicketOffer(msg: Message, botReplyFullText: strin
       .setStyle(ButtonStyle.Secondary),
   )
 
+  if (!msg.channel.isSendable()) return
   await msg.channel.send({
     content:
       '**Human support:** tap below to open a **private ticket**, or use the **#tickets / support** channel in the server list.',
@@ -110,8 +111,7 @@ export async function maybeOfferTicketFromHowQuestion(msg: Message): Promise<voi
   )
 
   await msg.reply({
-    content:
-      '**Tickets:** I can open a **private support channel** for you. Tap the button below.',
+    content: '**Tickets:** I can open a **private support channel** for you. Tap the button below.',
     components: [row],
   })
 }
@@ -138,6 +138,13 @@ export async function tryHandleTicketButton(interaction: ButtonInteraction): Pro
     const channelId = parts[2]
     const messageId = parts[3]
     const userId = parts[4]
+    if (!channelId || !messageId) {
+      await interaction.reply({
+        content: 'This button is missing required data.',
+        flags: MessageFlags.Ephemeral,
+      })
+      return true
+    }
     if (!userId || interaction.user.id !== userId) {
       await interaction.reply({
         content: 'Only the person who asked can use this button.',

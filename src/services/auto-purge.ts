@@ -1,9 +1,9 @@
 import {
   type Client,
   Collection,
+  type GuildTextBasedChannel,
   type Message,
   PermissionFlagsBits,
-  type TextBasedChannel,
 } from 'discord.js'
 import { autoPurgeIntervalMs, autoPurgeRulesJson } from '../config.ts'
 import { isFeatureEnabled } from './feature-gates.ts'
@@ -48,7 +48,7 @@ async function runRule(client: Client, rule: AutoPurgeRule): Promise<number> {
   for (const channelId of channelIdsForRule(rule)) {
     const ch = await client.channels.fetch(channelId).catch(() => null)
     if (!ch?.isTextBased() || ch.isDMBased()) continue
-    const channel = ch as TextBasedChannel
+    const channel = ch as GuildTextBasedChannel
     const guild = 'guild' in channel ? channel.guild : null
     if (!guild?.members.me?.permissions.has(PermissionFlagsBits.ManageMessages)) continue
     if (!('messages' in channel)) continue

@@ -43,7 +43,7 @@ export async function generateBlackjackCard(data: BlackjackCardData): Promise<Bu
   // Draw a subtle left accent vertical bar
   ctx.fillStyle = themeColor
   ctx.beginPath()
-  ctx.roundRect(8, 8, 6, 334, { topLeft: 10, bottomLeft: 10, topRight: 0, bottomRight: 0 })
+  ctx.roundRect(8, 8, 6, 334, [10, 0, 0, 10])
   ctx.fill()
 
   // Header
@@ -158,7 +158,7 @@ export async function generateBlackjackCard(data: BlackjackCardData): Promise<Bu
   // Dealer Cards
   for (let i = 0; i < data.dealerHand.length; i++) {
     const isHidden = data.status === 'playing' && i === 1
-    drawCard(30 + i * 70, 120, data.dealerHand[i], isHidden)
+    drawCard(30 + i * 70, 120, data.dealerHand[i] ?? '', isHidden)
   }
 
   // Draw Player Area
@@ -178,7 +178,7 @@ export async function generateBlackjackCard(data: BlackjackCardData): Promise<Bu
 
   // Player Cards
   for (let i = 0; i < data.playerHand.length; i++) {
-    drawCard(30 + i * 70, 250, data.playerHand[i])
+    drawCard(30 + i * 70, 250, data.playerHand[i] ?? '')
   }
 
   return canvas.toBuffer('image/png')

@@ -31,7 +31,9 @@ export function registerQuarantineRoleSwap(client: Client): void {
           if (newMember.roles.cache.has(toggleRole)) {
             await newMember.roles
               .remove(toggleRole, 'Quarantine applied: removing member role')
-              .catch((e) => log.warn({ err: e, userId: newMember.id }, 'failed to remove toggle role'))
+              .catch((e) =>
+                log.warn({ err: e, userId: newMember.id }, 'failed to remove toggle role'),
+              )
             log.info({ userId: newMember.id }, 'quarantine on: removed member role')
           }
         } else {

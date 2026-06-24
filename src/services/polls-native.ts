@@ -50,9 +50,8 @@ async function collectActivePolls(channel: GuildTextBasedChannel): Promise<Messa
   const seen = new Set<string>()
   let before: string | undefined
   for (let page = 0; page < 1 + POLL_LIST_EXTRA_PAGES; page++) {
-    const fetched = await channel.messages
-      .fetch({ limit: POLLS_FETCH_LIMIT, before })
-      .catch(() => null)
+    const fetchOpts = before ? { limit: POLLS_FETCH_LIMIT, before } : { limit: POLLS_FETCH_LIMIT }
+    const fetched = await channel.messages.fetch(fetchOpts).catch(() => null)
     if (!fetched || fetched.size === 0) break
     before = fetched.lastKey()
     for (const m of fetched.values()) {

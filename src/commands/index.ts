@@ -242,7 +242,7 @@ async function replyWithReceipt(
         .setCustomId(`econ_repeat_${action}_${interaction.user.id}`)
         .setLabel(label)
         .setStyle(ButtonStyle.Primary)
-      components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(repeatButton))
+      components.push(new ActionRowBuilder().addComponents(repeatButton))
     }
 
     await interaction.editReply({ files: [file], components })
@@ -444,7 +444,7 @@ export function registerInteractionHandler(client: Client): void {
             const attachment = new AttachmentBuilder(buffer, { name: 'blackjack.png' })
 
             if (session.status === 'playing') {
-              const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+              const row = new ActionRowBuilder<import('discord.js').ButtonBuilder>().addComponents(
                 new ButtonBuilder()
                   .setCustomId(`bj_hit_${targetUserId}`)
                   .setLabel('[Hit]')
@@ -635,7 +635,15 @@ export function registerInteractionHandler(client: Client): void {
           return
         }
         const n = options.getInteger('amount', true)
-        const deleted = await interaction.channel.bulkDelete(n, true).catch(() => null)
+        const ch = interaction.channel
+        if (!ch || !('bulkDelete' in ch)) {
+          await interaction.reply({
+            content: 'This channel does not support bulk delete.',
+            flags: MessageFlags.Ephemeral,
+          })
+          return
+        }
+        const deleted = await ch.bulkDelete(n, true).catch(() => null)
         await interaction.reply({
           content: deleted ? `Deleted ${deleted.size} message(s).` : 'Failed.',
           flags: MessageFlags.Ephemeral,
@@ -723,12 +731,13 @@ export function registerInteractionHandler(client: Client): void {
           return
         }
         const filterOpt = options.getString('filter')
+        const reasonContains = options.getString('reason_contains')?.trim() || undefined
         const listOpts: OpenTicketsListOptions = {
           filter:
             filterOpt === 'unclaimed' || filterOpt === 'claimed' || filterOpt === 'awaiting_staff'
               ? filterOpt
               : 'all',
-          reasonContains: options.getString('reason_contains')?.trim() || undefined,
+          ...(reasonContains ? { reasonContains } : {}),
           sort: options.getString('sort') === 'newest_first' ? 'newest_first' : 'oldest_first',
         }
         const body = await formatOpenTicketsList(interaction.guild.id, listOpts)
@@ -1421,7 +1430,10 @@ export function registerInteractionHandler(client: Client): void {
         }
         const seconds = options.getInteger('seconds', true)
         const chOpt = options.getChannel('channel')
-        const ch = (chOpt?.isTextBased() ? chOpt : interaction.channel) as TextChannel | null
+        const resolvedOpt = chOpt ? interaction.guild.channels.cache.get(chOpt.id) : null
+        const ch = (
+          resolvedOpt?.isTextBased() ? resolvedOpt : interaction.channel
+        ) as TextChannel | null
         if (!ch?.isTextBased()) {
           await interaction.reply({ content: 'Invalid channel.', flags: MessageFlags.Ephemeral })
           return
@@ -1459,7 +1471,7 @@ export function registerInteractionHandler(client: Client): void {
         const chunks = chunkText(text)
         await interaction.editReply({ content: chunks[0] ?? '(empty)' })
         for (let i = 1; i < chunks.length; i++) {
-          await interaction.followUp({ content: chunks[i], flags: MessageFlags.Ephemeral })
+          await interaction.followUp({ content: chunks[i] ?? '', flags: MessageFlags.Ephemeral })
         }
         return
       }
@@ -1647,7 +1659,7 @@ export function registerInteractionHandler(client: Client): void {
 
       if (commandName === 'auditlog') {
         if (!interaction.isChatInputCommand()) return
-        if (!isGuildMod(interaction.member)) {
+        if (!isGuildMod(interaction.member as GuildMember | null)) {
           await interaction.reply({
             content: 'This command is for staff only.',
             flags: MessageFlags.Ephemeral,
@@ -2113,7 +2125,7 @@ export function registerInteractionHandler(client: Client): void {
           const attachment = new AttachmentBuilder(buffer, { name: 'blackjack.png' })
 
           if (session.status === 'playing') {
-            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            const row = new ActionRowBuilder<import('discord.js').ButtonBuilder>().addComponents(
               new ButtonBuilder()
                 .setCustomId(`bj_hit_${interaction.user.id}`)
                 .setLabel('[Hit]')

@@ -14,7 +14,12 @@ import {
   type TextChannel,
   type User,
 } from 'discord.js'
-import { starboardChannelId, starboardEmoji, starboardEnabled, starboardThreshold } from '../config.ts'
+import {
+  starboardChannelId,
+  starboardEmoji,
+  starboardEnabled,
+  starboardThreshold,
+} from '../config.ts'
 import { childLogger } from '../lib/logger.ts'
 import { readJson, writeJson } from './data-store.ts'
 

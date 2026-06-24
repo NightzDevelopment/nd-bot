@@ -226,7 +226,8 @@ export async function scanMemberProfile(member: GuildMember): Promise<void> {
       const signature = `${nameReasons.join('|')}::${status}`
       if (lastNameAlert.get(key) !== signature) {
         lastNameAlert.set(key, signature)
-        if (lastNameAlert.size > 5000) lastNameAlert.delete(lastNameAlert.keys().next().value as string)
+        if (lastNameAlert.size > 5000)
+          lastNameAlert.delete(lastNameAlert.keys().next().value as string)
         await reportProfileFlag(
           member,
           'text',

@@ -44,7 +44,7 @@ export async function recordSnapshot(
   const diff = changedKeys.map((key) => ({
     key,
     oldValue: previousSnapshot?.[key],
-    newValue: currentConfig[key],
+    newValue: currentConfig[key] ?? '',
   }))
 
   const snapshot: ConfigSnapshot = {

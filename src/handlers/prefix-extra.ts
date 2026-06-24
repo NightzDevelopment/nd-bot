@@ -512,7 +512,7 @@ export async function endGiveawayDraw(
   if (!message) return { ok: false, winners: [] }
   let react = message.reactions.cache.get(E_PARTY)
   if (!react) {
-    await message.reactions.fetch().catch(() => {})
+    await message.fetch().catch(() => {})
     react = message.reactions.cache.get(E_PARTY)
   }
   const users = react ? await react.users.fetch().catch(() => null) : null
@@ -560,7 +560,7 @@ export async function rerollGiveawayDraw(
   if (!message) return { ok: false, winners: [], error: 'Original message gone' }
   let react = message.reactions.cache.get(E_PARTY)
   if (!react) {
-    await message.reactions.fetch().catch(() => {})
+    await message.fetch().catch(() => {})
     react = message.reactions.cache.get(E_PARTY)
   }
   const users = react ? await react.users.fetch().catch(() => null) : null
@@ -571,7 +571,7 @@ export async function rerollGiveawayDraw(
     const w = entrants.splice(idx, 1)[0]!
     winners.push(w.toString())
   }
-  if (winners.length > 0) {
+  if (winners.length > 0 && 'send' in ch) {
     await ch.send(`🎉 **Reroll for ${g.prize}**: ${winners.join(', ')}`).catch(() => {})
   }
   return { ok: true, winners }
@@ -637,7 +637,7 @@ export function startScheduleLoop(client: import('discord.js').Client): void {
     for (const s of list) {
       if (s.runAt > now) continue
       const ch = await client.channels.fetch(s.channelId).catch(() => null)
-      if (ch?.isTextBased()) await ch.send(s.content)
+      if (ch?.isTextBased() && 'send' in ch) await ch.send(s.content)
       if (s.repeatMs && s.repeatMs > 0) {
         s.runAt = now + s.repeatMs
         await updateSchedule(s)

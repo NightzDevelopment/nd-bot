@@ -35,7 +35,7 @@ export async function handleReputationSlash(
         desc += '**Recent Awards**:\n'
         for (const award of recent) {
           const date = new Date(award.at).toLocaleDateString()
-          desc += `• +${award.points ?? 1} from ${award.reason} (${date})\n`
+          desc += `• from <@${award.from}>: ${award.reason} (${date})\n`
         }
       }
       embed.setDescription(desc)

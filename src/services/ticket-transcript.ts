@@ -29,10 +29,9 @@ export async function fetchTicketMessages(channel: TextChannel, max: number): Pr
   for (let i = 0; i < batches; i++) {
     const remaining = cap - collected.length
     if (remaining <= 0) break
-    const batch = await channel.messages.fetch({
-      limit: Math.min(100, remaining),
-      before: lastId,
-    })
+    const limit = Math.min(100, remaining)
+    const opts = lastId ? { limit, before: lastId } : { limit }
+    const batch = await channel.messages.fetch(opts)
     if (batch.size === 0) break
     collected.push(...batch.values())
     lastId = batch.last()?.id

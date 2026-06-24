@@ -39,8 +39,26 @@ function buildEmbed(ev: EventRecord): EmbedBuilder {
     .setDescription(ev.description || '*(no description)*')
     .addFields(
       { name: 'When', value: `<t:${when}:F> (<t:${when}:R>)`, inline: false },
-      { name: `Going (${ev.rsvps.yes.length})`, value: ev.rsvps.yes.length ? ev.rsvps.yes.map((u) => `<@${u}>`).join(' ').slice(0, 1024) : '-', inline: false },
-      { name: `Maybe (${ev.rsvps.maybe.length})`, value: ev.rsvps.maybe.length ? ev.rsvps.maybe.map((u) => `<@${u}>`).join(' ').slice(0, 1024) : '-', inline: true },
+      {
+        name: `Going (${ev.rsvps.yes.length})`,
+        value: ev.rsvps.yes.length
+          ? ev.rsvps.yes
+              .map((u) => `<@${u}>`)
+              .join(' ')
+              .slice(0, 1024)
+          : '-',
+        inline: false,
+      },
+      {
+        name: `Maybe (${ev.rsvps.maybe.length})`,
+        value: ev.rsvps.maybe.length
+          ? ev.rsvps.maybe
+              .map((u) => `<@${u}>`)
+              .join(' ')
+              .slice(0, 1024)
+          : '-',
+        inline: true,
+      },
       { name: `Can't (${ev.rsvps.no.length})`, value: String(ev.rsvps.no.length), inline: true },
     )
     .setFooter({ text: `Event ID: ${ev.id}` })
@@ -50,9 +68,18 @@ function buildButtons(ev: EventRecord): ActionRowBuilder<ButtonBuilder>[] {
   if (ev.cancelled) return []
   return [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`${PREFIX}:rsvp:${ev.id}:yes`).setLabel('Going').setStyle(ButtonStyle.Success),
-      new ButtonBuilder().setCustomId(`${PREFIX}:rsvp:${ev.id}:maybe`).setLabel('Maybe').setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`${PREFIX}:rsvp:${ev.id}:no`).setLabel("Can't").setStyle(ButtonStyle.Danger),
+      new ButtonBuilder()
+        .setCustomId(`${PREFIX}:rsvp:${ev.id}:yes`)
+        .setLabel('Going')
+        .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`${PREFIX}:rsvp:${ev.id}:maybe`)
+        .setLabel('Maybe')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId(`${PREFIX}:rsvp:${ev.id}:no`)
+        .setLabel("Can't")
+        .setStyle(ButtonStyle.Danger),
     ),
   ]
 }
@@ -95,7 +122,8 @@ async function refreshEventMessage(client: Client, ev: EventRecord): Promise<voi
   const ch = await client.channels.fetch(ev.channelId).catch(() => null)
   if (!ch?.isTextBased() || !('messages' in ch)) return
   const msg = await ch.messages.fetch(ev.messageId).catch(() => null)
-  if (msg) await msg.edit({ embeds: [buildEmbed(ev)], components: buildButtons(ev) }).catch(() => {})
+  if (msg)
+    await msg.edit({ embeds: [buildEmbed(ev)], components: buildButtons(ev) }).catch(() => {})
 }
 
 /** Post a reminder pinging attendees. Called from the scheduled-actions loop. */
@@ -122,12 +150,19 @@ export async function tryHandleEventInteraction(interaction: Interaction): Promi
   const [, , eventId, choice] = id.split(':')
   const ev = await setRsvp(eventId ?? '', interaction.user.id, (choice ?? 'yes') as RsvpChoice)
   if (!ev) {
-    await interaction.reply({ content: 'This event no longer exists.', flags: MessageFlags.Ephemeral })
+    await interaction.reply({
+      content: 'This event no longer exists.',
+      flags: MessageFlags.Ephemeral,
+    })
     return true
   }
-  await interaction.update({ embeds: [buildEmbed(ev)], components: buildButtons(ev) }).catch(async () => {
-    await interaction.reply({ content: `RSVP saved: ${choice}.`, flags: MessageFlags.Ephemeral }).catch(() => {})
-  })
+  await interaction
+    .update({ embeds: [buildEmbed(ev)], components: buildButtons(ev) })
+    .catch(async () => {
+      await interaction
+        .reply({ content: `RSVP saved: ${choice}.`, flags: MessageFlags.Ephemeral })
+        .catch(() => {})
+    })
   return true
 }
 

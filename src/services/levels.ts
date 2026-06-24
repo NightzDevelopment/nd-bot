@@ -185,7 +185,10 @@ export async function buildRankEmbed(guildId: string, userId: string, tag: strin
     )
 }
 
-export async function buildLeaderboardEmbed(guildId: string, window: 'all' | 'week' | 'month' = 'all') {
+export async function buildLeaderboardEmbed(
+  guildId: string,
+  window: 'all' | 'week' | 'month' = 'all',
+) {
   if (window === 'all') {
     const rows = await topLevelRecords(guildId, 10)
     return ndEmbed()
@@ -281,7 +284,10 @@ export async function handleLeaderboardSlash(
     await interaction.reply({ content: 'Use this in a server.', flags: MessageFlags.Ephemeral })
     return true
   }
-  const window = (interaction.options.getString('window', false) ?? 'all') as 'all' | 'week' | 'month'
+  const window = (interaction.options.getString('window', false) ?? 'all') as
+    | 'all'
+    | 'week'
+    | 'month'
   await interaction.reply({ embeds: [await buildLeaderboardEmbed(interaction.guild.id, window)] })
   return true
 }

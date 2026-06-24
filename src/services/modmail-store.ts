@@ -44,9 +44,7 @@ export async function getSessionByUser(userId: string): Promise<ModmailSession |
   return (await load()).sessions[userId]
 }
 
-export async function getSessionByChannel(
-  channelId: string,
-): Promise<ModmailSession | undefined> {
+export async function getSessionByChannel(channelId: string): Promise<ModmailSession | undefined> {
   const data = await load()
   const userId = data.byChannel[channelId]
   return userId ? data.sessions[userId] : undefined

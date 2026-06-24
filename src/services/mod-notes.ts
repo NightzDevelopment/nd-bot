@@ -130,12 +130,15 @@ export async function getUsersWithHighNotes(): Promise<
   const store = await load()
   return Object.values(store)
     .filter((r) => r.notes.some((n) => n.severity === 'high'))
-    .map((record) => ({
-      userId: record.userId,
-      noteCount: record.notes.length,
-      highCount: record.notes.filter((n) => n.severity === 'high').length,
-      latestNote: record.notes[record.notes.length - 1],
-    }))
+    .map((record) => {
+      const latestNote = record.notes[record.notes.length - 1]
+      return {
+        userId: record.userId,
+        noteCount: record.notes.length,
+        highCount: record.notes.filter((n) => n.severity === 'high').length,
+        ...(latestNote ? { latestNote } : {}),
+      }
+    })
     .sort((a, b) => b.highCount - a.highCount)
 }
 

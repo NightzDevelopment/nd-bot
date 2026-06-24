@@ -57,9 +57,7 @@ export async function buildDossier(guildId: string, userId: string): Promise<Dos
     listOpenTicketsForUser(guildId, userId),
     listAllTickets(2000),
   ])
-  const totalTickets = allTickets.filter(
-    (t) => t.guildId === guildId && t.userId === userId,
-  ).length
+  const totalTickets = allTickets.filter((t) => t.guildId === guildId && t.userId === userId).length
   return {
     userId,
     guildId,
@@ -119,10 +117,8 @@ export function formatDossierEmbed(d: Dossier, userTag: string): EmbedBuilder {
         .join('\n')
     : '*none*'
 
-  const color =
-    d.riskLevel === 'high' ? 0xef4444 : d.riskLevel === 'medium' ? 0xfbbf24 : 0x60a5fa
-  const riskLabel =
-    d.riskLevel === 'high' ? 'HIGH' : d.riskLevel === 'medium' ? 'MEDIUM' : 'low'
+  const color = d.riskLevel === 'high' ? 0xef4444 : d.riskLevel === 'medium' ? 0xfbbf24 : 0x60a5fa
+  const riskLabel = d.riskLevel === 'high' ? 'HIGH' : d.riskLevel === 'medium' ? 'MEDIUM' : 'low'
   const embed = new EmbedBuilder()
     .setColor(color)
     .setTitle(`Dossier: ${userTag}`)

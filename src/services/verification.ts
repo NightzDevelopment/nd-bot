@@ -47,7 +47,10 @@ export function buildVerifyPanel(): {
     .setTitle('Verify to gain access')
     .setDescription('Click the button below to verify and unlock the rest of the server.')
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`${PREFIX}:go`).setLabel('Verify').setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId(`${PREFIX}:go`)
+      .setLabel('Verify')
+      .setStyle(ButtonStyle.Success),
   )
   return { embeds: [embed], components: [row] }
 }
@@ -91,7 +94,10 @@ export async function tryHandleVerifyInteraction(interaction: Interaction): Prom
   }
   const member = interaction.member as GuildMember | null
   if (!member) {
-    await interaction.reply({ content: 'Could not resolve your membership.', flags: MessageFlags.Ephemeral })
+    await interaction.reply({
+      content: 'Could not resolve your membership.',
+      flags: MessageFlags.Ephemeral,
+    })
     return true
   }
   try {
