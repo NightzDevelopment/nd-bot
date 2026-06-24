@@ -590,7 +590,7 @@ Always call tools FIRST, then compose your answer from the tool results. Do not 
       const response = await model.generateContent({ contents })
       const resVal = response.response
 
-      const functionCalls = resVal.functionCalls
+      const functionCalls = resVal.functionCalls()
       if (!functionCalls || functionCalls.length === 0) {
         // No more tool execution requested, return final text
         const text = resVal.text()

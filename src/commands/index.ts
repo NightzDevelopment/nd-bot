@@ -36,7 +36,11 @@ import {
 } from '../config.ts'
 import { consumeTranslateSlot } from '../handlers/prefix.ts'
 import { handleAfkSlash } from '../services/afk.ts'
-import { applyNameQuarantine, AVATAR_SCAN_CAP, collectProfileFlags } from '../services/profile-scan.ts'
+import {
+  applyNameQuarantine,
+  AVATAR_SCAN_CAP,
+  collectProfileFlags,
+} from '../services/profile-scan.ts'
 import {
   type AiProviderMode,
   getAiProviderState,
@@ -126,23 +130,31 @@ export async function registerSlashCommands(client: Client): Promise<void> {
   const app = client.application
   if (!app) return
   const n = slashCommands.length
-  if (slashCommandsGuildId) {
-    const g = await client.guilds.fetch(slashCommandsGuildId).catch(() => null)
-    if (g) {
-      await g.commands.set(slashCommands)
-      console.log(
-        `[commands] registered ${n} slash commands to guild ${slashCommandsGuildId} (SLASH_COMMANDS_GUILD_ID; instant). Unset to register globally.`,
+  // Command registration is not load-bearing for the running bot: interaction
+  // handling is wired separately and previously-registered commands persist on
+  // Discord's side. A bad schema or transient PUT failure must log+continue, not
+  // abort startup, so the bulk set() is guarded here.
+  try {
+    if (slashCommandsGuildId) {
+      const g = await client.guilds.fetch(slashCommandsGuildId).catch(() => null)
+      if (g) {
+        await g.commands.set(slashCommands)
+        console.log(
+          `[commands] registered ${n} slash commands to guild ${slashCommandsGuildId} (SLASH_COMMANDS_GUILD_ID; instant). Unset to register globally.`,
+        )
+        return
+      }
+      console.warn(
+        `[commands] SLASH_COMMANDS_GUILD_ID ${slashCommandsGuildId} not reachable; falling back to global registration`,
       )
-      return
     }
-    console.warn(
-      `[commands] SLASH_COMMANDS_GUILD_ID ${slashCommandsGuildId} not reachable; falling back to global registration`,
+    await app.commands.set(slashCommands)
+    console.log(
+      `[commands] registered ${n} slash commands (global; new/updated commands can take up to about an hour to appear in every server)`,
     )
+  } catch (e) {
+    console.error('[commands] slash command registration failed (continuing):', e)
   }
-  await app.commands.set(slashCommands)
-  console.log(
-    `[commands] registered ${n} slash commands (global; new/updated commands can take up to about an hour to appear in every server)`,
-  )
 }
 
 async function replyWithReceipt(
@@ -258,214 +270,244 @@ export function registerInteractionHandler(client: Client): void {
       return
     }
 
-    if (interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) {
-      const handled = await tryHandleTicketSystem(interaction)
-      if (handled) return
-    }
+    // Guard the whole button/select/modal/autocomplete dispatch. Several callees
+    // (ticket buttons, event RSVP, blackjack render) await Discord/DB calls without
+    // their own try/catch, and an uncaught throw here would escape as an
+    // unhandledRejection (the process guard force-exits after a burst). The
+    // slash-command path further down has its own try/catch.
+    try {
+      if (
+        interaction.isButton() ||
+        interaction.isStringSelectMenu() ||
+        interaction.isModalSubmit()
+      ) {
+        const handled = await tryHandleTicketSystem(interaction)
+        if (handled) return
+      }
 
-    if (interaction.isButton() || interaction.isModalSubmit()) {
-      const { tryHandleAppealInteraction } = await import('../services/appeals.ts')
-      const handled = await tryHandleAppealInteraction(interaction)
-      if (handled) return
-    }
+      if (interaction.isButton() || interaction.isModalSubmit()) {
+        const { tryHandleAppealInteraction } = await import('../services/appeals.ts')
+        const handled = await tryHandleAppealInteraction(interaction)
+        if (handled) return
+      }
 
-    if (interaction.isButton()) {
-      const { tryHandleModmailInteraction } = await import('../services/modmail.ts')
-      const handled = await tryHandleModmailInteraction(interaction)
-      if (handled) return
-    }
+      if (interaction.isButton()) {
+        const { tryHandleModmailInteraction } = await import('../services/modmail.ts')
+        const handled = await tryHandleModmailInteraction(interaction)
+        if (handled) return
+      }
 
-    if (interaction.isButton()) {
-      const { tryHandleVerifyInteraction } = await import('../services/verification.ts')
-      const handled = await tryHandleVerifyInteraction(interaction)
-      if (handled) return
-    }
+      if (interaction.isButton()) {
+        const { tryHandleVerifyInteraction } = await import('../services/verification.ts')
+        const handled = await tryHandleVerifyInteraction(interaction)
+        if (handled) return
+      }
 
-    if (interaction.isButton()) {
-      const { tryHandleEventInteraction } = await import('../services/events.ts')
-      const handled = await tryHandleEventInteraction(interaction)
-      if (handled) return
-    }
+      if (interaction.isButton()) {
+        const { tryHandleEventInteraction } = await import('../services/events.ts')
+        const handled = await tryHandleEventInteraction(interaction)
+        if (handled) return
+      }
 
-    if (interaction.isButton()) {
-      const handled = await tryHandleTicketButton(interaction)
-      if (handled) return
+      if (interaction.isButton()) {
+        const handled = await tryHandleTicketButton(interaction)
+        if (handled) return
 
-      const customId = interaction.customId
+        const customId = interaction.customId
 
-      if (customId.startsWith('econ_repeat_')) {
-        const parts = customId.split('_')
-        const action = parts[2]
-        const targetUserId = parts[3]
+        if (customId.startsWith('econ_repeat_')) {
+          const parts = customId.split('_')
+          const action = parts[2]
+          const targetUserId = parts[3]
 
-        if (interaction.user.id !== targetUserId) {
-          await interaction.reply({
-            content: '[ERROR] This receipt is not yours to repeat!',
-            flags: MessageFlags.Ephemeral,
-          })
-          return
-        }
-
-        try {
-          let result: any
-          let title = ''
-          let isSuccess = false
-
-          if (action === 'work') {
-            const { claimWork } = await import('../services/economy-store.ts')
-            result = await claimWork(targetUserId)
-            title = 'WORK TRANSACTION'
-            isSuccess = result.ok
-          } else if (action === 'crime') {
-            const { commitCrime } = await import('../services/economy-store.ts')
-            result = await commitCrime(targetUserId)
-            title = 'CRIME DISPATCH'
-            isSuccess = result.result === 'success'
-          } else if (action === 'heist') {
-            const { commitHeist } = await import('../services/economy-store.ts')
-            result = await commitHeist(targetUserId)
-            title = 'HEIST BREACH'
-            isSuccess = result.result === 'success'
-          } else if (action === 'hunt') {
-            const { hunt } = await import('../services/economy-store.ts')
-            result = await hunt(targetUserId)
-            title = 'HUNT VENTURE'
-            isSuccess = result.ok
-          } else if (action === 'fish') {
-            const { fish } = await import('../services/economy-store.ts')
-            result = await fish(targetUserId)
-            title = 'FISHING EXPEDITION'
-            isSuccess = result.ok
-          } else if (action === 'mine') {
-            const { mine } = await import('../services/economy-store.ts')
-            result = await mine(targetUserId)
-            title = 'MINING EXCAVATION'
-            isSuccess = result.ok
-          }
-
-          if (result) {
-            await replyWithReceipt(interaction, title, result, isSuccess, false)
-          }
-        } catch (err) {
-          console.error('[econ-repeat] Error executing repeat action:', err)
-          try {
+          if (interaction.user.id !== targetUserId) {
             await interaction.reply({
-              content: '[ERROR] Something went wrong executing that action.',
+              content: '[ERROR] This receipt is not yours to repeat!',
               flags: MessageFlags.Ephemeral,
             })
-          } catch {
-            await interaction
-              .followUp({
+            return
+          }
+
+          try {
+            let result: any
+            let title = ''
+            let isSuccess = false
+
+            if (action === 'work') {
+              const { claimWork } = await import('../services/economy-store.ts')
+              result = await claimWork(targetUserId)
+              title = 'WORK TRANSACTION'
+              isSuccess = result.ok
+            } else if (action === 'crime') {
+              const { commitCrime } = await import('../services/economy-store.ts')
+              result = await commitCrime(targetUserId)
+              title = 'CRIME DISPATCH'
+              isSuccess = result.result === 'success'
+            } else if (action === 'heist') {
+              const { commitHeist } = await import('../services/economy-store.ts')
+              result = await commitHeist(targetUserId)
+              title = 'HEIST BREACH'
+              isSuccess = result.result === 'success'
+            } else if (action === 'hunt') {
+              const { hunt } = await import('../services/economy-store.ts')
+              result = await hunt(targetUserId)
+              title = 'HUNT VENTURE'
+              isSuccess = result.ok
+            } else if (action === 'fish') {
+              const { fish } = await import('../services/economy-store.ts')
+              result = await fish(targetUserId)
+              title = 'FISHING EXPEDITION'
+              isSuccess = result.ok
+            } else if (action === 'mine') {
+              const { mine } = await import('../services/economy-store.ts')
+              result = await mine(targetUserId)
+              title = 'MINING EXCAVATION'
+              isSuccess = result.ok
+            }
+
+            if (result) {
+              await replyWithReceipt(interaction, title, result, isSuccess, false)
+            }
+          } catch (err) {
+            console.error('[econ-repeat] Error executing repeat action:', err)
+            try {
+              await interaction.reply({
                 content: '[ERROR] Something went wrong executing that action.',
                 flags: MessageFlags.Ephemeral,
               })
-              .catch(() => {})
+            } catch {
+              await interaction
+                .followUp({
+                  content: '[ERROR] Something went wrong executing that action.',
+                  flags: MessageFlags.Ephemeral,
+                })
+                .catch(() => {})
+            }
           }
-        }
-        return
-      }
-      if (customId.startsWith('bj_hit_') || customId.startsWith('bj_stand_')) {
-        const parts = customId.split('_')
-        const action = parts[1] // 'hit' or 'stand'
-        const targetUserId = parts[2]
-
-        if (interaction.user.id !== targetUserId) {
-          await interaction.reply({
-            content: '[ERROR] You cannot control this blackjack session.',
-            flags: MessageFlags.Ephemeral,
-          })
           return
         }
+        if (customId.startsWith('bj_hit_') || customId.startsWith('bj_stand_')) {
+          const parts = customId.split('_')
+          const action = parts[1] // 'hit' or 'stand'
+          const targetUserId = parts[2]
 
-        const { blackjackHit, blackjackStand, calculateHandValue } = await import(
-          '../services/casino.ts'
-        )
-
-        await interaction.deferUpdate()
-
-        let result
-        if (action === 'hit') {
-          result = await blackjackHit(targetUserId)
-        } else {
-          result = await blackjackStand(targetUserId)
-        }
-
-        if (!result.success) {
-          await interaction.followUp({
-            content: `[ERROR] ${result.msg}`,
-            flags: MessageFlags.Ephemeral,
-          })
-          return
-        }
-
-        const session = result.session
-        if (session) {
-          const pScore = calculateHandValue(session.playerHand)
-          let dScore = calculateHandValue(session.dealerHand.slice(0, 1))
-          if (session.status !== 'playing') {
-            dScore = calculateHandValue(session.dealerHand)
-          }
-
-          const { generateBlackjackCard } = await import('../services/casino-card.ts')
-          const buffer = await generateBlackjackCard({
-            username: interaction.user.username,
-            playerHand: session.playerHand,
-            dealerHand: session.dealerHand,
-            playerScore: pScore,
-            dealerScore: dScore,
-            bet: session.bet,
-            status: session.status,
-          })
-
-          const { AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import(
-            'discord.js'
-          )
-          const attachment = new AttachmentBuilder(buffer, { name: 'blackjack.png' })
-
-          if (session.status === 'playing') {
-            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-              new ButtonBuilder()
-                .setCustomId(`bj_hit_${targetUserId}`)
-                .setLabel('[Hit]')
-                .setStyle(ButtonStyle.Primary),
-              new ButtonBuilder()
-                .setCustomId(`bj_stand_${targetUserId}`)
-                .setLabel('[Stand]')
-                .setStyle(ButtonStyle.Secondary),
-            )
-            await interaction.editReply({ embeds: [], components: [row], files: [attachment] })
-          } else {
-            await interaction.editReply({
-              content: result.msg,
-              embeds: [],
-              components: [],
-              files: [attachment],
+          if (interaction.user.id !== targetUserId) {
+            await interaction.reply({
+              content: '[ERROR] You cannot control this blackjack session.',
+              flags: MessageFlags.Ephemeral,
             })
-          }
-        } else {
-          await interaction.editReply({ content: result.msg, embeds: [], components: [] })
-        }
-        return
-      }
-    }
-
-    // Autocomplete for ticket templates
-    if (interaction.isAutocomplete()) {
-      try {
-        if (
-          interaction.commandName === 'ticketreply' ||
-          interaction.commandName === 'tickettemplates'
-        ) {
-          const focused = interaction.options.getFocused(true)
-          if (focused.name === 'template' || focused.name === 'key') {
-            const { searchTemplateKeys } = await import('../services/ticket-templates.ts')
-            const keys = await searchTemplateKeys(String(focused.value || ''))
-            await interaction.respond(keys.map((k) => ({ name: k, value: k })))
             return
           }
+
+          const { blackjackHit, blackjackStand, calculateHandValue } = await import(
+            '../services/casino.ts'
+          )
+
+          await interaction.deferUpdate()
+
+          let result
+          if (action === 'hit') {
+            result = await blackjackHit(targetUserId)
+          } else {
+            result = await blackjackStand(targetUserId)
+          }
+
+          if (!result.success) {
+            await interaction.followUp({
+              content: `[ERROR] ${result.msg}`,
+              flags: MessageFlags.Ephemeral,
+            })
+            return
+          }
+
+          const session = result.session
+          if (session) {
+            const pScore = calculateHandValue(session.playerHand)
+            let dScore = calculateHandValue(session.dealerHand.slice(0, 1))
+            if (session.status !== 'playing') {
+              dScore = calculateHandValue(session.dealerHand)
+            }
+
+            const { generateBlackjackCard } = await import('../services/casino-card.ts')
+            const buffer = await generateBlackjackCard({
+              username: interaction.user.username,
+              playerHand: session.playerHand,
+              dealerHand: session.dealerHand,
+              playerScore: pScore,
+              dealerScore: dScore,
+              bet: session.bet,
+              status: session.status,
+            })
+
+            const { AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } =
+              await import('discord.js')
+            const attachment = new AttachmentBuilder(buffer, { name: 'blackjack.png' })
+
+            if (session.status === 'playing') {
+              const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                new ButtonBuilder()
+                  .setCustomId(`bj_hit_${targetUserId}`)
+                  .setLabel('[Hit]')
+                  .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                  .setCustomId(`bj_stand_${targetUserId}`)
+                  .setLabel('[Stand]')
+                  .setStyle(ButtonStyle.Secondary),
+              )
+              await interaction.editReply({ embeds: [], components: [row], files: [attachment] })
+            } else {
+              await interaction.editReply({
+                content: result.msg,
+                embeds: [],
+                components: [],
+                files: [attachment],
+              })
+            }
+          } else {
+            await interaction.editReply({ content: result.msg, embeds: [], components: [] })
+          }
+          return
         }
-      } catch (e) {
-        console.warn('[autocomplete] error:', e)
+      }
+
+      // Autocomplete for ticket templates
+      if (interaction.isAutocomplete()) {
+        try {
+          if (
+            interaction.commandName === 'ticketreply' ||
+            interaction.commandName === 'tickettemplates'
+          ) {
+            const focused = interaction.options.getFocused(true)
+            if (focused.name === 'template' || focused.name === 'key') {
+              const { searchTemplateKeys } = await import('../services/ticket-templates.ts')
+              const keys = await searchTemplateKeys(String(focused.value || ''))
+              await interaction.respond(keys.map((k) => ({ name: k, value: k })))
+              return
+            }
+          }
+        } catch (e) {
+          console.warn('[autocomplete] error:', e)
+        }
+        return
+      }
+    } catch (e) {
+      console.error('[interaction] dispatch error:', e)
+      try {
+        if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: 'Something went wrong handling that. Please try again.',
+            flags: MessageFlags.Ephemeral,
+          })
+        } else if (interaction.isRepliable()) {
+          await interaction
+            .followUp({
+              content: 'Something went wrong handling that. Please try again.',
+              flags: MessageFlags.Ephemeral,
+            })
+            .catch(() => {})
+        }
+      } catch {
+        /* swallow secondary reply error */
       }
       return
     }
@@ -1500,7 +1542,10 @@ export function registerInteractionHandler(client: Client): void {
           return
         }
         if (!interaction.guild) {
-          await interaction.reply({ content: 'Use this in a server.', flags: MessageFlags.Ephemeral })
+          await interaction.reply({
+            content: 'Use this in a server.',
+            flags: MessageFlags.Ephemeral,
+          })
           return
         }
         await interaction.deferReply({ flags: MessageFlags.Ephemeral })
@@ -1514,10 +1559,7 @@ export function registerInteractionHandler(client: Client): void {
       if (commandName === 'event') {
         if (!interaction.isChatInputCommand() || !interaction.guild) return
         const sub = interaction.options.getSubcommand()
-        const {
-          createAndPostEvent,
-          refreshEventMessage,
-        } = await import('../services/events.ts')
+        const { createAndPostEvent, refreshEventMessage } = await import('../services/events.ts')
         const { listUpcomingEvents, getEvent, updateEvent } = await import(
           '../services/events-store.ts'
         )
@@ -1525,13 +1567,20 @@ export function registerInteractionHandler(client: Client): void {
         if (sub === 'list') {
           const events = await listUpcomingEvents(interaction.guild.id)
           if (!events.length) {
-            await interaction.reply({ content: 'No upcoming events.', flags: MessageFlags.Ephemeral })
+            await interaction.reply({
+              content: 'No upcoming events.',
+              flags: MessageFlags.Ephemeral,
+            })
             return
           }
           const lines = events.map(
-            (e) => `• **${e.title}**: <t:${Math.floor(e.startsAt / 1000)}:R> · ${e.rsvps.yes.length} going · \`${e.id}\``,
+            (e) =>
+              `• **${e.title}**: <t:${Math.floor(e.startsAt / 1000)}:R> · ${e.rsvps.yes.length} going · \`${e.id}\``,
           )
-          await interaction.reply({ content: lines.join('\n').slice(0, 1900), flags: MessageFlags.Ephemeral })
+          await interaction.reply({
+            content: lines.join('\n').slice(0, 1900),
+            flags: MessageFlags.Ephemeral,
+          })
           return
         }
 
@@ -1548,13 +1597,19 @@ export function registerInteractionHandler(client: Client): void {
           const { parseDuration } = await import('../utils/time.ts')
           const offset = parseDuration(inRaw)
           if (!offset) {
-            await interaction.reply({ content: 'Invalid time. Use e.g. `2h`, `1d`.', flags: MessageFlags.Ephemeral })
+            await interaction.reply({
+              content: 'Invalid time. Use e.g. `2h`, `1d`.',
+              flags: MessageFlags.Ephemeral,
+            })
             return
           }
           const chOpt = interaction.options.getChannel('channel', false)
           const channel = (chOpt ?? interaction.channel) as TextChannel
           if (!channel || !('send' in channel)) {
-            await interaction.reply({ content: 'Pick a text channel.', flags: MessageFlags.Ephemeral })
+            await interaction.reply({
+              content: 'Pick a text channel.',
+              flags: MessageFlags.Ephemeral,
+            })
             return
           }
           const ev = await createAndPostEvent({
@@ -1565,7 +1620,10 @@ export function registerInteractionHandler(client: Client): void {
             startsAt: Date.now() + offset,
             createdBy: interaction.user.id,
           })
-          await interaction.reply({ content: `Event created in <#${channel.id}> (ID \`${ev.id}\`).`, flags: MessageFlags.Ephemeral })
+          await interaction.reply({
+            content: `Event created in <#${channel.id}> (ID \`${ev.id}\`).`,
+            flags: MessageFlags.Ephemeral,
+          })
           return
         }
 
@@ -1578,7 +1636,10 @@ export function registerInteractionHandler(client: Client): void {
           }
           const updated = await updateEvent(id, { cancelled: true })
           if (updated) await refreshEventMessage(interaction.client, updated)
-          await interaction.reply({ content: `Event \`${id}\` cancelled.`, flags: MessageFlags.Ephemeral })
+          await interaction.reply({
+            content: `Event \`${id}\` cancelled.`,
+            flags: MessageFlags.Ephemeral,
+          })
           return
         }
         return
@@ -1832,8 +1893,7 @@ export function registerInteractionHandler(client: Client): void {
           mine: '[MINE]',
         }
         const lines = cooldowns.map(
-          (c) =>
-            `${labels[c.command] || '•'} \`/${c.command}\`: ${formatRemaining(c.remainingMs)}`,
+          (c) => `${labels[c.command] || '•'} \`/${c.command}\`: ${formatRemaining(c.remainingMs)}`,
         )
         const embed = ndEmbed()
           .setTitle('Your Economy Cooldowns')

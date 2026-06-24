@@ -32,7 +32,7 @@ import { isLocalDashboardConfigured, startDashboard } from './dashboard/server.t
 import { registerAiFeedbackHandler } from './handlers/ai-feedback.ts'
 import { initAuditChannel, registerAuditHandler } from './handlers/audit.ts'
 import { registerMessageHandler } from './handlers/messages.ts'
-import { registerTempVc, startScheduleLoop } from './handlers/prefix-extra.ts'
+import { registerTempVc, startGiveawayLoop, startScheduleLoop } from './handlers/prefix-extra.ts'
 import { registerReactionRoles } from './handlers/roles-reaction.ts'
 import { registerWelcomeHandler } from './handlers/welcome.ts'
 import { registerAfk } from './services/afk.ts'
@@ -128,6 +128,17 @@ function syncPresenceStats(c: Client): void {
 }
 
 client.once(Events.ClientReady, async (c) => {
+  // Each startup step is isolated: a single failure (a bad slash-command schema, a
+  // transient Discord 5xx, one init throwing) must not abort the rest of startup or
+  // escape as an unhandledRejection, which the process guard counts toward a force-exit.
+  const step = async (name: string, fn: () => unknown): Promise<void> => {
+    try {
+      await fn()
+    } catch (e) {
+      console.error(`[startup] ${name} failed:`, e)
+    }
+  }
+
   setDiscordReady(c.user.tag)
   setDiscordClient(c)
   // Register canvas fonts (Arial/Courier New aliases) so image cards render on Linux.
@@ -135,14 +146,14 @@ client.once(Events.ClientReady, async (c) => {
   registerCanvasFonts()
   syncPresenceStats(c)
   setInterval(() => syncPresenceStats(c), 30_000).unref?.()
-  await ensureDataDir()
-  await initConversationMemory()
-  await refreshFaqOnce(c)
-  await refreshCodebaseIndex()
-  await refreshProductDocs()
-  await refreshStoreSnapshot()
+  await step('ensureDataDir', () => ensureDataDir())
+  await step('initConversationMemory', () => initConversationMemory())
+  await step('refreshFaqOnce', () => refreshFaqOnce(c))
+  await step('refreshCodebaseIndex', () => refreshCodebaseIndex())
+  await step('refreshProductDocs', () => refreshProductDocs())
+  await step('refreshStoreSnapshot', () => refreshStoreSnapshot())
   if (vectorRetrievalEnabled) {
-    await rebuildEmbeddingIndex()
+    await step('rebuildEmbeddingIndex', () => rebuildEmbeddingIndex())
     setInterval(() => void rebuildEmbeddingIndex(), embeddingRefreshMinutes * 60 * 1000).unref()
   }
   console.log(`Logged in as ${c.user.tag}`)
@@ -172,53 +183,61 @@ client.once(Events.ClientReady, async (c) => {
       ? `Vector retrieval: ON (embeddings every ${embeddingRefreshMinutes}m)`
       : 'Vector retrieval: OFF (set VECTOR_RETRIEVAL_ENABLED=1 for semantic search)',
   )
-  await registerSlashCommands(client)
-  await initLogChannels(client)
-  await initAuditChannel(client)
-  startFaqLoop(client)
-  startCodebaseRefreshLoop()
-  startProductDocsRefreshLoop()
-  startStorePageSnapshotLoop(storePageRefreshMinutes * 60 * 1000)
-  registerRaidTracking(client)
-  registerProfileScan(client)
-  startAiAutomodProcessor(client)
-  startAutoPurgeLoop(client)
-  startScheduleLoop(client)
-  await deployTicketPanel(c)
-  startTicketAutoCloseLoop(c)
-  startTicketSlaWatchLoop(c)
+  await step('registerSlashCommands', () => registerSlashCommands(client))
+  await step('initLogChannels', () => initLogChannels(client))
+  await step('initAuditChannel', () => initAuditChannel(client))
+  await step('startFaqLoop', () => startFaqLoop(client))
+  await step('startCodebaseRefreshLoop', () => startCodebaseRefreshLoop())
+  await step('startProductDocsRefreshLoop', () => startProductDocsRefreshLoop())
+  await step('startStorePageSnapshotLoop', () =>
+    startStorePageSnapshotLoop(storePageRefreshMinutes * 60 * 1000),
+  )
+  await step('registerRaidTracking', () => registerRaidTracking(client))
+  await step('registerProfileScan', () => registerProfileScan(client))
+  await step('startAiAutomodProcessor', () => startAiAutomodProcessor(client))
+  await step('startAutoPurgeLoop', () => startAutoPurgeLoop(client))
+  await step('startScheduleLoop', () => startScheduleLoop(client))
+  await step('startGiveawayLoop', () => startGiveawayLoop(client))
+  await step('deployTicketPanel', () => deployTicketPanel(c))
+  await step('startTicketAutoCloseLoop', () => startTicketAutoCloseLoop(c))
+  await step('startTicketSlaWatchLoop', () => startTicketSlaWatchLoop(c))
   // Seed default ticket reply templates if store is empty
-  try {
+  await step('ensureDefaultTemplates', async () => {
     const { ensureDefaultTemplates } = await import('./services/ticket-templates.ts')
     await ensureDefaultTemplates()
-  } catch (e) {
-    console.warn('[ticket-templates] bootstrap failed:', e)
-  }
-  startCounterChannelLoop(c)
-  startScheduledActionsLoop(c)
-  void import('./services/lockdown.ts').then(({ restoreLockdownState }) => restoreLockdownState())
-  void import('./services/streaming-alerts.ts').then(({ startStreamingAlertsLoop }) =>
-    startStreamingAlertsLoop(c),
-  )
-  void import('./services/leaderboard-snapshots.ts').then(({ startLeaderboardSnapshotLoop }) =>
-    startLeaderboardSnapshotLoop(c),
-  )
-  void import('./services/seasonal-events.ts').then(({ initSeasonalEvents }) => initSeasonalEvents())
-  void import('./services/weekly-mod-report.ts').then(({ startWeeklyModReportLoop }) =>
-    startWeeklyModReportLoop(c),
-  )
-
+  })
+  await step('startCounterChannelLoop', () => startCounterChannelLoop(c))
+  await step('startScheduledActionsLoop', () => startScheduledActionsLoop(c))
+  await step('restoreLockdownState', async () => {
+    const { restoreLockdownState } = await import('./services/lockdown.ts')
+    await restoreLockdownState()
+  })
+  await step('startStreamingAlertsLoop', async () => {
+    const { startStreamingAlertsLoop } = await import('./services/streaming-alerts.ts')
+    startStreamingAlertsLoop(c)
+  })
+  await step('startLeaderboardSnapshotLoop', async () => {
+    const { startLeaderboardSnapshotLoop } = await import('./services/leaderboard-snapshots.ts')
+    startLeaderboardSnapshotLoop(c)
+  })
+  await step('initSeasonalEvents', async () => {
+    const { initSeasonalEvents } = await import('./services/seasonal-events.ts')
+    await initSeasonalEvents()
+  })
+  await step('startWeeklyModReportLoop', async () => {
+    const { startWeeklyModReportLoop } = await import('./services/weekly-mod-report.ts')
+    startWeeklyModReportLoop(c)
+  })
   // Start timezone reminder background loop
-  try {
+  await step('startReminderLoop', async () => {
     const { startReminderLoop } = await import('./services/timezone-scheduler.ts')
     startReminderLoop(c)
-  } catch (e) {
-    console.error('[scheduler] Failed to start reminder loop:', e)
-  }
-
+  })
   // Audit alert poller: posts security alerts to staff channel
-  const { startAuditAlertPoller } = await import('./services/audit-alert-poller.ts')
-  startAuditAlertPoller(c)
+  await step('startAuditAlertPoller', async () => {
+    const { startAuditAlertPoller } = await import('./services/audit-alert-poller.ts')
+    startAuditAlertPoller(c)
+  })
 })
 
 // Graceful shutdown: PM2 sends SIGINT on restart and SIGTERM on stop/reboot. Flush

@@ -4,7 +4,7 @@
  * Uses JSON file storage with atomic writes.
  */
 
-import { createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto'
+import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from 'node:crypto'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { writeFileAtomic } from '../services/data-store.ts'
@@ -47,7 +47,21 @@ const DATA_DIR = process.env.DATA_DIR || './data'
 const USERS_FILE = join(DATA_DIR, 'users.json')
 const SESSIONS_FILE = join(DATA_DIR, 'sessions.json')
 
-const JWT_SECRET = process.env.DASHBOARD_JWT_SECRET || 'dev-secret-change-me'
+// Never sign tokens with the old public default 'dev-secret-change-me' - that
+// let anyone forge an admin JWT. Require a strong configured secret; if unset or
+// weak, use a random per-boot secret (secure, but sessions reset each restart
+// until DASHBOARD_JWT_SECRET is set persistently in .env).
+function resolveJwtSecret(): string {
+  const env = process.env.DASHBOARD_JWT_SECRET
+  if (env && env !== 'dev-secret-change-me' && env.length >= 32) return env
+  console.warn(
+    '[dashboard] DASHBOARD_JWT_SECRET is unset or too weak (<32 chars). Using a random ' +
+      'per-boot secret. Set a persistent DASHBOARD_JWT_SECRET (>= 32 chars) in .env so ' +
+      'dashboard sessions survive restarts.',
+  )
+  return randomBytes(48).toString('hex')
+}
+const JWT_SECRET = resolveJwtSecret()
 const JWT_EXPIRY = 3600 // 1 hour
 const REFRESH_EXPIRY = 604800 // 7 days
 const BCRYPT_ROUNDS = 10
@@ -100,8 +114,8 @@ function generateJWT(user: User, expiresIn = JWT_EXPIRY): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')
   const payloadStr = Buffer.from(JSON.stringify(payload)).toString('base64url')
 
-  const signature = createHash('sha256')
-    .update(`${header}.${payloadStr}${JWT_SECRET}`)
+  const signature = createHmac('sha256', JWT_SECRET)
+    .update(`${header}.${payloadStr}`)
     .digest('base64url')
 
   return `${header}.${payloadStr}.${signature}`
@@ -116,8 +130,8 @@ function verifyJWT(token: string): JWTPayload | null {
     if (!headerB64 || !payloadB64 || !signatureB64) return null
 
     // Verify signature
-    const expectedSig = createHash('sha256')
-      .update(`${headerB64}.${payloadB64}${JWT_SECRET}`)
+    const expectedSig = createHmac('sha256', JWT_SECRET)
+      .update(`${headerB64}.${payloadB64}`)
       .digest('base64url')
 
     if (!timingSafeEqual(Buffer.from(signatureB64), Buffer.from(expectedSig))) {

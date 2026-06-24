@@ -647,3 +647,18 @@ export function startScheduleLoop(client: import('discord.js').Client): void {
     }
   }, 15_000).unref?.()
 }
+
+// Resume giveaways across restarts. The per-giveaway setTimeout is in-memory only,
+// so a restart (PM2) would otherwise leave any pending giveaway un-drawn forever.
+// This polls persisted open giveaways and draws any whose end time has passed.
+// endGiveawayDraw guards on `ended`, so it is safe against the surviving timers.
+export function startGiveawayLoop(client: import('discord.js').Client): void {
+  setInterval(async () => {
+    const list = await listGiveaways()
+    const now = Date.now()
+    for (const g of list) {
+      if (g.endsAt > now) continue
+      await endGiveawayDraw(client, g.id).catch(() => {})
+    }
+  }, 15_000).unref?.()
+}

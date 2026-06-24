@@ -1029,17 +1029,32 @@ export function startDashboard(): void {
               return json({ error: 'Invalid table name' }, { status: 400 })
             }
 
+            // Whitelist column identifiers against the real schema. Values use ?
+            // placeholders, but identifiers cannot, so an unvalidated key would be
+            // a SQL-injection vector. table is already whitelisted above.
+            const validCols = new Set(
+              (db.prepare(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map(
+                (c) => c.name,
+              ),
+            )
+            const badCols = [...Object.keys(updatedValues), ...Object.keys(primaryKeys)].filter(
+              (k) => !validCols.has(k),
+            )
+            if (badCols.length > 0) {
+              return json({ error: `Invalid column(s): ${badCols.join(', ')}` }, { status: 400 })
+            }
+
             const setClauses: string[] = []
             const setParams: any[] = []
             for (const [k, v] of Object.entries(updatedValues)) {
-              setClauses.push(`${k} = ?`)
+              setClauses.push(`"${k}" = ?`)
               setParams.push(v)
             }
 
             const whereClauses: string[] = []
             const whereParams: any[] = []
             for (const [k, v] of Object.entries(primaryKeys)) {
-              whereClauses.push(`${k} = ?`)
+              whereClauses.push(`"${k}" = ?`)
               whereParams.push(v)
             }
 
@@ -1098,10 +1113,21 @@ export function startDashboard(): void {
               return json({ error: 'Invalid table name' }, { status: 400 })
             }
 
+            // Whitelist column identifiers against the real schema (see PATCH above).
+            const validCols = new Set(
+              (db.prepare(`PRAGMA table_info("${table}")`).all() as { name: string }[]).map(
+                (c) => c.name,
+              ),
+            )
+            const badCols = Object.keys(primaryKeys).filter((k) => !validCols.has(k))
+            if (badCols.length > 0) {
+              return json({ error: `Invalid column(s): ${badCols.join(', ')}` }, { status: 400 })
+            }
+
             const whereClauses: string[] = []
             const whereParams: any[] = []
             for (const [k, v] of Object.entries(primaryKeys)) {
-              whereClauses.push(`${k} = ?`)
+              whereClauses.push(`"${k}" = ?`)
               whereParams.push(v)
             }
 
