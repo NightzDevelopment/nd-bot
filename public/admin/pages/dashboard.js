@@ -39,13 +39,13 @@ async function loadDashboardStats() {
       setText('dashboard-timestamp', new Date(healthRes.timestamp).toLocaleTimeString())
       const botStatus = document.getElementById('h-bot-status')
       if (botStatus) {
-        botStatus.textContent = '●  Online'
+        botStatus.textContent = 'Online'
         botStatus.style.color = '#34d399'
       }
     } else {
       const botStatus = document.getElementById('h-bot-status')
       if (botStatus) {
-        botStatus.textContent = '●  Offline'
+        botStatus.textContent = 'Offline'
         botStatus.style.color = '#f87171'
       }
     }
@@ -62,17 +62,15 @@ function renderAlerts(data) {
   const el = document.getElementById('dashboard-alerts')
   if (!el) return
   const alerts = []
-  if (!data.totalMessages)
-    alerts.push({ icon: 'ℹ️', msg: 'No messages recorded yet', color: '#60a5fa' })
-  if (data.topIntent)
-    alerts.push({ icon: '🎯', msg: `Top intent: ${data.topIntent}`, color: '#94a3b8' })
+  if (!data.totalMessages) alerts.push({ msg: 'No messages recorded yet', color: '#60a5fa' })
+  if (data.topIntent) alerts.push({ msg: `Top intent: ${data.topIntent}`, color: '#94a3b8' })
   if ((data.uniqueUsers ?? 0) > 100)
-    alerts.push({ icon: '✅', msg: `${data.uniqueUsers} active members`, color: '#34d399' })
-  if (!alerts.length) alerts.push({ icon: '✅', msg: 'All systems operational', color: '#34d399' })
+    alerts.push({ msg: `${data.uniqueUsers} active members`, color: '#34d399' })
+  if (!alerts.length) alerts.push({ msg: 'All systems operational', color: '#34d399' })
   el.innerHTML = alerts
     .map(
       (a) =>
-        `<div style="display:flex;align-items:center;gap:.5rem;font-size:12px;padding:.3rem 0;color:${a.color};">${a.icon} ${a.msg}</div>`,
+        `<div style="display:flex;align-items:center;gap:.5rem;font-size:12px;padding:.3rem 0;color:${a.color};">${a.msg}</div>`,
     )
     .join('')
 }
@@ -81,7 +79,7 @@ window.loadLeaderboard = async (stat = 'reputation') => {
   const el = document.getElementById('lb-list')
   if (!el) return
   el.innerHTML =
-    '<div style="color:#475569;font-size:12px;text-align:center;padding:1rem;">Loading…</div>'
+    '<div style="color:#475569;font-size:12px;text-align:center;padding:1rem;">Loading...</div>'
   try {
     const r = await window.apiClient.getLeaderboard(stat, 10)
     if (!r.ok) throw new Error(r.error)
@@ -91,12 +89,11 @@ window.loadLeaderboard = async (stat = 'reputation') => {
         '<div style="color:#475569;font-size:12px;text-align:center;padding:1rem;">No data yet.</div>'
       return
     }
-    const medals = ['🥇', '🥈', '🥉']
     el.innerHTML = rows
       .map(
         (row, i) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-bottom:1px solid rgba(148,163,184,0.07);">
-        <span style="font-size:12px;color:#94a3b8;">${medals[i] || `${i + 1}.`} <code style="color:#e2e8f0;font-size:11px;">${escapeHtml(row.userId?.slice(0, 10) ?? '-')}</code></span>
+        <span style="font-size:12px;color:#94a3b8;">${i + 1}. <code style="color:#e2e8f0;font-size:11px;">${escapeHtml(row.userId?.slice(0, 10) ?? '-')}</code></span>
         <span style="font-size:13px;font-weight:700;color:#60a5fa;">${row.value?.toLocaleString?.() ?? row.value ?? 0}</span>
       </div>`,
       )
@@ -114,7 +111,7 @@ async function loadGuildChannels() {
     const sel = document.getElementById('announce-channel')
     if (!sel) return
     sel.innerHTML =
-      '<option value="">Select channel…</option>' +
+      '<option value="">Select channel</option>' +
       _allChannels
         .map(
           (c) =>

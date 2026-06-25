@@ -293,7 +293,7 @@ export const slashCommands = [
         .addStringOption((o) =>
           o
             .setName('message_id')
-            .setDescription('Poll message ID (right-click message → Copy ID)')
+            .setDescription('Poll message ID (right-click message, Copy ID)')
             .setRequired(true),
         ),
     )
@@ -747,7 +747,7 @@ export const slashCommands = [
         .addStringOption((o) =>
           o
             .setName('emoji')
-            .setDescription('Emoji for display (e.g. 🎭)')
+            .setDescription('Emoji for display (optional)')
             .setRequired(false)
             .setMaxLength(8),
         ),

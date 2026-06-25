@@ -106,7 +106,7 @@ function renderTableHeader() {
       <th style="padding:.75rem 1rem;font-family:var(--font-mono);font-size:11px;text-align:left;white-space:nowrap;user-select:none;">
         ${window.esc(c.name)}
         <span style="color:#64748b;font-weight:normal;font-size:9px;">(${window.esc(c.type)})</span>
-        ${c.isPrimary ? '<span style="color:#fbbf24;font-size:9px;" title="Primary Key">🔑</span>' : ''}
+        ${c.isPrimary ? '<span style="color:#fbbf24;font-size:9px;" title="Primary Key">PK</span>' : ''}
       </th>
     `,
       )

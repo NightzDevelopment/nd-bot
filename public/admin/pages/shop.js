@@ -43,13 +43,13 @@ function renderShopTable(items) {
             : `<span style="color:#34d399;">${item.stock} left</span>`
       const type =
         item.type === 'role'
-          ? `<span style="color:#a78bfa;">🎖️ Role</span>`
-          : `<span style="color:#60a5fa;">📦 Item</span>`
+          ? `<span style="color:#a78bfa;">Role</span>`
+          : `<span style="color:#60a5fa;">Item</span>`
       const roleTag = item.roleId
         ? `<br><code style="font-size:10px;color:#64748b;">${escapeHtml(item.roleId)}</code>`
         : ''
       return `<tr>
-      <td style="font-size:20px;text-align:center;">${escapeHtml(item.emoji || '🛒')}</td>
+      <td style="font-size:20px;text-align:center;">${escapeHtml(item.emoji || '')}</td>
       <td>
         <span style="color:#e2e8f0;font-weight:600;">${escapeHtml(item.name)}</span>
         <br><span style="color:#64748b;font-size:11px;">${escapeHtml(item.description || '-')}</span>
@@ -93,7 +93,7 @@ function injectShopModal() {
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;">
           <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Emoji</span>
-          <input id="sm-emoji" type="text" maxlength="8" placeholder="🎭"
+          <input id="sm-emoji" type="text" maxlength="8" placeholder="Optional"
             style="background:rgba(15,18,40,0.8);border:1px solid rgba(96,165,250,0.25);color:#e2e8f0;padding:0.5rem 0.65rem;border-radius:6px;font-size:14px;width:100%;box-sizing:border-box;" />
         </label>
       </div>
@@ -109,8 +109,8 @@ function injectShopModal() {
           <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Type</span>
           <select id="sm-type" onchange="smTypeChanged()"
             style="background:rgba(15,18,40,0.8);border:1px solid rgba(96,165,250,0.25);color:#e2e8f0;padding:0.5rem 0.65rem;border-radius:6px;font-size:14px;width:100%;box-sizing:border-box;">
-            <option value="item">📦 Item (cosmetic)</option>
-            <option value="role">🎖️ Role reward</option>
+            <option value="item">Item (cosmetic)</option>
+            <option value="role">Role reward</option>
           </select>
         </label>
         <label style="display:flex;flex-direction:column;gap:4px;">
@@ -124,7 +124,7 @@ function injectShopModal() {
         <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Role ID to grant</span>
         <input id="sm-roleid" type="text" placeholder="Paste Discord role ID"
           style="background:rgba(15,18,40,0.8);border:1px solid rgba(96,165,250,0.25);color:#e2e8f0;padding:0.5rem 0.65rem;border-radius:6px;font-size:14px;width:100%;box-sizing:border-box;" />
-        <span style="font-size:10px;color:#475569;">Right-click a role in Discord → Copy ID (enable Developer Mode first)</span>
+        <span style="font-size:10px;color:#475569;">Right-click a role in Discord, then Copy ID (enable Developer Mode first)</span>
       </label>
 
       <div id="sm-error" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:6px;padding:0.5rem 0.75rem;font-size:12px;color:#f87171;margin-bottom:1rem;"></div>

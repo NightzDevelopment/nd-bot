@@ -374,12 +374,12 @@ export function registerMessageHandler(client: Client): void {
               console.log(`[custom-command] executed ${cmdName} for ${msg.author.tag}`)
               return
             } else if (!result.ok) {
-              await msg.reply(`❌ ${result.error || 'Command execution failed'}`)
+              await msg.reply(`${result.error || 'Command execution failed'}`)
               return
             }
           } catch (e) {
             console.error('[custom-command] execution failed:', e)
-            await msg.reply('❌ Error executing command')
+            await msg.reply('Error executing command')
             return
           }
         }

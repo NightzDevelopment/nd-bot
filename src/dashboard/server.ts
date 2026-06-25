@@ -1212,7 +1212,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
                         .setDescription(diagnosis.slice(0, 4000))
                         .setTimestamp()
                         .setFooter({
-                          text: `Nightz Development Crash Triage · Server: ${serverName || 'ND Main'}`,
+                          text: `Nightz Development Crash Triage - Server: ${serverName || 'ND Main'}`,
                         })
 
                       await (channel as any)
@@ -2128,7 +2128,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
               try {
                 const ch = await client.channels.fetch(channelId).catch(() => null)
                 if (ch?.isTextBased?.()) {
-                  await ch.send({ content: `🛡️ Ticket claimed by **${actor}** (via Dashboard).` })
+                  await ch.send({ content: `Ticket claimed by **${actor}** (via Dashboard).` })
                 }
               } catch {
                 /* ignore */
@@ -2184,7 +2184,7 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
                 const ch = await client.channels.fetch(channelId).catch(() => null)
                 if (ch?.isTextBased?.()) {
                   await ch.send({
-                    content: `🔒 **Ticket closed** by ${actor} (via Dashboard)${reason ? `: ${reason}` : ''}.`,
+                    content: `**Ticket closed** by ${actor} (via Dashboard)${reason ? `: ${reason}` : ''}.`,
                   })
                 }
               } catch {

@@ -11,15 +11,6 @@ const ALERT_COLOR: Record<AuditAlert['severity'], number> = {
   medium: 0xfbbf24,
 }
 
-const ALERT_EMOJI: Record<AuditAlert['type'], string> = {
-  mass_ban: '🔨',
-  mass_kick: '🥾',
-  mass_role_change: '🎭',
-  bulk_delete: '🗑️',
-  permission_change: '🔐',
-  mass_channel_delete: '💥',
-}
-
 // Track which alert signatures we've already fired so we don't spam
 const _firedKeys = new Set<string>()
 const FIRED_TTL_MS = 15 * 60 * 1000
@@ -57,10 +48,9 @@ async function postAlerts(client: Client, alerts: AuditAlert[]): Promise<void> {
     if (!ch?.isTextBased() || ch.isDMBased()) return
 
     for (const alert of newAlerts) {
-      const emoji = ALERT_EMOJI[alert.type] ?? '⚠️'
       const embed = new EmbedBuilder()
         .setColor(ALERT_COLOR[alert.severity])
-        .setTitle(`${emoji} Security Alert: ${alert.severity.toUpperCase()}`)
+        .setTitle(`Security Alert: ${alert.severity.toUpperCase()}`)
         .setDescription(`**${alert.message}**`)
         .setTimestamp(new Date(alert.detectedAt))
 

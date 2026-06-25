@@ -240,13 +240,13 @@ export async function generateReport(): Promise<string> {
     const today = new Date().setHours(0, 0, 0, 0)
     const { summary } = await getAnalyticsByTimeRange(today, Date.now())
 
-    let report = '**📊 Analytics Report**\n\n'
+    let report = '**Analytics Report**\n\n'
 
     report += "**Today's Activity:**\n"
-    report += `• Messages: ${summary.message}\n`
-    report += `• Commands: ${summary.command}\n`
-    report += `• Custom Commands: ${summary.custom_command}\n`
-    report += `• AI Responses: ${summary.ai_response}\n\n`
+    report += `Messages: ${summary.message}\n`
+    report += `Commands: ${summary.command}\n`
+    report += `Custom Commands: ${summary.custom_command}\n`
+    report += `AI Responses: ${summary.ai_response}\n\n`
 
     report += '**Top Users:**\n'
     for (let i = 0; i < topUsers.length; i++) {

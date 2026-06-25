@@ -84,7 +84,7 @@ function renderTicketTable(data) {
         <td><span title="${escapeAttr(t.userId)}">${escapeHtml(userTag)}</span></td>
         <td>${escapeHtml(t.reason || '-')}</td>
         <td><span class="tk-priority-pill ${priorityClass}">${priority}</span></td>
-        <td><span class="${statusClass}">${escapeHtml(t.status)}${slaBreached ? ' <span class="tk-sla-bad">⚠ SLA</span>' : ''}</span></td>
+        <td><span class="${statusClass}">${escapeHtml(t.status)}${slaBreached ? ' <span class="tk-sla-bad">SLA breached</span>' : ''}</span></td>
         <td>${escapeHtml(claimedBy)}</td>
         <td title="${t.openedAt ? new Date(t.openedAt).toLocaleString() : ''}">${opened}</td>
         <td>${t.messageCount ?? 0}</td>
@@ -113,12 +113,12 @@ async function openTicketModal(t) {
     <div class="modal-content" style="max-width:760px;max-height:90vh;display:flex;flex-direction:column;">
       <div class="modal-header">
         <div>
-          <h2 style="margin:0;font-size:1.05rem;color:#e2e8f0;">Ticket #${String(t.id).padStart(4, '0')} · ${escapeHtml(t.reason || '')}</h2>
+          <h2 style="margin:0;font-size:1.05rem;color:#e2e8f0;">Ticket #${String(t.id).padStart(4, '0')} ${escapeHtml(t.reason || '')}</h2>
           <div style="font-size:11px;color:var(--text-secondary);margin-top:4px;">
-            Opener: <strong style="color:#e2e8f0;">${escapeHtml(t.userTag || t.userId)}</strong> · Opened: ${opened}
+            Opener: <strong style="color:#e2e8f0;">${escapeHtml(t.userTag || t.userId)}</strong> &nbsp; Opened: ${opened}
           </div>
         </div>
-        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+        <button class="modal-close" onclick="this.closest('.modal').remove()">Close</button>
       </div>
 
       <!-- Tab bar -->
@@ -140,8 +140,8 @@ async function openTicketModal(t) {
           <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center;">
             <span class="tk-priority-pill ${priorityClass}">${priority}</span>
             <span class="tk-status-${t.status}" style="color:${t.status === 'open' ? '#34d399' : '#94a3b8'};font-weight:600;">${escapeHtml(t.status)}</span>
-            ${t.claimedByTag ? `<span style="font-size:11px;color:#94a3b8;">· Claimed by ${escapeHtml(t.claimedByTag)}</span>` : ''}
-            ${t.firstStaffReplyAt ? `<span style="font-size:11px;color:#34d399;">· Staff replied</span>` : ''}
+            ${t.claimedByTag ? `<span style="font-size:11px;color:#94a3b8;">Claimed by ${escapeHtml(t.claimedByTag)}</span>` : ''}
+            ${t.firstStaffReplyAt ? `<span style="font-size:11px;color:#34d399;">Staff replied</span>` : ''}
           </div>
 
           ${t.staffNote ? `<div style="background:rgba(20,30,56,0.75);border:1px solid rgba(148,163,184,0.12);border-radius:8px;padding:0.625rem 0.75rem;margin-bottom:1rem;"><strong style="font-size:11px;color:#64748b;text-transform:uppercase;">Staff Note</strong><p style="margin:0.25rem 0 0;font-size:13px;color:#e2e8f0;">${escapeHtml(t.staffNote)}</p></div>` : ''}
@@ -157,13 +157,13 @@ async function openTicketModal(t) {
 
           <label style="display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:0.4rem;">Actions</label>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
-            ${t.status === 'open' && !t.claimedBy ? `<button class="btn btn-secondary" onclick="window.tkClaim('${escapeAttr(t.channelId)}')">🛡️ Claim</button>` : ''}
-            ${t.status === 'open' ? `<button class="btn" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);" onclick="window.tkClose('${escapeAttr(t.channelId)}')">🔒 Close</button>` : ''}
+            ${t.status === 'open' && !t.claimedBy ? `<button class="btn btn-secondary" onclick="window.tkClaim('${escapeAttr(t.channelId)}')">Claim</button>` : ''}
+            ${t.status === 'open' ? `<button class="btn" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);" onclick="window.tkClose('${escapeAttr(t.channelId)}')">Close</button>` : ''}
             <select id="tk-priority-select" style="padding:6px 10px;border:1px solid rgba(148,163,184,0.15);border-radius:6px;background:rgba(2,6,23,0.6);color:#e2e8f0;font:inherit;font-size:12px;">
-              <option value="low" ${t.priority === 'low' ? 'selected' : ''}>🔵 Low</option>
-              <option value="normal" ${(t.priority ?? 'normal') === 'normal' ? 'selected' : ''}>🟢 Normal</option>
-              <option value="high" ${t.priority === 'high' ? 'selected' : ''}>🔴 High</option>
-              <option value="critical" ${t.priority === 'critical' ? 'selected' : ''}>🚨 Critical</option>
+              <option value="low" ${t.priority === 'low' ? 'selected' : ''}>Low</option>
+              <option value="normal" ${(t.priority ?? 'normal') === 'normal' ? 'selected' : ''}>Normal</option>
+              <option value="high" ${t.priority === 'high' ? 'selected' : ''}>High</option>
+              <option value="critical" ${t.priority === 'critical' ? 'selected' : ''}>Critical</option>
             </select>
             <button class="btn btn-secondary" onclick="window.tkSetPriority('${escapeAttr(t.channelId)}')">Set Priority</button>
           </div>
@@ -237,12 +237,12 @@ async function loadTicketMessages(channelId) {
         return `
         <div style="background:${bubbleBg};border:1px solid ${borderColor};border-radius:8px;padding:.625rem .875rem;">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.3rem;">
-            <span style="font-size:11.5px;font-weight:700;color:${nameColor};">${escapeHtml(m.authorTag)}${isBot ? ' 🤖' : ''}</span>
+            <span style="font-size:11.5px;font-weight:700;color:${nameColor};">${escapeHtml(m.authorTag)}${isBot ? ' (bot)' : ''}</span>
             <span style="font-size:10.5px;color:#475569;" title="${date}">${time}</span>
           </div>
           ${m.content ? `<div style="font-size:13px;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;">${escapeHtml(m.content)}</div>` : ''}
           ${embedsHtml}
-          ${m.attachments?.length ? `<div style="margin-top:.3rem;font-size:11px;color:#60a5fa;">📎 ${m.attachments.map((a) => escapeHtml(a.name)).join(', ')}</div>` : ''}
+          ${m.attachments?.length ? `<div style="margin-top:.3rem;font-size:11px;color:#60a5fa;">Attachments: ${m.attachments.map((a) => escapeHtml(a.name)).join(', ')}</div>` : ''}
         </div>`
       })
       .join('')

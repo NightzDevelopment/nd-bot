@@ -610,7 +610,7 @@ const HELP: Readonly<Record<string, string>> = {
     'Fetch the public store page as text and inject it into AI context (and embeddings when enabled).',
   STORE_PAGE_URL: 'Public store listing URL (FaxStore storefront). Default: ND catalog.',
   STORE_PAGE_REFRESH_MINUTES: 'How often to re-fetch the store page (min 15).',
-  STORE_PAGE_MAX_CHARS: 'Max characters kept from the HTML→text snapshot.',
+  STORE_PAGE_MAX_CHARS: 'Max characters kept from the HTML-to-text snapshot.',
   STORE_PAGE_FETCH_TIMEOUT_MS: 'HTTP timeout for the store fetch (min 5000 ms).',
 
   // FAQ
@@ -698,8 +698,8 @@ const HELP: Readonly<Record<string, string>> = {
 
   // AI feedback reactions
   AI_FEEDBACK_REACTIONS_ENABLED: 'Add thumbs reactions to bot replies for tracking.',
-  AI_FEEDBACK_POSITIVE_EMOJI: 'Emoji used for positive feedback. Default ✅.',
-  AI_FEEDBACK_NEGATIVE_EMOJI: 'Emoji used for negative feedback. Default ❌.',
+  AI_FEEDBACK_POSITIVE_EMOJI: 'Emoji used for positive feedback. Default is a check mark.',
+  AI_FEEDBACK_NEGATIVE_EMOJI: 'Emoji used for negative feedback. Default is a cross mark.',
   AI_FEEDBACK_LOG_CHANNEL_ID: 'Channel for the feedback log; blank = no log.',
 
   // AI Automod
@@ -713,7 +713,7 @@ const HELP: Readonly<Record<string, string>> = {
   AI_AUTOMOD_INCLUDE_REPLY_CONTEXT: 'Include the message being replied to in the AI prompt.',
   AI_AUTOMOD_INCLUDE_CHANNEL_SNIPPET: 'Include a short prior-channel snippet for context.',
   AI_AUTOMOD_SERVER_RULES: 'Server rules text injected into the AI moderator prompt.',
-  AI_AUTOMOD_ESCALATION_ENABLED: 'Track repeat offenders and escalate warn → kick → ban.',
+  AI_AUTOMOD_ESCALATION_ENABLED: 'Track repeat offenders and escalate warn to kick to ban.',
   AI_AUTOMOD_ESCALATION_WARN_AT: 'Strike count that triggers a warning.',
   AI_AUTOMOD_ESCALATION_KICK_AT: 'Strike count that triggers a kick.',
   AI_AUTOMOD_ESCALATION_BAN_AT: 'Strike count that triggers a ban.',

@@ -47,7 +47,7 @@ function renderRow(g) {
     </div>
     <div style="display:flex;gap:.4rem;flex-shrink:0;">
       ${!g.ended ? `<button class="btn btn-sm" onclick="endGiveawayNow('${window.esc(g.id)}')" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.3);color:#60a5fa;">End Now</button>` : ''}
-      ${g.ended ? `<button class="btn btn-sm" onclick="rerollGiveaway('${window.esc(g.id)}')" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:#a78bfa;">↻ Reroll</button>` : ''}
+      ${g.ended ? `<button class="btn btn-sm" onclick="rerollGiveaway('${window.esc(g.id)}')" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.3);color:#a78bfa;">Reroll</button>` : ''}
     </div>
   </div>`
 }
@@ -77,7 +77,7 @@ window.openGiveawayCreate = async function openGiveawayCreate() {
   footer.style.cssText = 'display:flex;gap:.5rem;justify-content:flex-end;width:100%;'
   footer.innerHTML = `
     <button onclick="uiCloseModal('gw-modal')" style="background:transparent;border:1px solid rgba(148,163,184,0.3);color:#94a3b8;padding:.4rem 1rem;border-radius:6px;cursor:pointer;">Cancel</button>
-    <button onclick="saveGiveawayNew()" style="background:rgba(244,114,182,0.15);border:1px solid rgba(244,114,182,0.4);color:#f472b6;padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-weight:700;">🎉 Start Giveaway</button>
+    <button onclick="saveGiveawayNew()" style="background:rgba(244,114,182,0.15);border:1px solid rgba(244,114,182,0.4);color:#f472b6;padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-weight:700;">Start Giveaway</button>
   `
 
   window.uiOpenModal({ id: 'gw-modal', title: 'New Giveaway', body, footer, width: '500px' })
@@ -104,7 +104,7 @@ window.saveGiveawayNew = async function saveGiveawayNew() {
   try {
     const r = await window.apiClient.createGiveaway({ channelId, prize, durationMs, winnerCount })
     if (!r.ok) throw new Error(r.error)
-    window.showToast('Giveaway started 🎉', 'success')
+    window.showToast('Giveaway started', 'success')
     window.uiCloseModal('gw-modal')
     loadGiveaways()
   } catch (e) {

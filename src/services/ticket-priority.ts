@@ -25,12 +25,12 @@ export const SLA_TARGETS_MS: Record<TicketPriority, number> = {
   low: 48 * 60 * 60 * 1000, // 48 hours
 }
 
-/** Visual label / emoji for priority. */
+/** Visual label for priority. */
 export const PRIORITY_LABEL: Record<TicketPriority, string> = {
-  critical: '🚨 Critical',
-  high: '🔴 High',
-  normal: '🟢 Normal',
-  low: '🔵 Low',
+  critical: 'Critical',
+  high: 'High',
+  normal: 'Normal',
+  low: 'Low',
 }
 
 /** Discord embed color for priority. */

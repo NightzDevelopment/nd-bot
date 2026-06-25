@@ -17,19 +17,19 @@ const CATEGORY_GROUPS = [
   {
     key: 'core',
     label: 'Core',
-    icon: '⚙',
+    icon: '',
     tabs: ['General', 'API keys and models', 'Dashboard', 'Data and DMs', 'Feature tier'],
   },
   {
     key: 'ai',
     label: 'AI',
-    icon: '✦',
+    icon: '',
     tabs: ['AI behavior', 'AI AutoMod', 'Context and keywords', 'Codebase'],
   },
   {
     key: 'mod',
     label: 'Moderation',
-    icon: '◈',
+    icon: '',
     tabs: [
       'Moderation',
       'Security',
@@ -44,7 +44,7 @@ const CATEGORY_GROUPS = [
   {
     key: 'comm',
     label: 'Community',
-    icon: '◇',
+    icon: '',
     tabs: [
       'Community',
       'Community+',
@@ -58,7 +58,7 @@ const CATEGORY_GROUPS = [
   {
     key: 'ops',
     label: 'Operations',
-    icon: '⊡',
+    icon: '',
     tabs: ['Content and product', 'Logs and audit', 'Automation'],
   },
 ]
@@ -224,7 +224,7 @@ function renderConfigFields(filter) {
       const totalCount = tabs.reduce((sum, t) => sum + countFor(t), 0)
       const visibleMatchCount = isSearching ? totalCount : null
       const dim = isSearching && totalCount === 0 ? 'opacity:.4;' : ''
-      const arrow = isExpanded ? '▾' : '▸'
+      const arrow = isExpanded ? '-' : '+'
 
       const childrenHtml = isExpanded
         ? tabs
@@ -332,7 +332,7 @@ function renderConfigFields(filter) {
             const cardClass = needsRestart ? 'field field--needs-restart' : 'field'
             const perf = PERFORMANCE_HINTS[f.key]
             const perfBadge = perf?.tip
-              ? `<span class="badge-perf" data-tip="${escapeHtml(perf.tip)}" title="${escapeHtml(perf.tip)}">⚡ perf</span>`
+              ? `<span class="badge-perf" data-tip="${escapeHtml(perf.tip)}" title="${escapeHtml(perf.tip)}">perf</span>`
               : ''
             return `
             <div class="${cardClass}" data-field-key="${f.key}">
@@ -341,7 +341,7 @@ function renderConfigFields(filter) {
                 <div class="field-badges">
                   ${isSensitive ? '<span class="pill sensitive">sensitive</span>' : ''}
                   ${perfBadge}
-                  ${needsRestart ? '<span class="badge-restart" title="The bot must be restarted for this change to take effect">⚡ restart</span>' : ''}
+                  ${needsRestart ? '<span class="badge-restart" title="The bot must be restarted for this change to take effect">restart</span>' : ''}
                 </div>
               </div>
               ${f.description ? `<p class="field-help">${escapeHtml(f.description)}</p>` : ''}
@@ -392,7 +392,7 @@ function runValidation(inp) {
     return
   }
   const color = result.level === 'error' ? 'var(--error)' : 'var(--warning)'
-  const icon = result.level === 'error' ? '✗' : '⚠'
+  const icon = result.level === 'error' ? 'Error:' : 'Warning:'
   valEl.innerHTML = `<div style="margin-top:6px;font-size:11px;color:${color};">${icon} ${escapeHtml(result.msg)}</div>`
 }
 
@@ -444,7 +444,7 @@ window.cfgSave = async () => {
     const result = await window.apiClient.put('/api/config', patch)
     if (result.ok) {
       showToast('Configuration saved', 'success')
-      if (msg) msg.textContent = 'Saved ✓'
+      if (msg) msg.textContent = 'Saved'
       _cfgDirty = false
       if (btn) btn.textContent = 'Save Changes'
       // reload to get masked values
@@ -534,9 +534,9 @@ function setupDataFileEditor() {
     editor.addEventListener('input', () => {
       try {
         JSON.parse(editor.value)
-        if (valid) valid.textContent = '✓ valid JSON'
+        if (valid) valid.textContent = 'Valid JSON'
       } catch {
-        if (valid) valid.textContent = '✗ invalid JSON'
+        if (valid) valid.textContent = 'Invalid JSON'
       }
     })
   }
@@ -548,7 +548,7 @@ function setupDataFileEditor() {
       try {
         const result = await window.apiClient.get(`/api/data/${file}`)
         if (editor) editor.value = JSON.stringify(result, null, 2)
-        if (valid) valid.textContent = '✓ loaded'
+        if (valid) valid.textContent = 'Loaded'
         showToast(`Loaded ${file}.json`, 'success')
       } catch (e) {
         showToast('Load error: ' + e.message, 'error')

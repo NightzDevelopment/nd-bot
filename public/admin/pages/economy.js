@@ -63,7 +63,7 @@ function renderEconomyTable(data) {
       '<tr><td colspan="6" style="text-align:center;color:#64748b;padding:1.5rem;">No economy data yet. Members earn NDC via /daily and /work.</td></tr>'
     return
   }
-  const medals = ['🥇', '🥈', '🥉']
+  const medals = ['1.', '2.', '3.']
   tbody.innerHTML = data
     .map((r, i) => {
       const info = _econUserCache[r.userId]

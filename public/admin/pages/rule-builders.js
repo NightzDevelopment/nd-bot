@@ -48,7 +48,7 @@ async function renderAutoDeleteRules() {
       <div style="display:flex;justify-content:space-between;margin-bottom:.75rem;align-items:center;">
         <input type="text" value="${window.esc(rule.name || '')}" placeholder="Rule name (optional)" onchange="updateAutoDeleteRule(${idx},'name',this.value)"
           style="flex:1;padding:.35rem .6rem;background:transparent;border:none;border-bottom:1px solid rgba(148,163,184,0.15);color:#e2e8f0;font-weight:700;font-size:13px;">
-        <button onclick="removeAutoDeleteRule(${idx})" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:.3rem .6rem;border-radius:4px;cursor:pointer;font-size:11px;margin-left:.5rem;">✗ Remove</button>
+        <button onclick="removeAutoDeleteRule(${idx})" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:.3rem .6rem;border-radius:4px;cursor:pointer;font-size:11px;margin-left:.5rem;">Remove</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
         <div>
@@ -66,10 +66,10 @@ async function renderAutoDeleteRules() {
       <div style="margin-top:.75rem;">
         <label style="font-size:10px;color:#64748b;text-transform:uppercase;display:block;margin-bottom:.4rem;">Triggers (delete if message matches ANY)</label>
         <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
-          ${toggle(idx, 'links', '🔗 Has link', rule.links)}
-          ${toggle(idx, 'invites', '✉ Has invite', rule.invites)}
-          ${toggle(idx, 'attachments', '📎 Has attachment', rule.attachments)}
-          ${toggle(idx, 'bots', '🤖 From bot', rule.bots)}
+          ${toggle(idx, 'links', 'Has link', rule.links)}
+          ${toggle(idx, 'invites', 'Has invite', rule.invites)}
+          ${toggle(idx, 'attachments', 'Has attachment', rule.attachments)}
+          ${toggle(idx, 'bots', 'From bot', rule.bots)}
         </div>
       </div>
       <div style="margin-top:.75rem;display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
@@ -166,7 +166,7 @@ async function renderAutoPurgeRules() {
       <div style="display:flex;justify-content:space-between;margin-bottom:.75rem;align-items:center;">
         <input type="text" value="${window.esc(rule.name || '')}" placeholder="Rule name" onchange="_autoPurgeRules[${idx}].name=this.value"
           style="flex:1;padding:.35rem .6rem;background:transparent;border:none;border-bottom:1px solid rgba(148,163,184,0.15);color:#e2e8f0;font-weight:700;font-size:13px;">
-        <button onclick="removeAutoPurgeRule(${idx})" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:.3rem .6rem;border-radius:4px;cursor:pointer;font-size:11px;margin-left:.5rem;">✗ Remove</button>
+        <button onclick="removeAutoPurgeRule(${idx})" style="background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#f87171;padding:.3rem .6rem;border-radius:4px;cursor:pointer;font-size:11px;margin-left:.5rem;">Remove</button>
       </div>
       <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:.75rem;">
         <div>

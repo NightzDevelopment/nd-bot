@@ -86,7 +86,7 @@ function render(modal, userId, data, tickets, econ, userInfo) {
         <div style="font-size:18px;font-weight:700;color:#e2e8f0;">${window.esc(displayName)}</div>
         ${username && username !== displayName ? `<div style="font-size:12px;color:#64748b;">@${window.esc(username)}</div>` : ''}
         <div style="font-size:11px;color:#475569;font-family:monospace;margin-top:2px;">${window.esc(userId)}
-          <button onclick="copyText('${window.esc(userId)}')" style="background:none;border:none;color:#60a5fa;cursor:pointer;font-size:10px;margin-left:4px;">📋</button>
+          <button onclick="copyText('${window.esc(userId)}')" style="background:none;border:none;color:#60a5fa;cursor:pointer;font-size:10px;margin-left:4px;">Copy</button>
         </div>
       </div>
     </div>`
@@ -220,10 +220,10 @@ function render(modal, userId, data, tickets, econ, userInfo) {
 
   // Footer with quick actions
   const footerHtml = `
-    <button class="btn btn-sm" onclick="memberCardAction('warn','${window.esc(userId)}')" style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-size:12px;">⚠ Warn</button>
-    <button class="btn btn-sm" onclick="memberCardAction('note','${window.esc(userId)}')" style="background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.3);color:#94a3b8;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-size:12px;">📝 Add Note</button>
+    <button class="btn btn-sm" onclick="memberCardAction('warn','${window.esc(userId)}')" style="background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-size:12px;">Warn</button>
+    <button class="btn btn-sm" onclick="memberCardAction('note','${window.esc(userId)}')" style="background:rgba(148,163,184,0.1);border:1px solid rgba(148,163,184,0.3);color:#94a3b8;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-size:12px;">Add Note</button>
     <button class="btn btn-sm" onclick="memberCardAction('balance','${window.esc(userId)}')" style="background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);color:#34d399;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-size:12px;">$ Edit Balance</button>
-    <button class="btn btn-sm" onclick="memberCardAction('resetLevel','${window.esc(userId)}')" style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);color:#a78bfa;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-size:12px;">↺ Reset Level</button>
+    <button class="btn btn-sm" onclick="memberCardAction('resetLevel','${window.esc(userId)}')" style="background:rgba(167,139,250,0.1);border:1px solid rgba(167,139,250,0.3);color:#a78bfa;padding:.4rem .8rem;border-radius:6px;cursor:pointer;font-size:12px;">Reset Level</button>
     <div style="flex:1;"></div>
     <button class="btn" onclick="uiCloseModal('member-card-modal')" style="background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);color:#60a5fa;padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-size:12px;">Close</button>
   `

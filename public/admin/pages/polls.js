@@ -53,7 +53,7 @@ window.loadPolls = async function loadPolls(status = 'all') {
         <div style="margin:.5rem 0;">${bars || '<span style="color:#475569;">No answers</span>'}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#475569;">
           <span>${totalVotes} total vote${totalVotes === 1 ? '' : 's'}</span>
-          ${p.jumpUrl ? `<a href="${window.esc(p.jumpUrl)}" target="_blank" style="color:#60a5fa;">View in Discord →</a>` : ''}
+          ${p.jumpUrl ? `<a href="${window.esc(p.jumpUrl)}" target="_blank" style="color:#60a5fa;">View in Discord</a>` : ''}
         </div>
       </div>`
       })

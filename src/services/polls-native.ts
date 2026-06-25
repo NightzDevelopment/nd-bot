@@ -89,8 +89,8 @@ async function linesForPinnedPolls(guild: Guild): Promise<string[]> {
     const q = found.poll.question.text?.trim() || 'Poll'
     const shortQ = q.length > 100 ? `${q.slice(0, 97)}…` : q
     const exp = found.poll.expiresTimestamp
-    const when = exp != null ? ` · ends <t:${Math.floor(exp / 1000)}:R>` : ''
-    lines.push(`📌 **${shortQ}**${when}\n  ${found.url} · ${chLabel}`)
+    const when = exp != null ? ` ends <t:${Math.floor(exp / 1000)}:R>` : ''
+    lines.push(`[pinned] **${shortQ}**${when}\n  ${found.url} - ${chLabel}`)
   }
   return lines
 }
@@ -117,15 +117,15 @@ export async function buildActivePollsEmbed(
       const shortQ = q.length > 120 ? `${q.slice(0, 117)}…` : q
       const url = m.url
       const exp = m.poll?.expiresTimestamp
-      const when = exp != null ? ` · ends <t:${Math.floor(exp / 1000)}:R>` : ''
-      rows.push(`• **${shortQ}**${when}\n  ${url} · ${ch}`)
+      const when = exp != null ? ` ends <t:${Math.floor(exp / 1000)}:R>` : ''
+      rows.push(`**${shortQ}**${when}\n  ${url} - ${ch}`)
     }
   }
 
   if (rows.length === 0) return { empty: true }
 
   const note =
-    `\n\n_Scanned up to ${(1 + POLL_LIST_EXTRA_PAGES) * POLLS_FETCH_LIMIT} messages per polls channel; 📌 = staff bookmark._`.slice(
+    `\n\n_Scanned up to ${(1 + POLL_LIST_EXTRA_PAGES) * POLLS_FETCH_LIMIT} messages per polls channel; [pinned] = staff bookmark._`.slice(
       0,
       500,
     )

@@ -20,6 +20,14 @@
 // Character class of the "long dash" glyphs we replace.
 const LONG_DASH = '\\u2014\\u2013\\u2015\\u2212'
 
+// Decorative emoji / pictographs the models like to sprinkle in. We strip these
+// so AI replies read as plain text. Covers the main emoji planes plus the common
+// stragglers (check mark, cross mark, warning, star) and variation selectors.
+const EMOJI = new RegExp(
+  '[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u2705\\u274C\\u26A0\\u2B50\\uFE0F]',
+  'gu',
+)
+
 export function sanitizeAiText(input: string): string {
   if (!input) return input
   let s = input
@@ -39,7 +47,10 @@ export function sanitizeAiText(input: string): string {
   // 5. Anything still left -> comma
   s = s.replace(new RegExp(`[${LONG_DASH}]`, 'g'), ', ')
 
-  // 6. Tidy up artifacts produced by the substitutions.
+  // 6. Strip decorative emoji the model added (keep plain text only).
+  s = s.replace(EMOJI, '')
+
+  // 7. Tidy up artifacts produced by the substitutions and emoji removal.
   s = s
     .replace(/ +,/g, ',') // " ," -> ","
     .replace(/,{2,}/g, ',') // ",," -> ","

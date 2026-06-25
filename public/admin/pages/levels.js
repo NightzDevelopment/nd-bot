@@ -65,7 +65,7 @@ function renderLevelsTable(data) {
       '<tr><td colspan="5" style="text-align:center;color:#64748b;padding:1.5rem;">No level data yet.</td></tr>'
     return
   }
-  const medals = ['🥇', '🥈', '🥉']
+  const medals = ['1.', '2.', '3.']
   tbody.innerHTML = data
     .map((r, i) => {
       const medal = medals[i] ?? `${i + 1}.`
@@ -330,7 +330,7 @@ function injectLevelRolesModal() {
         <span style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Role ID</span>
         <input id="lr-roleid" type="text" placeholder="Paste Discord role ID"
           style="background:rgba(15,18,40,0.8);border:1px solid rgba(167,139,250,0.25);color:#e2e8f0;padding:0.5rem 0.65rem;border-radius:6px;font-size:14px;width:100%;box-sizing:border-box;" />
-        <span style="font-size:10px;color:#475569;">Right-click role in Discord → Copy ID (requires Developer Mode)</span>
+        <span style="font-size:10px;color:#475569;">Right-click role in Discord, then Copy ID (requires Developer Mode)</span>
       </label>
       <div id="lr-error" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:6px;padding:0.5rem 0.75rem;font-size:12px;color:#f87171;margin-bottom:1rem;"></div>
       <div style="display:flex;gap:0.75rem;justify-content:flex-end;">

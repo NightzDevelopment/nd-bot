@@ -192,7 +192,7 @@ export async function buildLeaderboardEmbed(
   if (window === 'all') {
     const rows = await topLevelRecords(guildId, 10)
     return ndEmbed()
-      .setTitle('Community leaderboard · all time')
+      .setTitle('Community leaderboard - all time')
       .setDescription(
         rows.length
           ? rows
@@ -208,7 +208,7 @@ export async function buildLeaderboardEmbed(
   const { getXpWindowLeaderboard } = await import('./leaderboard-snapshots.ts')
   const rows = await getXpWindowLeaderboard(guildId, days, 10)
   return ndEmbed()
-    .setTitle(`Community leaderboard · ${window === 'week' ? 'this week' : 'this month'}`)
+    .setTitle(`Community leaderboard - ${window === 'week' ? 'this week' : 'this month'}`)
     .setDescription(
       rows.length
         ? rows
@@ -336,7 +336,7 @@ export async function handleLevelRoleSlash(
     const role = interaction.options.getRole('role', true)
     await setLevelRole(guildId, level, role.id)
     await interaction.reply({
-      content: `✅ Members who reach **Level ${level}** will now receive <@&${role.id}>.\n⏳ Granting role to existing members in the background…`,
+      content: `Members who reach **Level ${level}** will now receive <@&${role.id}>.\nGranting role to existing members in the background...`,
       flags: MessageFlags.Ephemeral,
     })
     // Fire backfill after replying, never block the command response
@@ -373,7 +373,7 @@ export async function handleLevelRoleSlash(
       })
       return true
     }
-    const lines = roles.map((r) => `**Level ${r.level}** → <@&${r.roleId}>`)
+    const lines = roles.map((r) => `**Level ${r.level}** to <@&${r.roleId}>`)
     await interaction.reply({
       content: `**Level role rewards:**\n${lines.join('\n')}`,
       flags: MessageFlags.Ephemeral,

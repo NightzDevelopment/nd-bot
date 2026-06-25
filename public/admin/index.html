@@ -214,38 +214,38 @@
 
       <div class="sidebar-section-label" data-section="overview">Overview</div>
       <nav class="dashboard-nav" data-section-body="overview">
-        <button class="nav-link active" data-page="dashboard">⬡ Command</button>
-        <button class="nav-link" data-page="analytics">▤ Telemetry</button>
+        <button class="nav-link active" data-page="dashboard">Command</button>
+        <button class="nav-link" data-page="analytics">Telemetry</button>
       </nav>
 
       <div class="sidebar-section-label" data-section="operations">Operations</div>
       <nav class="dashboard-nav" data-section-body="operations">
-        <button class="nav-link" data-group="mod">⚔ Moderation</button>
-        <button class="nav-link" data-page="commands">⌘ Commands</button>
-        <button class="nav-link" data-page="tickets">◉ Tickets</button>
-        <button class="nav-link" data-group="econ">$ Economy</button>
-        <button class="nav-link" data-group="community">◆ Community</button>
-        <button class="nav-link" data-page="scheduler">◆ Scheduler</button>
+        <button class="nav-link" data-group="mod">Moderation</button>
+        <button class="nav-link" data-page="commands">Commands</button>
+        <button class="nav-link" data-page="tickets">Tickets</button>
+        <button class="nav-link" data-group="econ">Economy</button>
+        <button class="nav-link" data-group="community">Community</button>
+        <button class="nav-link" data-page="scheduler">Scheduler</button>
       </nav>
 
       <div class="sidebar-section-label" data-section="logs">Logs</div>
       <nav class="dashboard-nav" data-section-body="logs">
-        <button class="nav-link" data-page="audit-logs">◈ Audit Logs</button>
+        <button class="nav-link" data-page="audit-logs">Audit Logs</button>
       </nav>
 
       <div class="sidebar-section-label" data-section="tools">Tools</div>
       <nav class="dashboard-nav" data-section-body="tools">
-        <button class="nav-link" data-group="tools">▤ Developer Tools</button>
+        <button class="nav-link" data-group="tools">Developer Tools</button>
       </nav>
 
       <div class="sidebar-section-label" data-section="system">System</div>
       <nav class="dashboard-nav" data-section-body="system">
-        <button class="nav-link" data-group="sys">⚙ Settings</button>
+        <button class="nav-link" data-group="sys">Settings</button>
       </nav>
 
       <div class="dashboard-footer">
         <span class="dashboard-footer-status">BOT ONLINE</span>
-        <button id="theme-toggle" class="theme-toggle" title="Toggle theme">◐</button>
+        <button id="theme-toggle" class="theme-toggle" title="Toggle theme">Theme</button>
       </div>
     </aside>
 
@@ -287,7 +287,7 @@
             <div class="glass-panel bento-health">
               <h3>Server Health</h3>
               <div id="health-grid" class="kv-list">
-                <div class="kv-row"><span class="kv-key">Bot Status</span><span id="h-bot-status" class="kv-val kv-online">● Online</span></div>
+                <div class="kv-row"><span class="kv-key">Bot Status</span><span id="h-bot-status" class="kv-val kv-online">Online</span></div>
                 <div class="kv-row"><span class="kv-key">Uptime</span><span id="h-uptime" class="kv-val">-</span></div>
                 <div class="kv-row"><span class="kv-key">Open Tickets</span><span id="h-open-tickets" class="kv-val">-</span></div>
                 <div class="kv-row"><span class="kv-key">Active Members</span><span id="h-active-members" class="kv-val">-</span></div>
@@ -406,7 +406,7 @@
             <button data-tab="needs-attention">Needs Attention</button>
             <button data-tab="high-notes">High-Severity Notes</button>
             <button data-tab="bans">Ban List</button>
-            <button data-tab="ai-strikes">🤖 AI Strikes</button>
+            <button data-tab="ai-strikes">AI Strikes</button>
           </div>
           <div id="mod-warnings-content" class="mod-tab-content active"></div>
           <div id="mod-attention-content" class="mod-tab-content"></div>
@@ -416,7 +416,7 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
               <input type="text" id="bans-search" placeholder="Search by user tag or ID…"
                 style="flex:1;max-width:320px;padding:7px 12px;border:1px solid rgba(148,163,184,0.15);border-radius:6px;background:rgba(2,6,23,0.6);color:#e2e8f0;font:inherit;font-size:13px;" />
-              <button class="btn btn-secondary" onclick="loadBans()" style="margin-left:.5rem;">↻ Refresh</button>
+              <button class="btn btn-secondary" onclick="loadBans()" style="margin-left:.5rem;">Refresh</button>
             </div>
             <div style="overflow-x:auto;">
               <table class="data-table" id="bans-table">
@@ -711,7 +711,7 @@
               <div style="font-size:12px;color:#64748b;margin-top:2px;">Live stat channels, bot auto-renames channels with current numbers</div>
             </div>
             <div style="display:flex;gap:.5rem;">
-              <button class="btn btn-sm" onclick="refreshCountersNow()" style="background:rgba(96,165,250,0.08);border-color:rgba(96,165,250,0.3);color:#60a5fa;">↻ Refresh Now</button>
+              <button class="btn btn-sm" onclick="refreshCountersNow()" style="background:rgba(96,165,250,0.08);border-color:rgba(96,165,250,0.3);color:#60a5fa;">Refresh Now</button>
               <button class="btn btn-primary" onclick="openCounterAdd()">+ Add Counter</button>
             </div>
           </div>
@@ -814,9 +814,9 @@
           <div id="ctab-env" class="config-tab-content active">
             <div class="save-bar">
               <button class="btn btn-primary" id="cfg-save-btn" onclick="window.cfgSave()" disabled>Save Changes</button>
-              <button class="btn restart-btn" id="cfg-restart-btn" onclick="window.cfgRestart()">↺ Restart Bot</button>
-              <button class="btn lifecycle-btn lifecycle-btn--stop"  id="cfg-stop-btn"  onclick="window.cfgStop()">■ Stop Bot</button>
-              <button class="btn lifecycle-btn lifecycle-btn--start" id="cfg-start-btn" onclick="window.cfgStart()">▶ Start Bot</button>
+              <button class="btn restart-btn" id="cfg-restart-btn" onclick="window.cfgRestart()">Restart Bot</button>
+              <button class="btn lifecycle-btn lifecycle-btn--stop"  id="cfg-stop-btn"  onclick="window.cfgStop()">Stop Bot</button>
+              <button class="btn lifecycle-btn lifecycle-btn--start" id="cfg-start-btn" onclick="window.cfgStart()">Start Bot</button>
               <span id="cfg-bot-state" class="cfg-state-pill cfg-state-pill--running">RUNNING</span>
               <span id="cfg-status-msg"></span>
             </div>
@@ -860,11 +860,11 @@
               </div>
               <div style="display:flex;gap:.5rem;">
                 <button class="btn btn-sm" onclick="addAutoDeleteRule()" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.3);color:#60a5fa;">+ Add Rule</button>
-                <button class="btn btn-primary" onclick="saveAutoDeleteRules()">💾 Save All</button>
+                <button class="btn btn-primary" onclick="saveAutoDeleteRules()">Save All</button>
               </div>
             </div>
             <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:6px;padding:.6rem .9rem;margin-bottom:1rem;font-size:12px;color:#fbbf24;">
-              ⚠ Changes require a bot restart to take effect. Click "↺ Restart Bot" on the Bot Config tab after saving.
+              Warning: Changes require a bot restart to take effect. Click "Restart Bot" on the Bot Config tab after saving.
             </div>
             <div id="auto-delete-rules-list" style="display:flex;flex-direction:column;gap:.75rem;"></div>
           </div>
@@ -878,11 +878,11 @@
               </div>
               <div style="display:flex;gap:.5rem;">
                 <button class="btn btn-sm" onclick="addAutoPurgeRule()" style="background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.3);color:#60a5fa;">+ Add Rule</button>
-                <button class="btn btn-primary" onclick="saveAutoPurgeRules()">💾 Save All</button>
+                <button class="btn btn-primary" onclick="saveAutoPurgeRules()">Save All</button>
               </div>
             </div>
             <div style="background:rgba(251,191,36,0.06);border:1px solid rgba(251,191,36,0.2);border-radius:6px;padding:.6rem .9rem;margin-bottom:1rem;font-size:12px;color:#fbbf24;">
-              ⚠ Changes require a bot restart to take effect.
+              Warning: Changes require a bot restart to take effect.
             </div>
             <div id="auto-purge-rules-list" style="display:flex;flex-direction:column;gap:.75rem;"></div>
           </div>
@@ -920,8 +920,8 @@
                   <option value="4">4xx Client Error</option>
                   <option value="5">5xx Server Error</option>
                 </select>
-                <button class="btn btn-secondary" id="reqlog-refresh-btn" style="font-size:12px;">↺ Refresh</button>
-                <button class="btn btn-secondary" id="reqlog-clear-btn" style="font-size:12px;color:#f87171;">✕ Clear</button>
+                <button class="btn btn-secondary" id="reqlog-refresh-btn" style="font-size:12px;">Refresh</button>
+                <button class="btn btn-secondary" id="reqlog-clear-btn" style="font-size:12px;color:#f87171;">Clear</button>
                 <span id="reqlog-count" style="font-size:11px;color:var(--text-secondary);"></span>
               </div>
               <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);max-height:500px;overflow-y:auto;">
@@ -1001,8 +1001,8 @@
               <option value="Server">Server</option>
               <option value="Invites">Invites</option>
             </select>
-            <button class="btn btn-secondary" id="al-refresh-btn">↺ Refresh</button>
-            <button class="btn btn-secondary" id="al-export-btn">↓ Export CSV</button>
+            <button class="btn btn-secondary" id="al-refresh-btn">Refresh</button>
+            <button class="btn btn-secondary" id="al-export-btn">Export CSV</button>
             <span id="al-count" style="color:var(--text-secondary);font-size:12px;"></span>
           </div>
 

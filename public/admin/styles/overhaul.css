@@ -6,88 +6,89 @@
 
 /* ── Palette lock: dark cyber terminal ──────────────────────────── */
 :root {
-  --bg-primary: #0f1015;
-  --bg: #0f1015;
-  --bg-surface: #15161d;
-  --success: #00ff00;
-  --success-bg: rgba(0, 255, 0, 0.08);
-  --border-color: rgba(255, 255, 255, 0.05);
-  --border: rgba(255, 255, 255, 0.05);
-  --border-strong: rgba(255, 255, 255, 0.1);
-  /* Electric-blue interactive accent. */
+  /* Clean professional dark: solid charcoal surfaces, one restrained blue
+     accent, no neon, no glass, no glow. */
+  --bg-primary: #0d0e11;
+  --bg: #0d0e11;
+  --bg-secondary: #16181d;
+  --bg-tertiary: #1b1e25;
+  --bg-card: #16181d;
+  --bg-surface: #16181d;
+  --bg-elevated: #1c1f26;
+  --bg-input: #0f1116;
+  --bg-hover: rgba(255, 255, 255, 0.04);
+
+  --text-primary: #e6e8ec;
+  --text-secondary: #9ba1ac;
+  --text-tertiary: #6b7280;
+  --text-muted: #565c66;
+
+  --border-color: rgba(255, 255, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  /* Single restrained blue accent. */
   --nd-blue: #3b82f6;
-  --nd-blue-bright: #60a5fa;
+  --nd-blue-bright: #5b9bff;
+  --nd-blue-soft: rgba(59, 130, 246, 0.1);
+  --nd-blue-glow: transparent;
   --accent: #3b82f6;
-  /* Amber config-alert accent. */
-  --warning: #f59e0b;
-  --warn: #f59e0b;
-  /* Softer shadows (the old ones read too heavy on the flat terminal base). */
+
+  /* Status colors: muted, used only for small dots/badges, never as an accent. */
+  --success: #3fb950;
+  --success-bg: rgba(63, 185, 80, 0.12);
+  --warning: #d29922;
+  --warn: #d29922;
+  --warning-bg: rgba(210, 153, 34, 0.12);
+  --error: #f85149;
+  --danger: #f85149;
+
+  /* Flat, subtle shadows only. No glow. */
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.28);
-  --shadow-lg: 0 10px 28px rgba(0, 0, 0, 0.34);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow: none;
 }
 
-/* ── Sidebar + topbar: match the #0f1015 terminal base ──────────── */
+/* ── Sidebar + topbar: solid, flat ──────────── */
 .dashboard-sidebar {
-  background: linear-gradient(180deg, rgba(18, 19, 26, 0.92) 0%, rgba(13, 14, 19, 0.96) 100%);
+  background: #121319;
   border-right: 1px solid var(--border-color);
 }
 .dashboard-topbar {
-  background: linear-gradient(180deg, rgba(18, 19, 26, 0.82), rgba(13, 14, 19, 0.6));
+  background: #121319;
   border-bottom: 1px solid var(--border-color);
 }
-/* Active nav item: electric-blue wash + glowing left rail. */
+/* Active nav item: subtle solid wash + a solid (non-glowing) left rail. */
 .nav-link.active {
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.14) 0%, transparent 100%);
-  color: var(--nd-blue-bright);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
 }
 .nav-link.active::before {
   background: var(--nd-blue);
-  box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+  box-shadow: none;
 }
-/* Section labels: slightly wider tracking for the cyber feel. */
 .sidebar-section-label {
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
 }
 
-/* ── The core component: the premium glass panel ────────────────── */
+/* ── The core surface: a plain solid panel ────────────────── */
 .glass-panel {
-  background: linear-gradient(180deg, rgba(22, 24, 33, 0.55) 0%, rgba(15, 16, 21, 0.62) 100%);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  backdrop-filter: blur(18px) saturate(125%);
-  -webkit-backdrop-filter: blur(18px) saturate(125%);
-  box-shadow:
-    var(--shadow-md),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: var(--shadow);
   position: relative;
-  overflow: hidden;
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-/* Hairline top sheen so panels read as lit glass, not flat boxes. */
-.glass-panel::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--nd-blue-bright), transparent);
-  opacity: 0.35;
-  pointer-events: none;
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 .glass-panel:hover {
   border-color: var(--border-strong);
-  box-shadow:
-    var(--shadow-lg),
-    0 0 0 1px var(--nd-blue-soft),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: var(--shadow-md);
 }
 
-/* Panel / section headings: tighten and give an accent tick. */
+/* Panel / section headings: simple, with a small accent tick (no glow). */
 .glass-panel > h3,
 .chart-container > h3 {
   display: flex;
@@ -102,37 +103,25 @@
   height: 0.95em;
   border-radius: 2px;
   background: var(--nd-blue);
-  box-shadow: 0 0 8px var(--nd-blue-glow);
   flex-shrink: 0;
 }
 
-/* ── Stat cards: make the numbers the hero ──────────────────────── */
+/* ── Stat cards: solid surface, plain numbers ──────────────────────── */
 .stat-card {
-  background:
-    radial-gradient(120% 140% at 100% 0%, var(--nd-blue-soft) 0%, transparent 45%),
-    linear-gradient(180deg, rgba(22, 24, 33, 0.55) 0%, rgba(15, 16, 21, 0.6) 100%);
+  background: var(--bg-card);
 }
 .stat-value {
   font-size: 2.25rem;
   line-height: 1.05;
-  background: linear-gradient(180deg, #f8fafc 0%, var(--nd-blue-bright) 160%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--text-primary);
 }
 .stat-card:hover {
-  box-shadow:
-    var(--shadow-lg),
-    0 0 0 1px var(--nd-blue-soft),
-    0 12px 32px rgba(59, 130, 246, 0.12);
+  box-shadow: var(--shadow-md);
 }
 
-/* ── Sidebar brand: glow the wordmark ──────────────────── */
+/* ── Sidebar brand: plain, no glow ──────────────────── */
 .dashboard-logo strong {
-  text-shadow: 0 0 18px var(--nd-blue-glow);
-}
-.dashboard-sidebar::before {
-  opacity: 0.85;
+  text-shadow: none;
 }
 
 /* Nav icons / links a touch crisper on hover. */
@@ -486,4 +475,64 @@
 }
 .sidebar-section-label[data-section]:hover {
   color: var(--text-secondary);
+}
+
+/* ============================================================
+   Clean professional dark: neutralize the glass / glow / neon /
+   gradient-haze treatments that live in theme.css + dashboard.css
+   (both load before this file). One place, loaded last, wins.
+   ============================================================ */
+
+/* Flat background: no colored radial haze. */
+body {
+  background-image: none !important;
+  background: var(--bg-primary) !important;
+}
+
+/* No glassmorphism anywhere. Surfaces are solid, so removing the blur is safe. */
+* {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Kill blue/green glow box-shadows and gradient-text on the common surfaces. */
+.stat-card,
+.glass-panel,
+.card,
+.panel,
+.chart-container,
+.dashboard-card,
+.bento-stat,
+.modal-content,
+.alert {
+  background-image: none;
+}
+.stat-value,
+.stat-card .value,
+.metric-value {
+  background: none !important;
+  -webkit-text-fill-color: var(--text-primary);
+  color: var(--text-primary) !important;
+}
+
+/* Status dots / indicators: solid color, no glow ring. */
+.rt-dot,
+.status-dot,
+.kv-online,
+[class*="-dot"] {
+  box-shadow: none !important;
+}
+
+/* Buttons: solid accent, no glow on hover. */
+.btn:hover,
+.btn-primary:hover {
+  box-shadow: var(--shadow) !important;
+  transform: none !important;
+}
+
+/* Muted, professional green for success/online states (was neon #00ff00). */
+.badge-success,
+.toast--success,
+.alert--success {
+  color: var(--success);
 }

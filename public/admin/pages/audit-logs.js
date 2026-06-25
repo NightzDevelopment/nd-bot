@@ -20,12 +20,12 @@ const CATEGORY_COLORS = {
 }
 
 const ALERT_ICONS = {
-  mass_ban: '🔨',
-  mass_kick: '🥾',
-  mass_role_change: '🎭',
-  bulk_delete: '🗑️',
-  permission_change: '🔐',
-  mass_channel_delete: '💥',
+  mass_ban: '',
+  mass_kick: '',
+  mass_role_change: '',
+  bulk_delete: '',
+  permission_change: '',
+  mass_channel_delete: '',
 }
 
 async function initAuditLogs() {
@@ -59,7 +59,7 @@ async function loadAuditAlerts() {
     }
     container.innerHTML = alerts
       .map((a) => {
-        const icon = ALERT_ICONS[a.type] || '⚠️'
+        const icon = ALERT_ICONS[a.type] || ''
         const color = a.severity === 'high' ? '#f87171' : '#fbbf24'
         const bg = a.severity === 'high' ? 'rgba(239,68,68,.08)' : 'rgba(251,191,36,.08)'
         const border = a.severity === 'high' ? 'rgba(239,68,68,.3)' : 'rgba(251,191,36,.3)'

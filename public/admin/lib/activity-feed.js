@@ -9,18 +9,18 @@ const PERSIST_KEY = 'activityFeed'
 const PERSIST_COUNT = 50
 
 const EVENT_META = {
-  member_joined: { icon: '🟢', color: '#34d399', label: 'joined the server' },
-  member_left: { icon: '🔴', color: '#94a3b8', label: 'left the server' },
-  automod_flag: { icon: '⚠', color: '#fbbf24', label: 'flagged by AutoMod' },
-  ticket_opened: { icon: '🎫', color: '#60a5fa', label: 'opened a ticket' },
-  ticket_closed: { icon: '✓', color: '#64748b', label: 'closed ticket' },
-  warning_issued: { icon: '⚠', color: '#fb923c', label: 'was warned' },
-  level_up: { icon: '⬆', color: '#a78bfa', label: 'leveled up' },
-  shop_purchase: { icon: '💰', color: '#fbbf24', label: 'made a purchase' },
-  giveaway_ended: { icon: '🎉', color: '#f472b6', label: 'giveaway ended' },
-  suggestion_submitted: { icon: '💡', color: '#60a5fa', label: 'submitted suggestion' },
-  suggestion_state_changed: { icon: '✏', color: '#60a5fa', label: 'suggestion updated' },
-  economy_transaction: { icon: '💵', color: '#f5c542', label: 'economy transaction' },
+  member_joined: { icon: '', color: '#34d399', label: 'joined the server' },
+  member_left: { icon: '', color: '#94a3b8', label: 'left the server' },
+  automod_flag: { icon: '', color: '#fbbf24', label: 'flagged by AutoMod' },
+  ticket_opened: { icon: '', color: '#60a5fa', label: 'opened a ticket' },
+  ticket_closed: { icon: '', color: '#64748b', label: 'closed ticket' },
+  warning_issued: { icon: '', color: '#fb923c', label: 'was warned' },
+  level_up: { icon: '', color: '#a78bfa', label: 'leveled up' },
+  shop_purchase: { icon: '', color: '#fbbf24', label: 'made a purchase' },
+  giveaway_ended: { icon: '', color: '#f472b6', label: 'giveaway ended' },
+  suggestion_submitted: { icon: '', color: '#60a5fa', label: 'submitted suggestion' },
+  suggestion_state_changed: { icon: '', color: '#60a5fa', label: 'suggestion updated' },
+  economy_transaction: { icon: '', color: '#f5c542', label: 'economy transaction' },
 }
 
 class ActivityFeed {
@@ -119,7 +119,7 @@ class ActivityFeed {
     this.mountEl.innerHTML = this.events
       .slice(0, 50)
       .map((e) => {
-        const meta = EVENT_META[e.type] || { icon: '•', color: '#94a3b8', label: e.type }
+        const meta = EVENT_META[e.type] || { icon: '', color: '#94a3b8', label: e.type }
         const d = e.data || {}
         const userName = d.displayName || d.username
         const userPart = userName

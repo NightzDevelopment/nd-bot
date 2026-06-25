@@ -73,10 +73,20 @@ WRITING STYLE (always follow):
  *   "ND_Scenes – the scene" -> "ND_Scenes, the scene"
  * Then we tidy any doubled or misplaced punctuation the swap may create.
  */
+// Decorative emoji / pictographs the model may add. Stripped so replies stay
+// plain text. Covers the main emoji planes plus the common stragglers (check
+// mark, cross mark, warning, star) and variation selectors.
+const EMOJI_PATTERN = new RegExp(
+  '[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u2705\\u274C\\u26A0\\u2B50\\uFE0F]',
+  'gu',
+)
+
 export function sanitizeReply(text: string): string {
   if (!text) return text
   return (
     text
+      // Strip decorative emoji the model added.
+      .replace(EMOJI_PATTERN, '')
       // Dash directly between two letters/numbers with no spaces -> comma + space.
       .replace(/(\w)[—–](\w)/g, '$1, $2')
       // Dash with surrounding whitespace (the "— like this —" case) -> comma + space.
@@ -91,6 +101,10 @@ export function sanitizeReply(text: string): string {
       .replace(/,\s*([.!?;:])/g, '$1')
       // Cleanup: ensure a single space after the comma where text follows.
       .replace(/,(?=\S)/g, ', ')
+      // Cleanup: collapse double spaces left by removed emoji.
+      .replace(/[ \t]{2,}/g, ' ')
+      // Cleanup: drop a stray space left before sentence-ending punctuation.
+      .replace(/ +([.!?;:])/g, '$1')
       // Cleanup: trim trailing comma at end of a line.
       .replace(/,\s*$/gm, '')
   )

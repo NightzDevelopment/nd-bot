@@ -59,7 +59,7 @@ export async function generateBlackjackCard(data: BlackjackCardData): Promise<Bu
   if (data.status === 'won') statusText = 'YOU WON!'
   if (data.status === 'lost') statusText = 'DEALER WINS'
   if (data.status === 'push') statusText = 'PUSH (TIE)'
-  ctx.fillText(`STATUS: ${statusText}  •  BET: ${data.bet.toLocaleString()} NDC`, 30, 50)
+  ctx.fillText(`STATUS: ${statusText}   BET: ${data.bet.toLocaleString()} NDC`, 30, 50)
 
   // Helper function to draw a single playing card
   const drawCard = (x: number, y: number, card: string, isHidden = false) => {

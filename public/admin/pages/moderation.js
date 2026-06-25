@@ -106,12 +106,12 @@ async function loadWarningsTab() {
                         : '#34d399'
                 const label =
                   w.count >= BAN_AT
-                    ? '🚫 Ban'
+                    ? 'Ban'
                     : w.count >= KICK_AT
-                      ? '⚠️ Kick'
+                      ? 'Kick'
                       : w.count >= WARN_AT
-                        ? '⚠️ Warn'
-                        : '👁 Watch'
+                        ? 'Warn'
+                        : 'Watch'
                 return `<tr>
                 <td>${name}</td>
                 <td style="font-weight:700;font-size:1.1rem;color:${barColor};">${w.count}</td>
@@ -400,9 +400,9 @@ async function loadAiStrikesTab() {
 
     container.innerHTML = `
       <div style="background:rgba(96,165,250,0.06);border:1px solid rgba(96,165,250,0.15);border-radius:8px;padding:.75rem 1rem;margin-bottom:1rem;font-size:12px;color:#94a3b8;">
-        Thresholds: <strong style="color:#fbbf24;">${warnAt} strikes</strong> → auto-warn &nbsp;·&nbsp;
-        <strong style="color:#fb923c;">${kickAt}</strong> → auto-kick &nbsp;·&nbsp;
-        <strong style="color:#f87171;">${banAt}</strong> → auto-ban.
+        Thresholds: <strong style="color:#fbbf24;">${warnAt} strikes</strong> auto-warn &nbsp;&nbsp;
+        <strong style="color:#fb923c;">${kickAt}</strong> auto-kick &nbsp;&nbsp;
+        <strong style="color:#f87171;">${banAt}</strong> auto-ban.
         Strikes decay after the configured decay period.
       </div>
       <div style="overflow-x:auto;">
@@ -426,12 +426,12 @@ async function loadAiStrikesTab() {
                         : '#34d399'
                 const level =
                   row.strikes >= banAt
-                    ? '🚫 Ban threshold'
+                    ? 'Ban threshold'
                     : row.strikes >= kickAt
-                      ? '⚠️ Kick threshold'
+                      ? 'Kick threshold'
                       : row.strikes >= warnAt
-                        ? '⚠️ Warn threshold'
-                        : '👁 Monitoring'
+                        ? 'Warn threshold'
+                        : 'Monitoring'
                 const statusBadges = [
                   row.autoWarned
                     ? '<span style="font-size:10px;background:rgba(251,191,36,0.1);color:#fbbf24;padding:1px 5px;border-radius:3px;border:1px solid rgba(251,191,36,0.3);">Warned</span>'

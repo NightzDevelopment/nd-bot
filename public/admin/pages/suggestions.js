@@ -43,8 +43,8 @@ window.loadSuggestions = async function loadSuggestions(status = 'open') {
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <code style="font-size:10px;color:#475569;">${window.esc(s.id)}</code>
           <div style="display:flex;gap:.4rem;">
-            ${s.status !== 'approved' ? `<button class="btn btn-sm" onclick="suggestionAction('${window.esc(s.id)}','approve')" style="background:rgba(52,211,153,0.1);border-color:rgba(52,211,153,0.3);color:#34d399;">✓ Approve</button>` : ''}
-            ${s.status !== 'denied' ? `<button class="btn btn-sm" onclick="suggestionAction('${window.esc(s.id)}','deny')" style="background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.3);color:#f87171;">✗ Deny</button>` : ''}
+            ${s.status !== 'approved' ? `<button class="btn btn-sm" onclick="suggestionAction('${window.esc(s.id)}','approve')" style="background:rgba(52,211,153,0.1);border-color:rgba(52,211,153,0.3);color:#34d399;">Approve</button>` : ''}
+            ${s.status !== 'denied' ? `<button class="btn btn-sm" onclick="suggestionAction('${window.esc(s.id)}','deny')" style="background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.3);color:#f87171;">Deny</button>` : ''}
           </div>
         </div>
       </div>`

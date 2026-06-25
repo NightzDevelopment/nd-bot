@@ -280,7 +280,7 @@ function showToast(message, type = 'info') {
   if (!toastContainer) return
 
   const tag =
-    { info: 'NIGHTZ', success: 'NIGHTZ ✓', warning: 'NIGHTZ ⚠', error: 'NIGHTZ ✗' }[type] ||
+    { info: 'NIGHTZ', success: 'NIGHTZ Done', warning: 'NIGHTZ Warning', error: 'NIGHTZ Error' }[type] ||
     'NIGHTZ'
   const toast = document.createElement('div')
   toast.className = `toast toast--${type}`

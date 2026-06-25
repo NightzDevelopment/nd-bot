@@ -572,7 +572,7 @@ export async function rerollGiveawayDraw(
     winners.push(w.toString())
   }
   if (winners.length > 0 && 'send' in ch) {
-    await ch.send(`🎉 **Reroll for ${g.prize}**: ${winners.join(', ')}`).catch(() => {})
+    await ch.send(`**Reroll for ${g.prize}**: ${winners.join(', ')}`).catch(() => {})
   }
   return { ok: true, winners }
 }
