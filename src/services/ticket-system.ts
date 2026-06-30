@@ -53,8 +53,7 @@ import { ndTicketEmbedOpen, ndTicketEmbedStaff, TICKET_FOOTER_SUPPORT } from '..
 import { isGuildMod } from '../utils/permissions.ts'
 import { searchFaq } from './faq.ts'
 import { generateOnce, getModel } from './gemini.ts'
-import { buildTicketProductHintBlock } from './store-catalog.ts'
-import { getStoreListingPlaintext } from './store-snapshot.ts'
+import { buildTicketProductHint } from './store-snapshot.ts'
 import { formatSlaTarget, inferPriorityFromCategory, PRIORITY_LABEL } from './ticket-priority.ts'
 import {
   addTicketTags,
@@ -192,7 +191,7 @@ function formatReasonNextStepCopy(reason: string): string {
   const lines = bullets.map((b) => `- ${b}`).join('\n')
   let extra = ''
   if (key === 'buying product' || key === 'billing/refund' || key === 'script support') {
-    extra = buildTicketProductHintBlock(getStoreListingPlaintext())
+    extra = buildTicketProductHint()
   }
   return `**Next step:** please share the details below so staff can help quickly.\n${lines}\n\n**Staff:** Use the **Claim** button on the welcome message above when you take this ticket.${extra}`
 }

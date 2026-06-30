@@ -1,13 +1,21 @@
 /**
- * Fetches the public Nightz store listing (HTML→text), caches under DATA_DIR,
- * and injects into AI user-turn context (and optional embedding corpus when enabled).
- * Listing URL from `STORE_PAGE_URL` (default https://shop.nightz.dev/). If the store
- * is a client-rendered SPA, a plain fetch sees little/no content - check
- * `getStoreSnapshotHealth()` for a short/empty snapshot warning in that case.
+ * Live Nightz store catalog via the public JSON API (STORE_API_BASE).
+ *
+ * Replaces the old HTML-scrape snapshot: the storefront is client-rendered, so a
+ * plain fetch of the page returns no catalog. This pulls the structured product
+ * list and premium config, caches under DATA_DIR, and injects real product
+ * names + prices into AI context (and the optional embedding corpus). All money
+ * from the API is integer minor units (cents) with a `currency` field.
+ *
+ * The exported function names match the previous snapshot module so every caller
+ * (bot.ts loop, /store + /product commands, health, context-bundle, embeddings)
+ * keeps working unchanged.
  */
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import {
+  storeApiBase,
+  storeFeaturedCount,
   storeFeaturedLines,
   storePageFetchTimeoutMs,
   storePageMaxChars,
@@ -16,64 +24,151 @@ import {
   storeSnapshotStaleMinutes,
 } from '../config.ts'
 import { dataPath, ensureDataDir, writeJson } from './data-store.ts'
-import { buildFeaturedLines, lookupStoreListing, parseStoreListingText } from './store-catalog.ts'
+import {
+  buildFeaturedLines,
+  lookupStoreListing,
+  type StoreListingItem,
+} from './store-catalog.ts'
 
-const CACHE_FILE = 'store-page-snapshot.json'
-const UA = 'ND-Discord-Gemini-Bot/1.0 (+https://nightz.dev; store context snapshot)'
+const CACHE_FILE = 'store-catalog.json'
 
-type Cache = { url: string; text: string; fetchedAt: number }
+export type StoreProduct = {
+  name: string
+  slug: string
+  url: string
+  priceCents: number
+  basePriceCents: number
+  currency: string
+  onSale: boolean
+  percentOff: number
+  isSubscription: boolean
+  premiumIncluded: boolean
+  free: boolean
+  saleEndsAt: string | null
+}
+
+export type PremiumConfig = {
+  enabled: boolean
+  currency: string
+  monthlyCents: number
+  threeMonthCents: number
+  sixMonthCents: number
+  yearlyCents: number
+  lifetimeCents: number
+  memberDiscountPercent: number
+}
+
+type Cache = { products: StoreProduct[]; premium: PremiumConfig | null; fetchedAt: number }
 
 let cached: Cache | null = null
 let lastFetchError: string | null = null
 
-function htmlToPlainText(raw: string): string {
-  let t = raw
-  t = t.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
-  t = t.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
-  t = t.replace(/<br\s*\/?>/gi, '\n')
-  t = t.replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
-  t = t.replace(/<[^>]+>/g, ' ')
-  t = t.replace(/&nbsp;/gi, ' ')
-  t = t.replace(/&amp;/g, '&')
-  t = t.replace(/&lt;/g, '<')
-  t = t.replace(/&gt;/g, '>')
-  t = t.replace(/&quot;/g, '"')
-  t = t.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number.parseInt(n, 10)))
-  t = t.replace(/\r\n/g, '\n')
-  t = t.replace(/[ \t]+\n/g, '\n')
-  t = t.replace(/\n{3,}/g, '\n\n')
-  t = t.replace(/[ \t]{2,}/g, ' ')
-  return t.trim()
+// ---- formatting -----------------------------------------------------------
+
+function formatMoney(cents: number, currency: string): string {
+  const amount = (Math.max(0, cents) / 100).toFixed(2)
+  return currency === 'USD' ? `$${amount}` : `${amount} ${currency}`
 }
 
-function normalizeFetchedText(body: string): string {
-  const trimmed = body.trim()
-  const looksHtml = /<html[\s>]/i.test(trimmed) || /<\/?[a-z][\s\w:-]*>/i.test(trimmed)
-  const text = looksHtml ? htmlToPlainText(body) : body
-  const cut =
-    text.length > storePageMaxChars ? text.slice(0, storePageMaxChars) + '\n…[truncated]' : text
-  return cut.trim()
-}
-
-async function readCacheFromDisk(): Promise<Cache | null> {
+/** Storefront origin, for building product page links from a slug. */
+function productBaseUrl(): string {
   try {
-    const raw = await readFile(dataPath(CACHE_FILE), 'utf8')
-    return parseCacheJson(raw)
+    return `${new URL(storePageUrl).origin}/products`
   } catch {
-    /* missing or invalid */
+    return 'https://shop.nightz.dev/products'
   }
-  return null
 }
+
+// ---- API fetch + mapping --------------------------------------------------
+
+function num(v: unknown, def = 0): number {
+  return typeof v === 'number' && Number.isFinite(v) ? v : def
+}
+
+function mapProduct(p: Record<string, unknown>): StoreProduct {
+  const slug = typeof p.slug === 'string' ? p.slug : ''
+  const currency = typeof p.currency === 'string' ? p.currency : 'USD'
+  const priceCents = num(p.price_cents, num(p.base_price_cents, 0))
+  return {
+    name: typeof p.name === 'string' ? p.name : slug || 'Product',
+    slug,
+    url: `${productBaseUrl()}/${slug}`,
+    priceCents,
+    basePriceCents: num(p.base_price_cents, priceCents),
+    currency,
+    onSale: p.on_sale === true,
+    percentOff: num(p.percent_off, 0),
+    isSubscription: p.is_subscription === true,
+    premiumIncluded: p.premium_included === true,
+    free: priceCents === 0,
+    saleEndsAt: typeof p.sale_ends_at === 'string' ? p.sale_ends_at : null,
+  }
+}
+
+async function fetchJson(url: string): Promise<unknown> {
+  const ac = new AbortController()
+  const to = setTimeout(() => ac.abort(), storePageFetchTimeoutMs)
+  try {
+    const res = await fetch(url, {
+      signal: ac.signal,
+      headers: { Accept: 'application/json', 'User-Agent': 'ND-Discord-Bot/1.0' },
+      redirect: 'follow',
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return await res.json()
+  } finally {
+    clearTimeout(to)
+  }
+}
+
+async function fetchAllProducts(): Promise<StoreProduct[]> {
+  const out: StoreProduct[] = []
+  let page = 1
+  let pages = 1
+  // Hard page cap so a bad pagination field cannot loop forever.
+  do {
+    const body = (await fetchJson(`${storeApiBase}/products?limit=100&page=${page}`)) as {
+      data?: unknown[]
+      pagination?: { pages?: number }
+    }
+    const data = Array.isArray(body?.data) ? body.data : []
+    for (const item of data) {
+      if (item && typeof item === 'object') out.push(mapProduct(item as Record<string, unknown>))
+    }
+    pages = num(body?.pagination?.pages, 1)
+    page++
+  } while (page <= pages && page <= 25)
+  return out
+}
+
+async function fetchPremium(): Promise<PremiumConfig | null> {
+  try {
+    const body = (await fetchJson(`${storeApiBase}/premium/config`)) as { data?: Record<string, unknown> }
+    const d = body?.data
+    if (!d || typeof d !== 'object') return null
+    return {
+      enabled: d.enabled === true,
+      currency: typeof d.currency === 'string' ? d.currency : 'USD',
+      monthlyCents: num(d.monthly_price_cents),
+      threeMonthCents: num(d.three_month_price_cents),
+      sixMonthCents: num(d.six_month_price_cents),
+      yearlyCents: num(d.yearly_price_cents),
+      lifetimeCents: num(d.lifetime_price_cents),
+      memberDiscountPercent: num(d.member_discount_percent),
+    }
+  } catch (e) {
+    console.warn('[store-catalog] premium config fetch failed:', e)
+    return null
+  }
+}
+
+// ---- disk cache -----------------------------------------------------------
 
 function parseCacheJson(raw: string): Cache | null {
   try {
     const j = JSON.parse(raw) as Partial<Cache>
-    if (typeof j.text === 'string' && j.text.length > 0 && typeof j.fetchedAt === 'number') {
-      return {
-        url: typeof j.url === 'string' ? j.url : storePageUrl,
-        text: j.text,
-        fetchedAt: j.fetchedAt,
-      }
+    if (Array.isArray(j.products) && typeof j.fetchedAt === 'number') {
+      return { products: j.products, premium: j.premium ?? null, fetchedAt: j.fetchedAt }
     }
   } catch {
     /* invalid */
@@ -81,96 +176,122 @@ function parseCacheJson(raw: string): Cache | null {
   return null
 }
 
-/** Hydrate memory from disk so health/lookup work before the first scheduled refresh. */
 export function hydrateStoreCacheFromDiskSync(): void {
   if (cached) return
   try {
-    const raw = readFileSync(dataPath(CACHE_FILE), 'utf8')
-    const c = parseCacheJson(raw)
+    const c = parseCacheJson(readFileSync(dataPath(CACHE_FILE), 'utf8'))
     if (c) cached = c
   } catch {
     /* no file */
   }
 }
 
-async function writeCache(c: Cache): Promise<void> {
-  await ensureDataDir()
-  await writeJson(CACHE_FILE, c)
+async function readCacheFromDisk(): Promise<Cache | null> {
+  try {
+    return parseCacheJson(await readFile(dataPath(CACHE_FILE), 'utf8'))
+  } catch {
+    return null
+  }
 }
 
-/** Plain text for embedding index (same cap as live context). */
-export function getStorePageTextForEmbedding(): string {
-  if (!storePageSnapshotEnabled) return ''
-  if (!cached?.text) hydrateStoreCacheFromDiskSync()
-  return cached?.text ?? ''
+// ---- context builders -----------------------------------------------------
+
+/** True when we have a usable catalog (products or premium) in memory or on disk. */
+function hasData(): boolean {
+  if (!cached) hydrateStoreCacheFromDiskSync()
+  return !!cached && (cached.products.length > 0 || cached.premium != null)
 }
 
-/**
- * Block injected ahead of vector/product/code context so the model sees current store titles/prices.
- */
+function productLine(p: StoreProduct): string {
+  if (p.free) {
+    const tag = p.premiumIncluded ? ' [included with Premium]' : ''
+    return `- ${p.name}: FREE${tag}. ${p.url}`
+  }
+  const price = formatMoney(p.priceCents, p.currency)
+  const sale = p.onSale
+    ? ` (on sale ${p.percentOff}% off, was ${formatMoney(p.basePriceCents, p.currency)}${
+        p.saleEndsAt ? `, ends ${p.saleEndsAt.slice(0, 10)}` : ''
+      })`
+    : ''
+  const recurring = p.isSubscription ? ' per month' : ' one-time'
+  const premium = p.premiumIncluded ? ' [free for Premium members]' : ''
+  return `- ${p.name}: ${price}${recurring}${sale}${premium}. ${p.url}`
+}
+
+function premiumLine(prem: PremiumConfig): string {
+  if (!prem.enabled) return ''
+  const c = prem.currency
+  const parts: string[] = []
+  if (prem.monthlyCents) parts.push(`${formatMoney(prem.monthlyCents, c)}/month`)
+  if (prem.threeMonthCents) parts.push(`${formatMoney(prem.threeMonthCents, c)}/3 months`)
+  if (prem.sixMonthCents) parts.push(`${formatMoney(prem.sixMonthCents, c)}/6 months`)
+  if (prem.yearlyCents) parts.push(`${formatMoney(prem.yearlyCents, c)}/year`)
+  if (prem.lifetimeCents) parts.push(`${formatMoney(prem.lifetimeCents, c)} lifetime`)
+  const discount = prem.memberDiscountPercent
+    ? ` Members save ${prem.memberDiscountPercent}% on everything else.`
+    : ''
+  return `Premium membership: ${parts.join(', ')}.${discount}`
+}
+
+function buildCatalogText(): string {
+  if (!cached) return ''
+  const lines: string[] = []
+  if (cached.products.length > 0) {
+    lines.push('Products (live prices, confirm on the store before purchase):')
+    for (const p of cached.products) lines.push(productLine(p))
+  }
+  if (cached.premium && cached.premium.enabled) {
+    lines.push('', premiumLine(cached.premium))
+  }
+  const text = lines.join('\n')
+  return text.length > storePageMaxChars ? `${text.slice(0, storePageMaxChars)}\n...[truncated]` : text
+}
+
+/** Block injected ahead of other context so the model sees current titles/prices. */
 export function buildStorePageContext(): string {
   if (!storePageSnapshotEnabled) return ''
-  if (!cached?.text) hydrateStoreCacheFromDiskSync()
-  if (!cached?.text) return ''
-  const iso = new Date(cached.fetchedAt).toISOString()
-  return [
-    '**Live Nightz store catalog (text snapshot from the public listing, prices/titles change, confirm on the site):**',
-    `Source: ${cached.url} (fetched ${iso})`,
-    cached.text,
-  ].join('\n')
+  if (!hasData()) return ''
+  return `**Live Nightz store catalog (real prices from the store API; sales and prices can change, confirm on the site):**\n${buildCatalogText()}`
 }
+
+/** Plain text for the embedding index. */
+export function getStorePageTextForEmbedding(): string {
+  if (!storePageSnapshotEnabled) return ''
+  if (!hasData()) return ''
+  return buildCatalogText()
+}
+
+// ---- refresh loop ---------------------------------------------------------
 
 export async function refreshStoreSnapshot(): Promise<void> {
   if (!storePageSnapshotEnabled) {
     cached = null
     return
   }
-
   try {
-    const ac = new AbortController()
-    const to = setTimeout(() => ac.abort(), storePageFetchTimeoutMs)
-    const res = await fetch(storePageUrl, {
-      signal: ac.signal,
-      headers: {
-        Accept: 'text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8',
-        'User-Agent': UA,
-      },
-      redirect: 'follow',
-    })
-    clearTimeout(to)
-    if (!res.ok) {
-      lastFetchError = `HTTP ${res.status}`
-      console.warn(`[store-snapshot] HTTP ${res.status} for ${storePageUrl}`)
-    } else {
-      const body = await res.text()
-      const text = normalizeFetchedText(body)
-      if (text.length < 200) {
-        console.warn(
-          '[store-snapshot] response very short: page may be JS-only; snapshot may be low-value',
-        )
-      }
-      cached = { url: storePageUrl, text, fetchedAt: Date.now() }
-      lastFetchError = null
-      await writeCache(cached)
-      console.log(`[store-snapshot] refreshed ${text.length} char(s) from ${storePageUrl}`)
-      void import('./embeddings.ts').then((m) => m.scheduleEmbeddingRebuild()).catch(() => {})
-      return
+    const [products, premium] = await Promise.all([fetchAllProducts(), fetchPremium()])
+    if (products.length === 0 && !premium) {
+      throw new Error('catalog returned no products and no premium config')
     }
+    cached = { products, premium, fetchedAt: Date.now() }
+    lastFetchError = null
+    await ensureDataDir()
+    await writeJson(CACHE_FILE, cached)
+    console.log(`[store-catalog] refreshed ${products.length} product(s) from ${storeApiBase}`)
+    void import('./embeddings.ts').then((m) => m.scheduleEmbeddingRebuild()).catch(() => {})
+    return
   } catch (e) {
     lastFetchError = String((e as Error)?.message ?? e).slice(0, 200)
-    console.warn('[store-snapshot] fetch failed:', e)
+    console.warn('[store-catalog] refresh failed:', lastFetchError)
   }
 
   const disk = await readCacheFromDisk()
   if (disk) {
     cached = disk
     console.warn(
-      `[store-snapshot] using on-disk cache (${disk.text.length} char(s), fetched ${new Date(disk.fetchedAt).toISOString()})`,
+      `[store-catalog] using on-disk cache (${disk.products.length} product(s), fetched ${new Date(disk.fetchedAt).toISOString()})`,
     )
-  } else {
-    cached = null
   }
-
   void import('./embeddings.ts').then((m) => m.scheduleEmbeddingRebuild()).catch(() => {})
 }
 
@@ -178,6 +299,8 @@ export function startStorePageSnapshotLoop(refreshMs: number): void {
   if (!storePageSnapshotEnabled) return
   setInterval(() => void refreshStoreSnapshot(), refreshMs).unref?.()
 }
+
+// ---- health ---------------------------------------------------------------
 
 export type StoreSnapshotHealth = {
   enabled: boolean
@@ -191,82 +314,97 @@ export type StoreSnapshotHealth = {
 export function getStoreSnapshotHealth(): StoreSnapshotHealth {
   hydrateStoreCacheFromDiskSync()
   if (!storePageSnapshotEnabled) {
-    return {
-      enabled: false,
-      status: 'disabled',
-      ageMinutes: null,
-      charCount: 0,
-      url: storePageUrl,
-      lastError: null,
-    }
+    return { enabled: false, status: 'disabled', ageMinutes: null, charCount: 0, url: storePageUrl, lastError: null }
   }
-  const text = cached?.text ?? ''
-  if (!text.length) {
-    const st: StoreSnapshotHealth['status'] = lastFetchError ? 'error' : 'empty'
+  const count = cached?.products.length ?? 0
+  if (count === 0 && !cached?.premium) {
     return {
       enabled: true,
-      status: st,
+      status: lastFetchError ? 'error' : 'empty',
       ageMinutes: null,
       charCount: 0,
       url: storePageUrl,
       lastError: lastFetchError,
     }
   }
-  const fetchedAt = cached!.fetchedAt
-  const ageMinutes = (Date.now() - fetchedAt) / 60000
+  const ageMinutes = (Date.now() - (cached?.fetchedAt ?? 0)) / 60000
   const stale = ageMinutes > storeSnapshotStaleMinutes
   return {
     enabled: true,
     status: stale ? 'stale' : 'ok',
     ageMinutes,
-    charCount: text.length,
-    url: cached!.url,
+    charCount: count,
+    url: storePageUrl,
     lastError: stale ? lastFetchError : null,
   }
 }
 
-/** One line for `/ping`, `nd!ping`, `/status`, `buildHealthSummary`. */
+/** One line for `/ping`, `/status`, health summary. */
 export function formatStoreHealthOneLiner(): string {
   const h = getStoreSnapshotHealth()
-  if (!h.enabled) return '**Store snapshot:** disabled'
+  if (!h.enabled) return '**Store catalog:** disabled'
   const age = h.ageMinutes == null ? '-' : `${Math.max(0, Math.floor(h.ageMinutes))} min`
   const err = h.lastError ? ` · err: ${h.lastError}` : ''
-  return `**Store snapshot:** ${h.status} · ${age} ago · ${h.charCount} chars${err}`
+  return `**Store catalog:** ${h.status} · ${h.charCount} product(s) · ${age} ago${err}`
 }
 
-/** Markdown for `/store` and `nd!store` (no embed required). */
+// ---- command surface ------------------------------------------------------
+
+function productsAsListingItems(): StoreListingItem[] {
+  hydrateStoreCacheFromDiskSync()
+  return (cached?.products ?? []).map((p) => ({
+    title: p.name,
+    price: p.free ? 'FREE' : formatMoney(p.priceCents, p.currency),
+    url: p.url,
+  }))
+}
+
+/** Markdown for `/store` and `nd!store`. */
 export function buildStoreCommandBody(): string {
   hydrateStoreCacheFromDiskSync()
   const h = getStoreSnapshotHealth()
-  const text = cached?.text ?? ''
-  const parsed = parseStoreListingText(text)
-  const featured = buildFeaturedLines(parsed, storeFeaturedLines)
+  const items = productsAsListingItems()
+  const featured = buildFeaturedLines(items, storeFeaturedLines)
   const lines: string[] = [
     '**Nightz store**',
     `**Browse:** ${storePageUrl}`,
     '',
-    `**Bot snapshot:** ${h.status} · ${h.charCount ? `${h.charCount} chars` : 'no data'} · age ${h.ageMinutes != null ? `${Math.floor(h.ageMinutes)} min` : '-'}`,
+    `**Catalog:** ${h.status} · ${h.charCount} product(s) · age ${
+      h.ageMinutes != null ? `${Math.floor(h.ageMinutes)} min` : '-'
+    }`,
   ]
   if (featured.length) {
     lines.push('', '**Featured**')
-    for (const f of featured) lines.push(`• ${f}`)
-  } else if (h.enabled && !text.length) {
-    lines.push(
-      '',
-      '_No listing text cached yet. Wait for refresh or check `STORE_PAGE_URL` and bot outbound access._',
-    )
+    for (const f of featured.slice(0, storeFeaturedCount)) lines.push(`- ${f}`)
+  } else if (h.charCount === 0) {
+    lines.push('', '_Catalog not loaded yet. Try again shortly or check the store directly._')
   }
-  lines.push('', 'Confirm price and details on the live store.')
+  if (cached?.premium?.enabled) {
+    lines.push('', premiumLine(cached.premium))
+  }
+  lines.push('', 'Confirm current prices and details on the live store.')
   return lines.join('\n').slice(0, 3900)
 }
 
 export function getStoreListingPlaintext(): string {
   hydrateStoreCacheFromDiskSync()
-  return cached?.text ?? ''
+  return buildCatalogText()
 }
 
 export function lookupProductsFromSnapshot(query: string) {
-  hydrateStoreCacheFromDiskSync()
-  const items = parseStoreListingText(cached?.text ?? '')
-  return lookupStoreListing(items, query)
+  return lookupStoreListing(productsAsListingItems(), query)
+}
+
+/** A few example products to seed a ticket's "which product?" prompt. */
+export function buildTicketProductHint(): string {
+  const items = productsAsListingItems()
+  if (items.length === 0) return ''
+  const lines = items
+    .slice(0, 5)
+    .map((p) => `- **${p.title}** (${p.price}) ${p.url}`)
+    .join('\n')
+  return (
+    `\n\n**Which product?** Name the resource or paste a store link.\n` +
+    `Examples from the current catalog (verify on the site):\n${lines}`
+  )
 }

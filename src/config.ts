@@ -230,11 +230,15 @@ export const productDocsMaxFiles = Math.min(
 )
 
 /**
- * Fetch public store listing (HTML→text) for AI context; refresh on a timer.
- * Storefront URL is configurable via `STORE_PAGE_URL`; defaults to the live Nightz store.
+ * Live store catalog for AI context; refresh on a timer.
+ * Pulls the public JSON catalog API (STORE_API_BASE). STORE_PAGE_URL is the
+ * human storefront, used to build product page links and the "browse" URL.
  */
 export const storePageSnapshotEnabled = !isEnvOff(process.env.STORE_PAGE_SNAPSHOT_ENABLED ?? '1')
 export const storePageUrl = process.env.STORE_PAGE_URL?.trim() || 'https://shop.nightz.dev/'
+/** Base of the public store JSON API (products + premium config live under here). */
+export const storeApiBase =
+  process.env.STORE_API_BASE?.trim().replace(/\/+$/, '') || 'https://shop.nightz.dev/api/store'
 export const storePageRefreshMinutes = Math.max(
   15,
   parseInt(process.env.STORE_PAGE_REFRESH_MINUTES ?? '60', 10) || 60,
