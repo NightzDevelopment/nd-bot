@@ -32,6 +32,14 @@ export async function handleWarningsSlash(
   const subcommand = interaction.options.getSubcommand()
 
   if (subcommand === 'view') {
+    if (!isGuildMod(interaction.member as GuildMember | null)) {
+      await interaction.reply({
+        content: 'Mod+ required.',
+        flags: MessageFlags.Ephemeral,
+      })
+      return true
+    }
+
     const user = interaction.options.getUser('user')
     if (!user) {
       await interaction.reply({
@@ -73,7 +81,7 @@ export async function handleWarningsSlash(
       embed.setDescription(desc)
     }
 
-    await interaction.reply({ embeds: [embed] })
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral })
     return true
   }
 

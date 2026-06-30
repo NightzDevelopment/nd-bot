@@ -842,6 +842,7 @@ export function startDashboard(): void {
 
           // --- Config history ---
           if (pathname === '/api/v2/config/history' && req.method === 'GET') {
+            if (jwtPayload.role !== 'admin') return jsonForbidden()
             const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50', 10), 200)
             const snapshots = await getRecentSnapshots(limit)
             return json({ snapshots })

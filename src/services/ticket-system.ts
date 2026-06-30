@@ -1670,7 +1670,7 @@ async function runCloseTicket(
       authorTag: m.author.tag,
       content: m.content || '',
     }))
-    generateAndSavePostMortem(t, postMortemMsgs, closedBy.tag, closeNotes).catch((err) => {
+    generateAndSavePostMortem(client, t, postMortemMsgs, closedBy.tag, closeNotes).catch((err) => {
       console.error('[copilot] failed to generate postmortem:', err)
     })
   } catch (err) {

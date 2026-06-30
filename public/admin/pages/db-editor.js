@@ -125,17 +125,17 @@ function renderTableBody(rowsToRender = dbRows) {
   }
 
   tbody.innerHTML = rowsToRender
-    .map((row, rowIndex) => {
-      // Generate unique row ID using index
+    .map((row) => {
+      const rowJson = window.esc(JSON.stringify(row))
       return `
-      <tr style="border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.015)'" onmouseout="this.style.background='transparent'">
+      <tr data-row-json='${rowJson}' style="border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.15s ease;" onmouseover="this.style.background='rgba(255,255,255,0.015)'" onmouseout="this.style.background='transparent'">
         ${dbColumns
           .map((col) => {
             const val = row[col.name]
             const isPk = col.isPrimary
             return `
-            <td style="padding:.6rem 1rem;font-size:12px;color:#e2e8f0;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;" 
-                ondblclick="editDbCell(${rowIndex}, '${window.esc(col.name)}')" 
+            <td style="padding:.6rem 1rem;font-size:12px;color:#e2e8f0;white-space:nowrap;max-width:200px;overflow:hidden;text-overflow:ellipsis;"
+                ondblclick="editDbCell(JSON.parse(this.closest(&quot;tr&quot;).dataset.rowJson), '${window.esc(col.name)}')"
                 title="Double click to edit cell value"
                 style="cursor:pointer;">
               ${val === null ? '<span style="color:#475569;font-style:italic;">NULL</span>' : window.esc(String(val))}
@@ -144,8 +144,8 @@ function renderTableBody(rowsToRender = dbRows) {
           })
           .join('')}
         <td style="text-align:center;white-space:nowrap;padding:.6rem 1rem;">
-          <button class="btn btn-sm" onclick="editDbRowDirect(${rowIndex})" style="margin-right:4px;">Edit</button>
-          <button class="btn btn-sm" onclick="deleteDbRowDirect(${rowIndex})" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">Delete</button>
+          <button class="btn btn-sm" onclick="editDbRowDirect(JSON.parse(this.closest('tr').dataset.rowJson))" style="margin-right:4px;">Edit</button>
+          <button class="btn btn-sm" onclick="deleteDbRowDirect(JSON.parse(this.closest('tr').dataset.rowJson))" style="color:#f87171;border-color:rgba(248,113,113,0.3);background:rgba(248,113,113,0.08);">Delete</button>
         </td>
       </tr>
     `
@@ -197,8 +197,7 @@ window.changeDbOffset = (delta) => {
   loadTableData()
 }
 
-window.editDbCell = (rowIndex, columnName) => {
-  const row = dbRows[rowIndex]
+window.editDbCell = (row, columnName) => {
   if (!row) return
 
   const col = dbColumns.find((c) => c.name === columnName)
@@ -207,8 +206,7 @@ window.editDbCell = (rowIndex, columnName) => {
   openEditModal(row, col)
 }
 
-window.editDbRowDirect = (rowIndex) => {
-  const row = dbRows[rowIndex]
+window.editDbRowDirect = (row) => {
   if (!row) return
 
   // Edit the first non-primary column
@@ -284,10 +282,18 @@ function openEditModal(row, col) {
       if (finalVal !== null) {
         if (col.type === 'INTEGER') {
           const parsed = parseInt(rawVal, 10)
-          if (!isNaN(parsed)) finalVal = parsed
+          if (isNaN(parsed)) {
+            window.showToast(`Invalid value for INTEGER column "${col.name}": "${rawVal}" is not a number`, 'error')
+            return
+          }
+          finalVal = parsed
         } else if (col.type === 'REAL' || col.type === 'NUMERIC') {
           const parsed = parseFloat(rawVal)
-          if (!isNaN(parsed)) finalVal = parsed
+          if (isNaN(parsed)) {
+            window.showToast(`Invalid value for ${col.type} column "${col.name}": "${rawVal}" is not a number`, 'error')
+            return
+          }
+          finalVal = parsed
         }
       }
 
@@ -323,8 +329,7 @@ window.toggleNullCheckbox = (checked) => {
   }
 }
 
-window.deleteDbRowDirect = async (rowIndex) => {
-  const row = dbRows[rowIndex]
+window.deleteDbRowDirect = async (row) => {
   if (!row) return
 
   const pKeys = getPrimaryKeyValues(row)

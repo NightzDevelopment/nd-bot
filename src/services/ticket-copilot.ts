@@ -109,7 +109,11 @@ You draft professional, technical, extremely helpful support responses for staff
 Do not use any emojis. Focus on technical accuracy, clarity, and professionalism. 
 Identify the customer's issues and provide a complete resolution draft.`
 
-    const draftText = await runUniversalAgentLoop(systemPrompt, prior, latestQuery)
+    const draftText = await runUniversalAgentLoop(systemPrompt, prior, latestQuery, undefined, {
+      userId: msg.author.id,
+      ...(msg.guild?.id ? { guildId: msg.guild.id } : {}),
+      ...(msg.member ? { member: msg.member } : {}),
+    })
     if (!draftText || !draftText.trim()) return
 
     // 3. Find log channel and message to host/post thread
@@ -370,6 +374,7 @@ export async function tryHandleCopilotModal(interaction: ModalSubmitInteraction)
  * Generates a beautiful markdown summary of the resolved ticket, saving it locally.
  */
 export async function generateAndSavePostMortem(
+  client: Client,
   ticket: TicketRecord,
   messages: any[],
   closedByTag: string,
@@ -412,9 +417,8 @@ Generate a complete, professional markdown post-mortem report.`
     // Post to staff archive/log channel
     const logChannelId = ticketLogChannelId
     if (logChannelId) {
-      const client = (global as any).client // fallbacks to global client if available
-      const logChannel = (await logChannelId) ? await client?.channels.fetch(logChannelId) : null
-      if (logChannel?.isTextBased()) {
+      const logChannel = await client.channels.fetch(logChannelId)
+      if (logChannel?.isSendable()) {
         const fileAttachment = {
           attachment: Buffer.from(report),
           name: `resolved-postmortem-${ticket.id}.md`,

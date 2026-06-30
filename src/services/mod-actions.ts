@@ -10,6 +10,7 @@ import { WARN_KICK_THRESHOLD, WARN_TIMEOUT_THRESHOLD } from '../config.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { parseDuration } from '../utils/time.ts'
 import { reportAutomod } from './logging.ts'
+import { addCase } from './mod-cases-store.ts'
 import { addWarning, clearWarnings, getWarnings } from './moderation.ts'
 
 function modReply(msg: Message, text: string): Promise<Message> {
@@ -67,6 +68,16 @@ export async function cmdWarn(msg: Message, args: string): Promise<void> {
     reason,
     moderatorId: msg.author.id,
   })
+  await addCase({
+    guildId: guild.id,
+    targetId: user.id,
+    targetTag: user.tag,
+    moderatorId: msg.author.id,
+    moderatorTag: msg.author.tag,
+    action: 'warn',
+    reason,
+    at: Date.now(),
+  }).catch((e) => console.warn('[warn] addCase failed:', e))
   await modReply(msg, `Warned **${user.tag}** (${list.length} total warns). Reason: ${reason}`)
   try {
     await user.send(`You received a warning in **${guild.name}**: ${reason}`)
@@ -77,6 +88,16 @@ export async function cmdWarn(msg: Message, args: string): Promise<void> {
     if (list.length >= WARN_KICK_THRESHOLD && member.kickable) {
       try {
         await member.kick(`AutoMod: ${list.length} warnings`)
+        await addCase({
+          guildId: guild.id,
+          targetId: user.id,
+          targetTag: user.tag,
+          moderatorId: msg.author.id,
+          moderatorTag: msg.author.tag,
+          action: 'kick',
+          reason: `AutoMod: ${list.length} warnings`,
+          at: Date.now(),
+        }).catch((e) => console.warn('[warn] addCase failed:', e))
         await modReply(msg, 'User kicked automatically (warning threshold).')
       } catch {
         /* ignore */
@@ -84,6 +105,16 @@ export async function cmdWarn(msg: Message, args: string): Promise<void> {
     } else if (list.length >= WARN_TIMEOUT_THRESHOLD && member.moderatable) {
       try {
         await member.timeout(60 * 60 * 1000, `AutoMod: ${list.length} warnings`)
+        await addCase({
+          guildId: guild.id,
+          targetId: user.id,
+          targetTag: user.tag,
+          moderatorId: msg.author.id,
+          moderatorTag: msg.author.tag,
+          action: 'timeout',
+          reason: `AutoMod: ${list.length} warnings`,
+          at: Date.now(),
+        }).catch((e) => console.warn('[warn] addCase failed:', e))
         await modReply(msg, 'User timed out automatically (warning threshold).')
       } catch {
         /* ignore */
@@ -152,6 +183,16 @@ export async function cmdTimeout(msg: Message, args: string): Promise<void> {
     return
   }
   await member.timeout(ms, reason)
+  await addCase({
+    guildId: guild.id,
+    targetId: user.id,
+    targetTag: user.tag,
+    moderatorId: msg.author.id,
+    moderatorTag: msg.author.tag,
+    action: 'timeout',
+    reason: `${reason} (${durRaw})`,
+    at: Date.now(),
+  }).catch((e) => console.warn('[timeout] addCase failed:', e))
   await modReply(msg, `**${user.tag}** timed out for ${durRaw}.`)
 }
 
@@ -176,6 +217,16 @@ export async function cmdKick(msg: Message, args: string): Promise<void> {
     return
   }
   await member.kick(reason)
+  await addCase({
+    guildId: guild.id,
+    targetId: user.id,
+    targetTag: user.tag,
+    moderatorId: msg.author.id,
+    moderatorTag: msg.author.tag,
+    action: 'kick',
+    reason,
+    at: Date.now(),
+  }).catch((e) => console.warn('[kick] addCase failed:', e))
   await modReply(msg, `Kicked **${user.tag}**.`)
 }
 
@@ -262,6 +313,17 @@ export async function cmdBan(msg: Message, args: string): Promise<void> {
       console.warn('[ban] failed to schedule auto-unban:', e)
     }
   }
+
+  await addCase({
+    guildId: guild.id,
+    targetId: user.id,
+    targetTag: user.tag,
+    moderatorId: msg.author.id,
+    moderatorTag: msg.author.tag,
+    action: durationMs ? 'tempban' : 'ban',
+    reason: durationMs ? `${reason} (unban at ${new Date(unbanAt).toISOString()})` : reason,
+    at: Date.now(),
+  }).catch((e) => console.warn('[ban] addCase failed:', e))
 
   const ch = msg.channel
   const channelLine =

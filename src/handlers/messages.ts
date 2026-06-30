@@ -694,7 +694,11 @@ export function registerMessageHandler(client: Client): void {
             const provider = await getAiProviderMode()
             if (provider === 'gemini' || provider === 'auto') {
               const image = imageAtt ? await fetchAttachmentAsBase64(imageAtt) : undefined
-              reply = await runUniversalAgentLoop(model.systemInstruction, prior, augmented, image)
+              reply = await runUniversalAgentLoop(model.systemInstruction, prior, augmented, image, {
+                userId: msg.author.id,
+                ...(msg.guild?.id ? { guildId: msg.guild.id } : {}),
+                ...(msg.member ? { member: msg.member } : {}),
+              })
             } else {
               if (imageAtt) {
                 const image = await fetchAttachmentAsBase64(imageAtt)

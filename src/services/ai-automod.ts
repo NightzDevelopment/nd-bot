@@ -593,7 +593,7 @@ export function enqueueAiAutomod(msg: Message, channelSnippet?: string): void {
   pendingAiAutomodMessageIds.add(msg.id)
 
   const img = pickFirstImageAttachment(msg.attachments)
-  if (aiAutomodVisionEnabled && img && c.length < 5) {
+  if (aiAutomodVisionEnabled && img) {
     visionQueue.push({ msg, queuedAt: Date.now(), channelSnippet })
     void processQueue()
     return

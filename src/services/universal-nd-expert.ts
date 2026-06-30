@@ -3,7 +3,7 @@
  * Developed under strict Nightz Development proprietary standards (no emojis)
  */
 import { GoogleGenerativeAI, SchemaType, TaskType } from '@google/generative-ai'
-import { ChannelType, type Client } from 'discord.js'
+import { ChannelType, type Client, type GuildMember } from 'discord.js'
 import { readdir, readFile, stat } from 'fs/promises'
 import { join, normalize, relative, resolve } from 'path'
 import { embeddingModel, GOOGLE_KEY, MODEL_ID, vectorTopK } from '../config.ts'
@@ -32,6 +32,14 @@ export interface NDResourceMetadata {
 let dependencyMapCache: Record<string, NDResourceMetadata> = {}
 const lexicalIndexCache: Map<string, string[]> = new Map() // filePath -> words
 let lastScanTime = 0
+
+export interface RequesterContext {
+  userId: string
+  guildId?: string
+  member?: GuildMember
+}
+
+const SENSITIVE_DB_TABLES = ['warnings', 'users_economy', 'users_levels', 'reputation', 'tickets']
 
 /**
  * Normalizes and guards path resolution, preventing directory traversal attacks.
@@ -164,15 +172,46 @@ async function handleGrepNDSearch(query: string): Promise<string[]> {
 }
 
 /**
- * Dynamic Tool: Safe, read-only SQLite database inspection
+ * Dynamic Tool: Safe, read-only SQLite database inspection.
+ * Queries touching sensitive per-user tables must be scoped to the requester's own userId;
+ * the caller-supplied SQL is never trusted to add that scoping itself.
  */
-async function handleInspectSystemDb(sql: string): Promise<any[]> {
+async function handleInspectSystemDb(
+  sql: string,
+  requesterContext?: RequesterContext,
+): Promise<any[]> {
   const upper = sql.trim().toUpperCase()
   if (!upper.startsWith('SELECT')) {
     return [
       { error: 'ERR-ND-403: Security Clearance Denied. Only SELECT statements are permitted.' },
     ]
   }
+
+  const lower = sql.toLowerCase()
+  const touchesSensitiveTable = SENSITIVE_DB_TABLES.some((table) =>
+    new RegExp(`\\b${table}\\b`).test(lower),
+  )
+
+  if (touchesSensitiveTable) {
+    if (!requesterContext?.userId) {
+      return [
+        {
+          error:
+            'ERR-ND-403: Security Clearance Denied. Sensitive table access requires a verified requester.',
+        },
+      ]
+    }
+    const requiredClause = `userid = '${requesterContext.userId.toLowerCase()}'`
+    if (!lower.includes(requiredClause)) {
+      return [
+        {
+          error:
+            'ERR-ND-403: Security Clearance Denied. Queries on sensitive tables must filter to your own userId.',
+        },
+      ]
+    }
+  }
+
   try {
     const db = getDb()
     const rows = db.prepare(sql).all()
@@ -188,6 +227,7 @@ async function handleInspectSystemDb(sql: string): Promise<any[]> {
 async function handleReadDiscordChannel(
   channelNameOrId: string,
   limit?: number,
+  requesterContext?: RequesterContext,
 ): Promise<string[]> {
   try {
     const client = getDiscordClient<Client>()
@@ -216,6 +256,17 @@ async function handleReadDiscordChannel(
 
     if (!channel) {
       return [`Channel "${channelNameOrId}" not found or bot does not have permission to view it.`]
+    }
+
+    if (!requesterContext?.guildId || channel.guildId !== requesterContext.guildId) {
+      return [`Channel "${channelNameOrId}" not found or bot does not have permission to view it.`]
+    }
+
+    if (requesterContext.member) {
+      const canView = channel.permissionsFor(requesterContext.member)?.has('ViewChannel')
+      if (!canView) {
+        return [`Channel "${channelNameOrId}" not found or bot does not have permission to view it.`]
+      }
     }
 
     // Fetch last N messages
@@ -423,6 +474,7 @@ export async function runUniversalAgentLoop(
   prior: Turn[],
   latestQuery: string,
   imageAttachment?: { mimeType: string; dataBase64: string },
+  requesterContext?: RequesterContext,
 ): Promise<string> {
   // Generate automated product dependency context
   const deps = await scanNDProductDependencies()
@@ -644,11 +696,12 @@ Always call tools FIRST, then compose your answer from the tool results. Do not 
         } else if (name === 'grepNDSearch') {
           result = await handleGrepNDSearch((args as any).query)
         } else if (name === 'inspectSystemDb') {
-          result = await handleInspectSystemDb((args as any).sql)
+          result = await handleInspectSystemDb((args as any).sql, requesterContext)
         } else if (name === 'readDiscordChannel') {
           result = await handleReadDiscordChannel(
             (args as any).channelNameOrId,
             (args as any).limit,
+            requesterContext,
           )
         } else {
           result = { error: 'Unknown tool called' }
