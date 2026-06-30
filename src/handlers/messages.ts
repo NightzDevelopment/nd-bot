@@ -94,6 +94,29 @@ function typingDelay(text: string): number {
 }
 
 /**
+ * Does this message reference something only a LIVE tool can resolve: another
+ * channel, the user's own bot-tracked data, or a specific ND resource/code path?
+ * The agentic tool loop (readDiscordChannel, inspectSystemDb, grepNDSearch) only
+ * exists on the Gemini path, so when this is true we must route there instead of
+ * a tool-less provider that would answer "I cannot see other channels" or guess.
+ */
+function messageReferencesLookupTarget(text: string): boolean {
+  const t = text.toLowerCase()
+  if (/<#\d+>/.test(text)) return true
+  if (/#[a-z0-9][a-z0-9-_]{2,}/.test(t)) return true
+  if (/\b(channel|sneak[- ]?peek|announcement|changelog|what.?s new|any updates?)\b/.test(t)) return true
+  if (
+    /\b(my|check my|what.?s my|whats my)\b[\s\S]{0,30}\b(balance|wallet|bank|level|xp|rank|warning|warned|quest|reputation|rep)\b/.test(
+      t,
+    )
+  )
+    return true
+  if (/\bnd_[a-z0-9]/i.test(text)) return true
+  if (/\b(script error|fxmanifest|server\.cfg|\.lua)\b/.test(t)) return true
+  return false
+}
+
+/**
  * Tickets should not feel like an instant bot. A real support agent takes a
  * moment to read and type, longer for longer answers. Short answers still come
  * back quickly; longer answers take proportionally more time, capped so it
@@ -669,18 +692,15 @@ export function registerMessageHandler(client: Client): void {
           // Get preferred model based on intent analysis
           let preferredModel = getPreferredModelForIntent(intentAnalysis.intent)
 
-          // High/critical tickets get Claude regardless of intent (better at empathy + careful answers).
-          try {
-            const ticketRec = await getTicketByChannel(msg.channel.id)
-            if (
-              ticketRec &&
-              ticketRec.status === 'open' &&
-              (ticketRec.priority === 'high' || ticketRec.priority === 'critical')
-            ) {
-              preferredModel = 'claude'
-            }
-          } catch {
-            /* ignore */
+          // The agentic tool loop (live channel reads, player-data lookups, code
+          // search) only exists on the Gemini path. Tickets and any message that
+          // references a channel, the user's own data, or a specific resource NEED
+          // those tools, so force the tool-capable path regardless of intent or the
+          // admin-set provider. Without this a technical ticket routed to Claude
+          // answers "I cannot see other channels" and can invent data, which is the
+          // opposite of helpful support.
+          if (isInTicket || messageReferencesLookupTarget(rawText)) {
+            preferredModel = 'gemini'
           }
 
           const originalMode = await getAiProviderMode()
