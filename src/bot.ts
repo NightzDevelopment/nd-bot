@@ -34,6 +34,7 @@ import { initAuditChannel, registerAuditHandler } from './handlers/audit.ts'
 import { registerMessageHandler } from './handlers/messages.ts'
 import { registerTempVc, startGiveawayLoop, startScheduleLoop } from './handlers/prefix-extra.ts'
 import { registerReactionRoles } from './handlers/roles-reaction.ts'
+import { registerAutoRole } from './services/role-settings.ts'
 import { registerWelcomeHandler } from './handlers/welcome.ts'
 import { registerAfk } from './services/afk.ts'
 import { registerRaidTracking, startAiAutomodProcessor } from './services/ai-automod.ts'
@@ -103,6 +104,7 @@ registerStarboard(client)
 registerInteractionHandler(client)
 registerAuditHandler(client)
 registerReactionRoles(client)
+registerAutoRole(client)
 registerTempVc(client)
 registerAiFeedbackHandler(client)
 registerPollMonitor(client)

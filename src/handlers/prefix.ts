@@ -91,6 +91,9 @@ import { buildHelpEmbed } from '../utils/help-text.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { takeReportSlot } from '../utils/report-cooldown.ts'
 import { formatSupportLinksMarkdown } from '../utils/support-links.ts'
+import { handleAdminEconomyCommand } from '../services/admin-economy.ts'
+import { handleFunCommand } from '../services/fun-commands.ts'
+import { handleRoleSettingsCommand } from '../services/role-settings.ts'
 import { handleEconomyPrefix } from './prefix-economy.ts'
 import { handleExtraPrefix } from './prefix-extra.ts'
 
@@ -155,6 +158,10 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
 
   const economyHandled = await handleEconomyPrefix(msg, cmd, args)
   if (economyHandled) return
+
+  if (await handleAdminEconomyCommand(msg, cmd, args)) return
+  if (await handleRoleSettingsCommand(msg, cmd, args)) return
+  if (await handleFunCommand(msg, cmd, args)) return
 
   if (cmd === 'help') {
     await msg.reply({ embeds: [buildHelpEmbed()] })

@@ -212,6 +212,16 @@ export async function setBalance(userId: string, amount: number): Promise<void> 
   )
 }
 
+/** Zero a user's cash and bank (admin reset-money). */
+export async function resetUserBalance(userId: string): Promise<void> {
+  const db = getDb()
+  await getBalance(userId)
+  db.prepare('UPDATE users_economy SET balance = 0, bank = 0, updatedAt = ? WHERE userId = ?').run(
+    Date.now(),
+    userId,
+  )
+}
+
 export async function deposit(
   userId: string,
   amount: number,
