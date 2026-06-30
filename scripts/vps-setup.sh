@@ -50,9 +50,16 @@ fi
 chmod +x scripts/run.sh
 
 # 6. (Re)start the bot in a detached screen session named 'nd-bot'.
-if screen -ls 2>/dev/null | grep -q "\.nd-bot"; then
-  echo "==> Restarting existing 'nd-bot' screen session..."
-  screen -S nd-bot -X quit || true
+# `screen -S nd-bot -X quit` is AMBIGUOUS once duplicate same-named sessions
+# exist (it errors instead of killing them), so re-running this script could
+# silently pile up extra bot processes all racing for the same Discord token
+# and dashboard port. Kill every matching session by its exact id instead.
+EXISTING_SESSIONS=$(screen -ls 2>/dev/null | grep '\.nd-bot' | awk '{print $1}' || true)
+if [ -n "$EXISTING_SESSIONS" ]; then
+  echo "==> Stopping existing 'nd-bot' screen session(s)..."
+  for s in $EXISTING_SESSIONS; do
+    screen -S "$s" -X quit || true
+  done
   sleep 1
 fi
 echo "==> Starting bot in screen session 'nd-bot'..."
