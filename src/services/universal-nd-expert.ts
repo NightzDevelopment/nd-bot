@@ -233,39 +233,60 @@ async function handleReadDiscordChannel(
     const client = getDiscordClient<Client>()
     if (!client) return ['Error: Discord client is not ready yet.']
 
-    // Find the channel
+    // Fail closed: only read channels on behalf of a real in-guild requester.
+    // (Automated/dashboard callers pass no requesterContext and must not be able
+    // to read arbitrary user channels.)
+    if (!requesterContext?.guildId) {
+      return ['Channel reading is only available from within a server.']
+    }
+    const guild = client.guilds.cache.get(requesterContext.guildId)
+    if (!guild) return ['Could not resolve the server for this request.']
+
+    const READABLE_TYPES = [
+      ChannelType.GuildText,
+      ChannelType.GuildAnnouncement,
+      ChannelType.PublicThread,
+      ChannelType.PrivateThread,
+    ] as const
+    const isReadable = (c: any) => READABLE_TYPES.includes(c?.type) && typeof c?.name === 'string'
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '')
+
+    const raw = channelNameOrId.trim().replace(/^#/, '')
+    const query = raw.toLowerCase()
+    const normQuery = normalize(raw)
+
+    // Resolve within the requester's guild only. Exact id, then exact name, then
+    // normalized exact, then normalized contains (so "public-sneak-peeks" still
+    // matches a channel whose real name carries minor formatting differences).
     let channel: any = null
-    const query = channelNameOrId.trim().toLowerCase().replace(/^#/, '')
-
-    // First try finding by exact ID
-    if (query.match(/^\d+$/)) {
-      channel = await client.channels.fetch(query).catch(() => null)
+    if (/^\d+$/.test(query)) {
+      const byId = guild.channels.cache.get(query)
+      if (byId && isReadable(byId)) channel = byId
     }
-
-    // Fallback: search in cache by name
     if (!channel) {
-      channel = client.channels.cache.find(
-        (c) =>
-          (c.type === ChannelType.GuildText ||
-            c.type === ChannelType.GuildAnnouncement ||
-            c.type === ChannelType.PublicThread ||
-            c.type === ChannelType.PrivateThread) &&
-          c.name.toLowerCase() === query,
-      )
+      const candidates = [...guild.channels.cache.values()].filter(isReadable)
+      channel =
+        candidates.find((c: any) => c.name.toLowerCase() === query) ??
+        candidates.find((c: any) => normalize(c.name) === normQuery) ??
+        (normQuery.length >= 3
+          ? candidates.find((c: any) => normalize(c.name).includes(normQuery))
+          : null) ??
+        null
     }
 
     if (!channel) {
-      return [`Channel "${channelNameOrId}" not found or bot does not have permission to view it.`]
+      return [
+        `No channel matching "${channelNameOrId}" is visible to the bot in this server. ` +
+          `It may not exist, or the bot's role is missing View Channel permission on it. ` +
+          `A server admin can grant the bot View Channel and Read Message History on that channel.`,
+      ]
     }
 
-    if (!requesterContext?.guildId || channel.guildId !== requesterContext.guildId) {
-      return [`Channel "${channelNameOrId}" not found or bot does not have permission to view it.`]
-    }
-
+    // The requester must themselves be allowed to see the channel.
     if (requesterContext.member) {
       const canView = channel.permissionsFor(requesterContext.member)?.has('ViewChannel')
       if (!canView) {
-        return [`Channel "${channelNameOrId}" not found or bot does not have permission to view it.`]
+        return [`You do not have permission to view "${channelNameOrId}", so I will not read it on your behalf.`]
       }
     }
 
