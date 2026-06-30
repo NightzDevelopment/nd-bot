@@ -9,7 +9,6 @@ logs/
 dist/
 nul
 .backup/
-data/
+data/*
 !data/nd-knowledge.md
 !data/products/
-!data/products/**

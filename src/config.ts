@@ -227,10 +227,10 @@ export const productDocsMaxFiles = Math.min(
 
 /**
  * Fetch public store listing (HTML→text) for AI context; refresh on a timer.
- * Nightz uses **FaxStore** (Weblutions): https://weblutions.com/store/faxstore (storefront URL is still your public `STORE_PAGE_URL`).
+ * Storefront URL is configurable via `STORE_PAGE_URL`; defaults to the live Nightz store.
  */
 export const storePageSnapshotEnabled = !isEnvOff(process.env.STORE_PAGE_SNAPSHOT_ENABLED ?? '1')
-export const storePageUrl = process.env.STORE_PAGE_URL?.trim() || 'https://store.nightz.dev/store'
+export const storePageUrl = process.env.STORE_PAGE_URL?.trim() || 'https://shop.nightz.dev/'
 export const storePageRefreshMinutes = Math.max(
   15,
   parseInt(process.env.STORE_PAGE_REFRESH_MINUTES ?? '60', 10) || 60,

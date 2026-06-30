@@ -975,7 +975,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (cmd === 'product') {
     if (!args) {
       await msg.reply(
-        'Usage: `nd!product <name>`, matches the cached FaxStore listing, or manual aliases in `PRODUCT_ALIAS_URLS`.',
+        'Usage: `nd!product <name>`, matches the cached store listing, or manual aliases in `PRODUCT_ALIAS_URLS`.',
       )
       return
     }

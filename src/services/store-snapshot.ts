@@ -1,7 +1,9 @@
 /**
- * Fetches the public ND **FaxStore** listing (HTML→text), caches under DATA_DIR,
+ * Fetches the public Nightz store listing (HTML→text), caches under DATA_DIR,
  * and injects into AI user-turn context (and optional embedding corpus when enabled).
- * Platform: https://weblutions.com/store/faxstore · listing URL from `STORE_PAGE_URL`.
+ * Listing URL from `STORE_PAGE_URL` (default https://shop.nightz.dev/). If the store
+ * is a client-rendered SPA, a plain fetch sees little/no content - check
+ * `getStoreSnapshotHealth()` for a short/empty snapshot warning in that case.
  */
 import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
@@ -112,7 +114,7 @@ export function buildStorePageContext(): string {
   if (!cached?.text) return ''
   const iso = new Date(cached.fetchedAt).toISOString()
   return [
-    '**Live Nightz store catalog (FaxStore; text snapshot from the public listing, prices/titles change, confirm on the site):**',
+    '**Live Nightz store catalog (text snapshot from the public listing, prices/titles change, confirm on the site):**',
     `Source: ${cached.url} (fetched ${iso})`,
     cached.text,
   ].join('\n')

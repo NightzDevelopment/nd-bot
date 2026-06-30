@@ -1,6 +1,8 @@
 /**
  * Parse plain-text store listing snapshots and fuzzy-match product names (rules-based, no LLM).
- * Works with FaxStore / Weblutions-style pages that expose "View Item" links in HTML→text.
+ * Looks for "View Item" links or /store/ or /package/ URL paths in HTML→text, which matched
+ * the old store platform. The current store at shop.nightz.dev may use different markup; if
+ * `/store` shows no featured items, this parser likely needs new patterns for the live site.
  */
 import { storeFeaturedCount, storeLookupMaxResults, storePageUrl } from '../config.ts'
 

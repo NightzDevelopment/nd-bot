@@ -392,7 +392,8 @@ export function buildTicketPanelEmbed(guild: Guild): EmbedBuilder {
       {
         name: 'Links',
         value: [
-          '**Store:** https://store.nightz.dev/',
+          '**Store:** https://shop.nightz.dev/',
+          '**Docs:** https://docs.nightz.dev/',
           '**Community:** https://discord.gg/KaKCBUkD8M',
         ].join('\n'),
         inline: false,

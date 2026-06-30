@@ -51,7 +51,7 @@ export const slashCommands = [
   new SlashCommandBuilder().setName('ping').setDescription('Bot latency check'),
   new SlashCommandBuilder()
     .setName('store')
-    .setDescription('Nightz FaxStore link, bot listing snapshot status, and featured items'),
+    .setDescription('Nightz store link, bot listing snapshot status, and featured items'),
   new SlashCommandBuilder().setName('links').setDescription('Support links (FAQ, tickets, rules)'),
   new SlashCommandBuilder()
     .setName('ticket')
@@ -177,7 +177,7 @@ export const slashCommands = [
     .addStringOption((o) => o.setName('query').setDescription('Search text').setRequired(false)),
   new SlashCommandBuilder()
     .setName('product')
-    .setDescription('Look up a product URL (cached FaxStore listing or PRODUCT_ALIAS_URLS alias)')
+    .setDescription('Look up a product URL (cached store listing or PRODUCT_ALIAS_URLS alias)')
     .addStringOption((o) =>
       o.setName('name').setDescription('Product name or shorthand').setRequired(true),
     ),
