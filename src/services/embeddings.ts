@@ -16,6 +16,16 @@ import { getStorePageTextForEmbedding } from './store-snapshot.ts'
 
 const genAI = new GoogleGenerativeAI(GOOGLE_KEY)
 
+const QUERY_EMBED_TIMEOUT_MS = 8000
+
+/** Bound a promise so one slow/stuck embedding call cannot block the whole RAG pipeline. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms)),
+  ])
+}
+
 type Chunk = { source: string; text: string; embedding: number[] }
 
 let corpus: Chunk[] = []
@@ -116,7 +126,7 @@ async function generateQueryVariations(query: string): Promise<string[]> {
     const model = genAI.getGenerativeModel({ model: MODEL_ID })
     const prompt = `Generate 3 diverse search queries based on the user query below to help retrieve relevant documentation or code from a vector database. Output each query on a new line without any numbers, emojis, or punctuation.
 User Query: ${query}`
-    const result = await model.generateContent(prompt)
+    const result = await withTimeout(model.generateContent(prompt), QUERY_EMBED_TIMEOUT_MS, 'query variation generation')
     const text = result.response.text()
     const variations = text
       .split('\n')
@@ -213,18 +223,30 @@ export async function buildVectorContextAsync(query: string): Promise<string> {
   if (!q) return ''
   try {
     const queries = await generateQueryVariations(q)
-    const queryEmbeddings: number[][] = []
     const model = genAI.getGenerativeModel({ model: embeddingModel })
 
-    for (const textVal of queries) {
-      try {
-        const res = await model.embedContent({
-          content: { role: 'user', parts: [{ text: textVal.slice(0, 8000) }] },
-          taskType: TaskType.RETRIEVAL_QUERY,
-        })
-        queryEmbeddings.push(res.embedding.values)
-      } catch (err) {
-        console.warn(`[embeddings] query embed failed for variation "${textVal}":`, err)
+    // Run all query-variation embeddings concurrently (was sequential: up to 4
+    // round-trips stacked one after another before any reply work could start),
+    // each bounded so one slow call cannot stall the whole RAG pipeline.
+    const settled = await Promise.allSettled(
+      queries.map((textVal) =>
+        withTimeout(
+          model.embedContent({
+            content: { role: 'user', parts: [{ text: textVal.slice(0, 8000) }] },
+            taskType: TaskType.RETRIEVAL_QUERY,
+          }),
+          QUERY_EMBED_TIMEOUT_MS,
+          `query embed for "${textVal}"`,
+        ),
+      ),
+    )
+
+    const queryEmbeddings: number[][] = []
+    for (const r of settled) {
+      if (r.status === 'fulfilled') {
+        queryEmbeddings.push(r.value.embedding.values)
+      } else {
+        console.warn('[embeddings] query embed failed:', r.reason)
       }
     }
 
