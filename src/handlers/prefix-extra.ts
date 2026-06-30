@@ -8,6 +8,7 @@ import {
   listGiveaways,
   saveGiveaway,
 } from '../services/giveaways-store.ts'
+import { handleMassRoleCommand } from '../services/mass-role.ts'
 import { handlePollsPrefix } from '../services/polls-slash.ts'
 import { addReactionRole } from '../services/roles-config.ts'
 import {
@@ -54,6 +55,10 @@ const tempVcOwners = new Map<string, string>()
 export async function handleExtraPrefix(msg: Message, cmd: string, args: string): Promise<boolean> {
   if (cmd === 'polls') {
     return handlePollsPrefix(msg, args)
+  }
+
+  if (cmd === 'mass-role' || cmd === 'massrole') {
+    return handleMassRoleCommand(msg, args)
   }
 
   if (cmd === 'serverinfo') {
