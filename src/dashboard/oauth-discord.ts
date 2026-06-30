@@ -26,7 +26,7 @@ export function oauthConfigured(): boolean {
 }
 
 export function redirectUri(): string {
-  const base = dashboardPublicUrl || 'http://localhost:3853'
+  const base = dashboardPublicUrl || 'http://localhost:3849'
   return `${base}/auth/discord/callback`
 }
 

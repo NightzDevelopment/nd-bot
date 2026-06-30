@@ -216,8 +216,8 @@ config also supports an IP allowlist or NGINX basic-auth as extra hardening
 
 - **Database:** a local SQLite file under `data/`. Back it up periodically
   (`cp data/*.sqlite ~/backups/`). Do not point the bot at MySQL/FaxStore.
-- **Dashboard:** binds to `127.0.0.1:3853` by default. Reach it from your PC with an SSH
-  tunnel (`ssh -L 3853:localhost:3853 user@vps`), or expose it on a domain with HTTPS via
+- **Dashboard:** binds to `127.0.0.1:3849` by default. Reach it from your PC with an SSH
+  tunnel (`ssh -L 3849:localhost:3849 user@vps`), or expose it on a domain with HTTPS via
   NGINX (section 9). Do **not** bind it to `0.0.0.0` / expose the raw port publicly.
 - **Secrets:** `.env` is gitignored. Never commit it; never paste tokens/passwords into chat.
 - **screen vs PM2:** this guide uses `screen` + `scripts/run.sh` (crash-restart) + a
