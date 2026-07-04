@@ -12,12 +12,32 @@ import { readJson, writeJson } from './data-store.ts'
 import { ndEmbed } from '../utils/embed.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 
+// Curated seed of FiveM leak / piracy sites. The first group was reported
+// directly; the rest are self-identifying leak/cracked/nulled-named domains.
+// The active leak-site set changes constantly, so treat this as a starting
+// point and extend it live with `nd!leakdomain add <a> <b> <c>`. Review and
+// prune any that are wrong for your server to avoid false positives.
 const SEED_LEAK_DOMAINS: readonly string[] = [
+  // Reported by staff
   'launcherleaks.net',
+  'launcherleaks.com',
   'fivevault.net',
   'vag.gg',
   'toxicfivem.com',
   'advanced-leaks.co.uk',
+  // Self-identifying leak / piracy names (review + prune as needed)
+  'fivemleaks.com',
+  'fivem-leaks.com',
+  'fivemleaks.net',
+  'leakedfivem.com',
+  'crackedfivem.com',
+  'fivemcracked.com',
+  'nulledfivem.com',
+  'fivemnulled.com',
+  'moditleaks.com',
+  'gtaleaks.net',
+  'leaked.gg',
+  'leakhub.io',
 ]
 
 const FILE = 'leak-domains.json'
@@ -114,13 +134,21 @@ export async function handleLeakDomainCommand(
     return true
   }
   if (action === 'add') {
-    const d = tokens[1]
-    if (!d) {
-      await msg.reply('Usage: `nd!leakdomain add <domain>`')
+    const domains = tokens.slice(1)
+    if (domains.length === 0) {
+      await msg.reply('Usage: `nd!leakdomain add <domain> [more domains...]`')
       return true
     }
-    const ok = await addLeakDomain(d)
-    await msg.reply(ok ? `Added \`${normalizeDomain(d)}\` to the leak database.` : `\`${d}\` is already listed or invalid.`)
+    const addedList: string[] = []
+    const skipped: string[] = []
+    for (const d of domains) {
+      if (await addLeakDomain(d)) addedList.push(normalizeDomain(d))
+      else skipped.push(normalizeDomain(d))
+    }
+    const parts: string[] = []
+    if (addedList.length) parts.push(`Added ${addedList.length}: ${addedList.join(', ')}`.slice(0, 1800))
+    if (skipped.length) parts.push(`Skipped ${skipped.length} (already listed or invalid).`)
+    await msg.reply(parts.join('\n') || 'Nothing to add.')
     return true
   }
   if (action === 'remove') {
