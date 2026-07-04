@@ -995,6 +995,12 @@ export const quarantineRoleSwapEnabled = !isEnvOff(process.env.QUARANTINE_ROLESW
 export const quarantineRoleId = process.env.QUARANTINE_ROLE_ID?.trim() || undefined
 export const quarantineToggleRoleId = process.env.QUARANTINE_TOGGLE_ROLE_ID?.trim() || undefined
 /**
+ * Full lockdown: on quarantine, remove ALL of the member's roles (saving them),
+ * and restore them when the quarantine role is removed. Overrides the single
+ * toggle-role behavior. On by default.
+ */
+export const quarantineStripAllRoles = !isEnvOff(process.env.QUARANTINE_STRIP_ALL_ROLES ?? '1')
+/**
  * Auto-quarantine members whose username, display name, or server nickname is
  * flagged (Discord's own automod-quarantine flag, the profanity/abuse filter,
  * a custom flag term, or an invite link in the name). Applies QUARANTINE_ROLE_ID
