@@ -26,8 +26,9 @@ import {
   aiAutomodMinConfidence,
   aiAutomodNsfw,
   aiAutomodRaid,
+  aiAutomodBanVerdicts,
+  aiAutomodQuarantineVerdicts,
   aiAutomodScam,
-  aiAutomodScamQuarantine,
   aiAutomodSelfharm,
   aiAutomodSentiment,
   aiAutomodServerRules,
@@ -439,16 +440,32 @@ async function applyVerdictActions(
     }
   }
 
-  // Scam and crypto-scam accounts are almost always compromised or throwaway, so
-  // isolate them immediately (quarantine role, member role stripped) instead of
-  // waiting for strike escalation.
-  if (aiAutomodScamQuarantine && (verdict === 'SCAM' || verdict === 'CRYPTO_SCAM')) {
+  // Severe verdicts (scam, doxxing, etc.) can ban or quarantine the member
+  // immediately instead of waiting for strike escalation. Ban wins if the verdict
+  // is in both sets. Both are best-effort and hierarchy-checked.
+  const upper = verdict.toUpperCase()
+  const shouldBan = aiAutomodBanVerdicts.has(upper)
+  const shouldQuarantine = !shouldBan && aiAutomodQuarantineVerdicts.has(upper)
+  if (shouldBan || shouldQuarantine) {
     const member =
       msg.member ??
       (msg.guild ? await msg.guild.members.fetch(msg.author.id).catch(() => null) : null)
-    if (member) {
+    if (member && shouldBan) {
+      if (member.bannable) {
+        try {
+          await member.ban({ reason: `AI AutoMod: ${verdict}`, deleteMessageSeconds: 86_400 })
+          console.log(`[ai-automod] banned ${msg.author.id} for ${verdict}`)
+        } catch (e) {
+          console.warn('[ai-automod] ban failed (perms/hierarchy); check role position:', e)
+        }
+      } else {
+        // Cannot ban (hierarchy/perms): fall back to quarantine so they are still contained.
+        const status = await quarantineMember(member, `AI AutoMod: ${verdict} (ban not possible)`)
+        console.log(`[ai-automod] ban not possible for ${msg.author.id}, quarantine: ${status}`)
+      }
+    } else if (member && shouldQuarantine) {
       const status = await quarantineMember(member, `AI AutoMod: ${verdict}`)
-      console.log(`[ai-automod] scam quarantine for ${msg.author.id}: ${status}`)
+      console.log(`[ai-automod] quarantine for ${msg.author.id} (${verdict}): ${status}`)
     }
   }
 

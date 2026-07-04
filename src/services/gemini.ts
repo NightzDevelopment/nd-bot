@@ -2,6 +2,7 @@ import type { GenerativeModel, Part } from '@google/generative-ai'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import {
   aiResponseCacheEnabled,
+  automodModel,
   claudeEnabled,
   GOOGLE_KEY,
   geminiFallbackModels,
@@ -43,6 +44,12 @@ function buildModel(systemInstruction: string, modelId: string): GenerativeModel
 
 export function getModel(systemInstruction: string): GeminiModelRef {
   return { systemInstruction, modelIds: modelChain() }
+}
+
+/** Model ref for AI AutoMod: a fast classifier model first, then shared fallbacks. */
+function automodModelRef(): GeminiModelRef {
+  const ids = [...new Set([automodModel, ...geminiFallbackModels].map((s) => s.trim()).filter(Boolean))]
+  return { systemInstruction: '', modelIds: ids }
 }
 
 const NO_CODE_SUFFIX = `
@@ -605,7 +612,7 @@ export async function generateRaw(prompt: string): Promise<string> {
 }
 
 async function generateRawUncached(prompt: string): Promise<string> {
-  const modelRef = getModel('')
+  const modelRef = automodModelRef()
   const runGemini = () =>
     withModelFallback(modelRef, async (model) => {
       const result = await model.generateContent({
@@ -657,7 +664,7 @@ export async function generateRawWithImage(
   prompt: string,
   image: { mimeType: string; dataBase64: string },
 ): Promise<string> {
-  const modelRef = getModel('')
+  const modelRef = automodModelRef()
   const runGemini = () =>
     withModelFallback(modelRef, async (model) => {
       const parts: Part[] = [

@@ -23,6 +23,12 @@ export const geminiFallbackModels = (
         .filter(Boolean)
     : DEFAULT_GEMINI_FALLBACK_MODELS
 ) as readonly string[]
+/**
+ * Model used for AI AutoMod classification (text + vision). Classification does
+ * not need the depth of the main chat model, so default to a fast flash model to
+ * keep flags quick and cheap even when GEMINI_MODEL is set to a slower pro model.
+ */
+export const automodModel = process.env.AUTOMOD_MODEL?.trim() || 'gemini-3-flash-preview'
 /** Optional secondary provider: OpenAI. */
 export const openaiApiKey = process.env.OPENAI_API_KEY?.trim() || undefined
 export const openaiEnabled = Boolean(openaiApiKey)
@@ -548,8 +554,21 @@ export const aiAutomodSelfharm = !isEnvOff(process.env.AI_AUTOMOD_SELFHARM ?? '1
 export const aiAutomodDoxxing = !isEnvOff(process.env.AI_AUTOMOD_DOXXING ?? '1')
 export const aiAutomodSpamAd = !isEnvOff(process.env.AI_AUTOMOD_SPAM_AD ?? '1')
 export const aiAutomodCryptoScam = !isEnvOff(process.env.AI_AUTOMOD_CRYPTO_SCAM ?? '1')
-/** Quarantine the member on a SCAM or CRYPTO_SCAM verdict (needs QUARANTINE_ROLE_ID). */
-export const aiAutomodScamQuarantine = !isEnvOff(process.env.AI_AUTOMOD_SCAM_QUARANTINE ?? '1')
+function parseVerdictSet(raw: string | undefined, def: string): Set<string> {
+  return new Set(
+    (raw ?? def)
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean),
+  )
+}
+/** Verdicts that quarantine the member (needs QUARANTINE_ROLE_ID). Reversible. */
+export const aiAutomodQuarantineVerdicts = parseVerdictSet(
+  process.env.AI_AUTOMOD_QUARANTINE_VERDICTS,
+  'SCAM,CRYPTO_SCAM,DOXXING',
+)
+/** Verdicts that BAN the member. Destructive and false-positive-prone, so empty by default. */
+export const aiAutomodBanVerdicts = parseVerdictSet(process.env.AI_AUTOMOD_BAN_VERDICTS, '')
 
 /** Optional multiline rules appended to the AI AutoMod classifier prompt */
 export const aiAutomodServerRules = process.env.AI_AUTOMOD_SERVER_RULES?.trim() || ''
