@@ -154,11 +154,14 @@ export function computeNameReasons(member: GuildMember): string[] {
 }
 
 /**
- * Apply the quarantine role to a member whose name was flagged. The
- * quarantine role-swap then strips their normal member role. Idempotent and
- * best-effort. Returns a short status label for the staff alert.
+ * Apply the quarantine role to a member for any reason. The quarantine role-swap
+ * then strips their normal member role. Idempotent and best-effort. `reason` is
+ * the audit-log reason. Returns a short status label for the staff alert.
  */
-export async function applyNameQuarantine(member: GuildMember): Promise<string> {
+export async function quarantineMember(
+  member: GuildMember,
+  reason = 'Quarantined',
+): Promise<string> {
   const roleId = quarantineRoleId ?? altQuarantineRoleId ?? verifyUnverifiedRoleId
   if (!roleId) return 'quarantine skipped (no QUARANTINE_ROLE_ID configured)'
   if (member.roles.cache.has(roleId)) {
@@ -174,13 +177,18 @@ export async function applyNameQuarantine(member: GuildMember): Promise<string> 
     return 'cannot quarantine (role above bot in hierarchy)'
   }
   try {
-    await member.roles.add(role, 'Name filter: flagged username/nickname')
-    log.info({ userId: member.id }, 'name-filter quarantine applied')
+    await member.roles.add(role, reason)
+    log.info({ userId: member.id, reason }, 'quarantine applied')
     return 'quarantined'
   } catch (e) {
-    log.warn({ err: e, userId: member.id }, 'name-filter quarantine failed')
+    log.warn({ err: e, userId: member.id }, 'quarantine failed')
     return 'quarantine failed (missing perms?)'
   }
+}
+
+/** Quarantine a member whose name/nickname was flagged by the profile scanner. */
+export async function applyNameQuarantine(member: GuildMember): Promise<string> {
+  return quarantineMember(member, 'Name filter: flagged username/nickname')
 }
 
 /** Best-effort: strip the member role if a quarantined member still holds it. */

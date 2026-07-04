@@ -27,6 +27,7 @@ import {
   aiAutomodNsfw,
   aiAutomodRaid,
   aiAutomodScam,
+  aiAutomodScamQuarantine,
   aiAutomodSelfharm,
   aiAutomodSentiment,
   aiAutomodServerRules,
@@ -52,6 +53,7 @@ import { fetchAttachmentAsBase64, pickFirstImageAttachment } from '../utils/imag
 import { isModMessage } from '../utils/permissions.ts'
 import { maybeAutomodEscalation } from './ai-automod-escalation.ts'
 import { generateRaw, generateRawWithImage } from './gemini.ts'
+import { quarantineMember } from './profile-scan.ts'
 import { lockdownGuilds } from './lockdown.ts'
 import { reportAiAutomod, reportNewAccountJoin, reportRaidAlert } from './logging.ts'
 
@@ -436,6 +438,20 @@ async function applyVerdictActions(
       )
     }
   }
+
+  // Scam and crypto-scam accounts are almost always compromised or throwaway, so
+  // isolate them immediately (quarantine role, member role stripped) instead of
+  // waiting for strike escalation.
+  if (aiAutomodScamQuarantine && (verdict === 'SCAM' || verdict === 'CRYPTO_SCAM')) {
+    const member =
+      msg.member ??
+      (msg.guild ? await msg.guild.members.fetch(msg.author.id).catch(() => null) : null)
+    if (member) {
+      const status = await quarantineMember(member, `AI AutoMod: ${verdict}`)
+      console.log(`[ai-automod] scam quarantine for ${msg.author.id}: ${status}`)
+    }
+  }
+
   await runEscalation()
 }
 

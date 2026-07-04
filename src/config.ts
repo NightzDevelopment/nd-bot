@@ -548,6 +548,8 @@ export const aiAutomodSelfharm = !isEnvOff(process.env.AI_AUTOMOD_SELFHARM ?? '1
 export const aiAutomodDoxxing = !isEnvOff(process.env.AI_AUTOMOD_DOXXING ?? '1')
 export const aiAutomodSpamAd = !isEnvOff(process.env.AI_AUTOMOD_SPAM_AD ?? '1')
 export const aiAutomodCryptoScam = !isEnvOff(process.env.AI_AUTOMOD_CRYPTO_SCAM ?? '1')
+/** Quarantine the member on a SCAM or CRYPTO_SCAM verdict (needs QUARANTINE_ROLE_ID). */
+export const aiAutomodScamQuarantine = !isEnvOff(process.env.AI_AUTOMOD_SCAM_QUARANTINE ?? '1')
 
 /** Optional multiline rules appended to the AI AutoMod classifier prompt */
 export const aiAutomodServerRules = process.env.AI_AUTOMOD_SERVER_RULES?.trim() || ''
