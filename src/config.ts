@@ -554,6 +554,8 @@ export const aiAutomodSelfharm = !isEnvOff(process.env.AI_AUTOMOD_SELFHARM ?? '1
 export const aiAutomodDoxxing = !isEnvOff(process.env.AI_AUTOMOD_DOXXING ?? '1')
 export const aiAutomodSpamAd = !isEnvOff(process.env.AI_AUTOMOD_SPAM_AD ?? '1')
 export const aiAutomodCryptoScam = !isEnvOff(process.env.AI_AUTOMOD_CRYPTO_SCAM ?? '1')
+/** Flag sharing/selling/requesting leaked or cracked paid FiveM resources, or leak-site promotion. */
+export const aiAutomodLeak = !isEnvOff(process.env.AI_AUTOMOD_LEAK ?? '1')
 function parseVerdictSet(raw: string | undefined, def: string): Set<string> {
   return new Set(
     (raw ?? def)
@@ -565,7 +567,7 @@ function parseVerdictSet(raw: string | undefined, def: string): Set<string> {
 /** Verdicts that quarantine the member (needs QUARANTINE_ROLE_ID). Reversible. */
 export const aiAutomodQuarantineVerdicts = parseVerdictSet(
   process.env.AI_AUTOMOD_QUARANTINE_VERDICTS,
-  'DOXXING,HATE',
+  'DOXXING,HATE,LEAK',
 )
 /** Verdicts that BAN the member (also deletes their last 24h of messages). */
 export const aiAutomodBanVerdicts = parseVerdictSet(

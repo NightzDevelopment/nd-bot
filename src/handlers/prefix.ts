@@ -93,6 +93,7 @@ import { takeReportSlot } from '../utils/report-cooldown.ts'
 import { formatSupportLinksMarkdown } from '../utils/support-links.ts'
 import { handleAdminEconomyCommand } from '../services/admin-economy.ts'
 import { handleFunCommand } from '../services/fun-commands.ts'
+import { handleLeakDomainCommand } from '../services/leak-domains.ts'
 import { handleRoleSettingsCommand } from '../services/role-settings.ts'
 import { handleEconomyPrefix } from './prefix-economy.ts'
 import { handleExtraPrefix } from './prefix-extra.ts'
@@ -162,6 +163,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (await handleAdminEconomyCommand(msg, cmd, args)) return
   if (await handleRoleSettingsCommand(msg, cmd, args)) return
   if (await handleFunCommand(msg, cmd, args)) return
+  if (await handleLeakDomainCommand(msg, cmd, args)) return
 
   if (cmd === 'help') {
     await msg.reply({ embeds: [buildHelpEmbed()] })

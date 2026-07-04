@@ -55,6 +55,8 @@ const DEFAULTS: Record<string, { log: boolean; del: boolean; timeoutMin: number 
   SELFHARM: { log: true, del: false, timeoutMin: 0 },
   DOXXING: { log: true, del: true, timeoutMin: 10 },
   SPAM_AD: { log: true, del: true, timeoutMin: 10 },
+  // Leak: remove the content and log; member handling is via the quarantine set.
+  LEAK: { log: true, del: true, timeoutMin: 0 },
 }
 
 export function resolveAiAutomodAction(verdict: string): AiAutomodResolvedAction {

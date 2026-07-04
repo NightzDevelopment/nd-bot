@@ -20,6 +20,7 @@ import {
   aiAutomodEscalationWarnAt,
   aiAutomodHate,
   aiAutomodImpersonation,
+  aiAutomodLeak,
   aiAutomodIncludeChannelSnippet,
   aiAutomodIncludeReplyContext,
   aiAutomodMaxCallsPerMinute,
@@ -156,6 +157,7 @@ const VERDICT_LIST = [
   'SELFHARM',
   'DOXXING',
   'SPAM_AD',
+  'LEAK',
 ] as const
 
 function verdictCategoryEnabled(verdict: string): boolean {
@@ -184,6 +186,8 @@ function verdictCategoryEnabled(verdict: string): boolean {
       return aiAutomodDoxxing
     case 'SPAM_AD':
       return aiAutomodSpamAd
+    case 'LEAK':
+      return aiAutomodLeak
     default:
       return true
   }
@@ -199,6 +203,7 @@ function buildAutomodPrompt(items: { id: string; content: string; author: string
   if (aiAutomodSelfharm) flags.push('self-harm or suicide content (flag for staff, be careful)')
   if (aiAutomodDoxxing) flags.push('doxxing / sharing private info (addresses, IPs to harass)')
   if (aiAutomodSpamAd) flags.push('spam ads / unsolicited promotion')
+  if (aiAutomodLeak) flags.push('leaked/cracked paid FiveM resources or leak-site promotion')
   if (aiAutomodImpersonation) flags.push('impersonating staff/mod')
   if (aiAutomodSentiment) flags.push('heated tone / pile-on')
 
@@ -239,6 +244,7 @@ Verdict meanings:
 - SELFHARM: self-harm discussion; prefer staff awareness
 - DOXXING: posting others' private info
 - SPAM_AD: repeated ads / shilling
+- LEAK: sharing, selling, requesting, or advertising leaked or cracked paid FiveM scripts/resources, or promoting leak sites
 
 Rules:
 - verdict SAFE unless clearly harmful; for non-SAFE verdicts, **confidence** must be **>= ${aiAutomodMinConfidence}** or the bot ignores the flag (treat as SAFE for automation). More ambiguous cases should use **lower** confidences in the 0.65 to 0.82 range when still above the threshold.
@@ -247,6 +253,7 @@ Rules:
 - **Leetspeak / obfuscation:** Treat character substitutions as the underlying word (e.g. 0→o, 3→e, 1→i, @→a). Flag NSFW/scam meaning even if spelling is distorted.
 - **EVASION:** Use for deliberate filter bypass (leetspeak of sexual/scam terms, zalgo, zero-width chars, split words). Pair with the underlying category (often NSFW or SCAM) in reason.
 - **Bio / profile / link solicitation:** Messages telling people to "check my bio", "link in profile", off-server adult content, or similar → **NSFW** or **SCAM** as appropriate; say so in \`reason\`.
+- **Leaks / piracy (FiveM):** Sharing, selling, requesting, or advertising leaked or cracked paid FiveM scripts/resources; posting links to leak forums/sites; "dm for leaks", "free [paid script]", "where can I download X for free", reselling someone else's paid resource, or dumping a paid resource's full source publicly to redistribute it -> **LEAK**. IMPORTANT false-positive guard: a paying customer pasting a config value or a short code snippet from a script they OWN to get support, asking how to set up or use a product they bought, or reporting that their own product was leaked, is NOT a leak. Only flag LEAK when the clear intent is to distribute, obtain, or advertise pirated/cracked content.
 - **Fake giveaways / casino promo scams (always flag):** Any message OR image claiming a celebrity, streamer, or brand (MrBeast, Elon, etc.) is giving away money or crypto, "register and use promo code X to withdraw a bonus", "claim your reward", instructions to enter a code to receive USDT/USD, screenshots of a "withdrawal success" or a wallet suddenly receiving funds, urgency hooks ("post deleted in an hour", "only the fastest"), or links to unknown casino/betting/crypto domains → **CRYPTO_SCAM** (or **SCAM** if no crypto), confidence **0.9 or higher**. These are scams no matter how polished or "official" the screenshot looks; a real giveaway never requires a promo code to withdraw. Treat pasted tweet text or forwarded screenshots the same as an original message.
 - **Extremist / Nazi:** Glorification of fascism, Hitler/Nazi memes, Holocaust denial or trivialization, swastika-adjacent shock content, white-supremacist framing → **HATE** (not SAFE). High confidence when symbols or slogans are clear.
 - **NSFW shock memes:** Sexual or explicit **Minecraft/block-game** memes, "gooner" / sexual filename innuendo, or edgy shock GIFs that are primarily sexual or bigoted → **NSFW** or **HATE** as appropriate; name the theme in \`reason\`.

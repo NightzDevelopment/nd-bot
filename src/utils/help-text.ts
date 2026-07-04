@@ -22,7 +22,7 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'Moderation (staff)',
         value:
-          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode` · `nd!scan_names [apply] [avatars]` · `nd!mass-role <add|remove|status|cancel>` · `nd!add-money` · `nd!remove-money` · `nd!add-money-role` · `nd!remove-money-role` · `nd!reset-money`\n' +
+          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode` · `nd!scan_names [apply] [avatars]` · `nd!mass-role <add|remove|status|cancel>` · `nd!add-money` · `nd!remove-money` · `nd!add-money-role` · `nd!remove-money-role` · `nd!reset-money` · `nd!leakdomain <add|remove|list>`\n' +
           '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode` · `/scan_names` · `/counters` (ServerStats-style stat channel names: add · remove · list · refresh)',
         inline: false,
       },

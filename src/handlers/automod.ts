@@ -25,7 +25,9 @@ import {
   urlRiskDeleteMessage,
   urlRiskEnabled,
 } from '../config.ts'
+import { findLeakDomain } from '../services/leak-domains.ts'
 import { reportAutomod } from '../services/logging.ts'
+import { quarantineMember } from '../services/profile-scan.ts'
 import { markBotMessageDelete } from '../utils/bot-delete-attribution.ts'
 import { isIgnoredChannelOrCategory } from '../utils/channel-ignore.ts'
 import { isModMessage } from '../utils/permissions.ts'
@@ -163,6 +165,19 @@ export async function runRuleAutomod(msg: Message): Promise<'blocked' | 'ok'> {
           }
         }
       }
+    }
+
+    // Known FiveM leak-site domains: delete, quarantine the poster for staff
+    // review, and alert staff. Matches de-obfuscated domains (spaces, "dot", [.]).
+    const leakDomain = await findLeakDomain(content)
+    if (leakDomain) {
+      try {
+        await deleteAutomodMessage(msg, `Leak site link (${leakDomain})`)
+      } catch {}
+      await notify(msg, `Leak site link (${leakDomain})`, 'Deleted, member quarantined for staff review')
+      const status = await quarantineMember(msg.member, `Leak site link: ${leakDomain}`)
+      console.log(`[automod] leak-domain quarantine for ${msg.author.id}: ${status}`)
+      return 'blocked'
     }
 
     // Optional GIF / meme embed host blocklist (AUTOMOD_BLOCK_GIF_URLS + built-in + AUTOMOD_GIF_BLOCK_HOSTS)
