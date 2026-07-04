@@ -95,6 +95,7 @@ import { handleAdminEconomyCommand } from '../services/admin-economy.ts'
 import { handleFunCommand } from '../services/fun-commands.ts'
 import { handleLeakDomainCommand } from '../services/leak-domains.ts'
 import { handleRoleSettingsCommand } from '../services/role-settings.ts'
+import { handleQuarantineTicketPanelCommand } from '../services/quarantine-tickets.ts'
 import { handleBlacklistCommand, handleReportUserCommand } from '../services/safeguard.ts'
 import { handleEconomyPrefix } from './prefix-economy.ts'
 import { handleExtraPrefix } from './prefix-extra.ts'
@@ -167,6 +168,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (await handleLeakDomainCommand(msg, cmd, args)) return
   if (await handleBlacklistCommand(msg, cmd, args)) return
   if (await handleReportUserCommand(msg, cmd, args)) return
+  if (await handleQuarantineTicketPanelCommand(msg, cmd, args)) return
 
   if (cmd === 'help') {
     await msg.reply({ embeds: [buildHelpEmbed()] })

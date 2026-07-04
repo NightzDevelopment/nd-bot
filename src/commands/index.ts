@@ -298,6 +298,14 @@ export function registerInteractionHandler(client: Client): void {
       }
 
       if (interaction.isButton()) {
+        const { tryHandleQuarantineTicketInteraction } = await import(
+          '../services/quarantine-tickets.ts'
+        )
+        const handled = await tryHandleQuarantineTicketInteraction(interaction)
+        if (handled) return
+      }
+
+      if (interaction.isButton()) {
         const { tryHandleModmailInteraction } = await import('../services/modmail.ts')
         const handled = await tryHandleModmailInteraction(interaction)
         if (handled) return
