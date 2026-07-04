@@ -33,11 +33,29 @@ import { isGuildMod } from '../utils/permissions.ts'
 const TOPIC_PREFIX = 'qticket:'
 
 function panelEmbed() {
+  const roleLine = quarantineRoleId ? `Role Assigned: <@&${quarantineRoleId}>\n\n` : ''
   return ndEmbed()
-    .setTitle('Quarantine support')
+    .setColor(0xff4444)
+    .setTitle('QUARANTINE PROTOCOL')
     .setDescription(
-      'You have been placed in quarantine, which limits your access while staff review the situation.\n\n' +
-        'If you believe this was a mistake or want to explain, open a private ticket below. Only you and the staff team can see it.',
+      `${roleLine}` +
+        '## WHY WERE YOU QUARANTINED?\n' +
+        'Our automated security bot flagged your profile based on suspected alt/bot behavior. Your account triggered one or more of the following risk signals:\n\n' +
+        '- **Account Age:** Your account is too new (for example, 0.0 days old). We require a minimum of 7 days.\n' +
+        '- **Default Profile:** You have no custom avatar equipped.\n' +
+        '- **Naming Convention:** Your username resembles an auto-generated or AI-created format.\n' +
+        '- **Suspicious Links:** Posting unapproved links, attachments, or server invites shortly after joining.\n' +
+        '- **Spam/Raid Behavior:** Sending messages too rapidly, or joining during an identified bot raid.\n' +
+        '- **Blacklist Match:** Your account matches a known database of malicious actors or banned alts.\n' +
+        '- **Offensive username or nickname** within the server.\n\n' +
+        '## AUTOMATED SECURITY SCANNING\n' +
+        'To protect Nightz Development infrastructure, our bot continuously scans new accounts to catch AI account detection and malicious bot rings. Accounts that hit a high Risk Score face automated actions ranging from a strict Quarantine to an immediate Ban.\n\n' +
+        '## HOW TO REMOVE QUARANTINE\n' +
+        'While quarantined, your access is heavily restricted. You can only see the Quarantine and Support channels.\n\n' +
+        'To appeal and get this role lifted:\n' +
+        '1. Click the **Account/Role Issues** button below to open a private ticket.\n' +
+        '2. Explain your situation so Nightz Network Live Support can review your account and verify you are human.\n' +
+        '3. Wait for staff to review. If cleared, your roles are restored automatically.',
     )
 }
 
@@ -45,7 +63,7 @@ function panelRow(): ActionRowBuilder<ButtonBuilder> {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId('ndqticket:open')
-      .setLabel('Open Quarantine Ticket')
+      .setLabel('Account/Role Issues')
       .setStyle(ButtonStyle.Primary),
   )
 }
