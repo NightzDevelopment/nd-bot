@@ -565,10 +565,13 @@ function parseVerdictSet(raw: string | undefined, def: string): Set<string> {
 /** Verdicts that quarantine the member (needs QUARANTINE_ROLE_ID). Reversible. */
 export const aiAutomodQuarantineVerdicts = parseVerdictSet(
   process.env.AI_AUTOMOD_QUARANTINE_VERDICTS,
-  'SCAM,CRYPTO_SCAM,DOXXING',
+  'DOXXING,HATE',
 )
-/** Verdicts that BAN the member. Destructive and false-positive-prone, so empty by default. */
-export const aiAutomodBanVerdicts = parseVerdictSet(process.env.AI_AUTOMOD_BAN_VERDICTS, '')
+/** Verdicts that BAN the member (also deletes their last 24h of messages). */
+export const aiAutomodBanVerdicts = parseVerdictSet(
+  process.env.AI_AUTOMOD_BAN_VERDICTS,
+  'SCAM,CRYPTO_SCAM',
+)
 
 /** Optional multiline rules appended to the AI AutoMod classifier prompt */
 export const aiAutomodServerRules = process.env.AI_AUTOMOD_SERVER_RULES?.trim() || ''
