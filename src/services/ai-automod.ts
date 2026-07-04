@@ -226,8 +226,8 @@ Verdict meanings:
 - SAFE: ok to leave
 - TOXICITY_LOW: mild insults; staff review usually
 - TOXICITY_HIGH: threats, credible harassment; strong action
-- SCAM: generic phishing/scams
-- CRYPTO_SCAM: crypto recovery / wallet scams
+- SCAM: generic phishing/scams, fake giveaways, "free money" bait
+- CRYPTO_SCAM: crypto recovery / wallet scams, and fake celebrity/brand crypto giveaways or casino promo-code "bonus" scams
 - NSFW: sexual content not allowed in server
 - EVASION: trying to bypass filters (l33t, split words)
 - IMPERSONATION: pretending to be mod/staff
@@ -244,6 +244,7 @@ Rules:
 - **Leetspeak / obfuscation:** Treat character substitutions as the underlying word (e.g. 0→o, 3→e, 1→i, @→a). Flag NSFW/scam meaning even if spelling is distorted.
 - **EVASION:** Use for deliberate filter bypass (leetspeak of sexual/scam terms, zalgo, zero-width chars, split words). Pair with the underlying category (often NSFW or SCAM) in reason.
 - **Bio / profile / link solicitation:** Messages telling people to "check my bio", "link in profile", off-server adult content, or similar → **NSFW** or **SCAM** as appropriate; say so in \`reason\`.
+- **Fake giveaways / casino promo scams (always flag):** Any message OR image claiming a celebrity, streamer, or brand (MrBeast, Elon, etc.) is giving away money or crypto, "register and use promo code X to withdraw a bonus", "claim your reward", instructions to enter a code to receive USDT/USD, screenshots of a "withdrawal success" or a wallet suddenly receiving funds, urgency hooks ("post deleted in an hour", "only the fastest"), or links to unknown casino/betting/crypto domains → **CRYPTO_SCAM** (or **SCAM** if no crypto), confidence **0.9 or higher**. These are scams no matter how polished or "official" the screenshot looks; a real giveaway never requires a promo code to withdraw. Treat pasted tweet text or forwarded screenshots the same as an original message.
 - **Extremist / Nazi:** Glorification of fascism, Hitler/Nazi memes, Holocaust denial or trivialization, swastika-adjacent shock content, white-supremacist framing → **HATE** (not SAFE). High confidence when symbols or slogans are clear.
 - **NSFW shock memes:** Sexual or explicit **Minecraft/block-game** memes, "gooner" / sexual filename innuendo, or edgy shock GIFs that are primarily sexual or bigoted → **NSFW** or **HATE** as appropriate; name the theme in \`reason\`.
 
@@ -516,7 +517,7 @@ async function processVisionQueue(): Promise<QueueDrain> {
         content: `[image attachment: ${att.name}] ${content}`,
         author: q.msg.author.tag,
       },
-    ])}\n\nNote: This message includes an image, classify text+image together (NSFW/gore/hate/scams). **Vary confidence** per the scale above; do not always use 0.9.`
+    ])}\n\nNote: This message includes an image, classify text+image together (NSFW/gore/hate/scams). A screenshot IS the message: a fake celebrity/brand crypto giveaway, a casino "promo code to withdraw a bonus" offer, or a staged "withdrawal success" / "you received USDT" screenshot is **CRYPTO_SCAM** (or SCAM) even if the text is harmless. **Vary confidence** per the scale above; do not always use 0.9.`
 
     const raw = await generateRawWithImage(prompt, image)
     const verdicts = mergeVerdictsForBatch(parseJsonArray(raw), batchIds)
