@@ -137,6 +137,9 @@ export async function tryHandleAppealInteraction(interaction: Interaction): Prom
           await guild.bans.remove(appeal.userId, `Appeal approved by ${interaction.user.tag}`)
           // Drop any pending temp-ban auto-unban for this user.
           await cancelActions((a) => a.type === 'unban' && a.userId === appeal.userId)
+          // Close the loop: a good appeal also clears any safeguard blacklist entry.
+          const { removeFromBlacklist } = await import('./blacklist-store.ts')
+          await removeFromBlacklist(appeal.userId)
         } catch (e) {
           log.warn({ err: e, userId: appeal.userId }, 'unban on appeal approve failed')
         }

@@ -34,7 +34,9 @@ import { initAuditChannel, registerAuditHandler } from './handlers/audit.ts'
 import { registerMessageHandler } from './handlers/messages.ts'
 import { registerTempVc, startGiveawayLoop, startScheduleLoop } from './handlers/prefix-extra.ts'
 import { registerReactionRoles } from './handlers/roles-reaction.ts'
+import { initBlacklist } from './services/blacklist-store.ts'
 import { registerAutoRole } from './services/role-settings.ts'
+import { registerSafeguard } from './services/safeguard.ts'
 import { registerWelcomeHandler } from './handlers/welcome.ts'
 import { registerAfk } from './services/afk.ts'
 import { registerRaidTracking, startAiAutomodProcessor } from './services/ai-automod.ts'
@@ -105,6 +107,8 @@ registerInteractionHandler(client)
 registerAuditHandler(client)
 registerReactionRoles(client)
 registerAutoRole(client)
+registerSafeguard(client)
+void initBlacklist()
 registerTempVc(client)
 registerAiFeedbackHandler(client)
 registerPollMonitor(client)

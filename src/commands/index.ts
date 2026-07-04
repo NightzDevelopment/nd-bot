@@ -292,6 +292,12 @@ export function registerInteractionHandler(client: Client): void {
       }
 
       if (interaction.isButton()) {
+        const { tryHandleSafeguardInteraction } = await import('../services/safeguard.ts')
+        const handled = await tryHandleSafeguardInteraction(interaction)
+        if (handled) return
+      }
+
+      if (interaction.isButton()) {
         const { tryHandleModmailInteraction } = await import('../services/modmail.ts')
         const handled = await tryHandleModmailInteraction(interaction)
         if (handled) return

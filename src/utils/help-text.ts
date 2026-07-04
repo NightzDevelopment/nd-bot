@@ -22,7 +22,7 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'Moderation (staff)',
         value:
-          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode` · `nd!scan_names [apply] [avatars]` · `nd!mass-role <add|remove|status|cancel>` · `nd!add-money` · `nd!remove-money` · `nd!add-money-role` · `nd!remove-money-role` · `nd!reset-money` · `nd!leakdomain <add|remove|list>`\n' +
+          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode` · `nd!scan_names [apply] [avatars]` · `nd!mass-role <add|remove|status|cancel>` · `nd!add-money` · `nd!remove-money` · `nd!add-money-role` · `nd!remove-money-role` · `nd!reset-money` · `nd!leakdomain <add|remove|list>` · `nd!blacklist <add|remove|check|list>`\n' +
           '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode` · `/scan_names` · `/counters` (ServerStats-style stat channel names: add · remove · list · refresh)',
         inline: false,
       },
@@ -70,7 +70,7 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'Safety and trust',
         value:
-          '**Prefix:** `nd!safety` · `nd!scamtips` · `nd!privacy` · `nd!report` · `nd!automodpublic` · `nd!scamcheck` · `nd!tldr`\n' +
+          '**Prefix:** `nd!safety` · `nd!scamtips` · `nd!privacy` · `nd!report` · `nd!reportuser @user <reason>` · `nd!automodpublic` · `nd!scamcheck` · `nd!tldr`\n' +
           '**Slash:** `/safety` · `/scamtips` · `/privacy` · `/report` · `/automod_public` · `/scam_check` · `/tldr`',
         inline: false,
       },

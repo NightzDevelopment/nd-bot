@@ -575,6 +575,17 @@ export const aiAutomodBanVerdicts = parseVerdictSet(
   'SCAM,CRYPTO_SCAM',
 )
 
+// ---- Safeguard: local blacklist + join screening + user reports ----
+/** Master toggle for the blacklist join-screening and reports. */
+export const safeguardEnabled = !isEnvOff(process.env.SAFEGUARD_ENABLED ?? '1')
+/** What to do when a blacklisted user joins: ban | quarantine | alert. */
+export const safeguardJoinAction = (
+  process.env.SAFEGUARD_JOIN_ACTION?.trim().toLowerCase() || 'quarantine'
+) as 'ban' | 'quarantine' | 'alert'
+/** Channel for safeguard alerts + the user-report review queue. Defaults to STAFF_LOG. */
+export const safeguardChannelId =
+  process.env.SAFEGUARD_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID || undefined
+
 /** Optional multiline rules appended to the AI AutoMod classifier prompt */
 export const aiAutomodServerRules = process.env.AI_AUTOMOD_SERVER_RULES?.trim() || ''
 
