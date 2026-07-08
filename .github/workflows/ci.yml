@@ -26,6 +26,14 @@ jobs:
       - name: Test
         # Blocking: the unit suite must stay green.
         run: bun test
+        env:
+          # config.ts requires these at import (requiredEnv), so `bun test` throws
+          # before any test runs unless they are present. Source them from the
+          # repo's Actions secrets when configured, falling back to CI placeholders
+          # so the unit suite - which never calls Discord or Google - always loads
+          # config and runs.
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN || 'ci-test-token' }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY || 'ci-test-key' }}
 
       - name: Typecheck
         run: bun run typecheck

@@ -54,6 +54,9 @@ export const slashCommands = [
     .setDescription('Nightz store link, bot listing snapshot status, and featured items'),
   new SlashCommandBuilder().setName('links').setDescription('Support links (FAQ, tickets, rules)'),
   new SlashCommandBuilder()
+    .setName('myaccount')
+    .setDescription('Your linked Nightz account: licenses, orders and Premium status'),
+  new SlashCommandBuilder()
     .setName('ticket')
     .setDescription('Where to open a Nightz support ticket (panel + queue info)'),
   new SlashCommandBuilder()
