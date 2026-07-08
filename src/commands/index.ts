@@ -19,6 +19,7 @@ import {
   claudeModel,
   geminiFallbackModels,
   MODEL_ID,
+  nightzCustomerRoleId,
   openaiEnabled,
   openaiFallbackModels,
   openaiModel,
@@ -83,7 +84,12 @@ import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.
 import { clearChannel } from '../services/memory.ts'
 import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 import { addWarning } from '../services/moderation.ts'
-import { buildLookupBody, buildMyAccountBody } from '../services/nightz-account.ts'
+import {
+  accountPageUrl,
+  buildLookupBody,
+  buildMyAccountBody,
+  qualifiesAsCustomer,
+} from '../services/nightz-account.ts'
 import { handlePollsSlash } from '../services/polls-slash.ts'
 import { containsProfanity } from '../services/profanity.ts'
 import {
@@ -751,6 +757,70 @@ export function registerInteractionHandler(client: Client): void {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral })
         const body = await buildLookupBody(target.id, target.tag)
         await interaction.editReply({ content: body })
+        return
+      }
+
+      if (commandName === 'verifypurchase') {
+        // Self-serve: grant the Customer role to a member who has a linked Nightz
+        // account with a purchase (license or Premium). Ephemeral; off entirely
+        // unless NIGHTZ_CUSTOMER_ROLE_ID is configured.
+        if (!interaction.guild || !interaction.member) {
+          await interaction.reply({ content: 'Use in a server.', flags: MessageFlags.Ephemeral })
+          return
+        }
+        if (!nightzCustomerRoleId) {
+          await interaction.reply({
+            content: 'The Customer role is not set up on this server.',
+            flags: MessageFlags.Ephemeral,
+          })
+          return
+        }
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+        const check = await qualifiesAsCustomer(interaction.user.id)
+        if (check.reason === 'gateway_off' || check.reason === 'unreachable') {
+          await interaction.editReply({
+            content: 'I could not reach the account service just now. Please try again shortly.',
+          })
+          return
+        }
+        if (!check.linked) {
+          await interaction.editReply({
+            content:
+              'No linked Nightz account found. Sign in with Discord on the website to link this ' +
+              `account, then run this again:\n${accountPageUrl()}`,
+          })
+          return
+        }
+        if (!check.qualifies) {
+          await interaction.editReply({
+            content:
+              'Your account is linked, but I do not see a purchase on it yet. Once you own a ' +
+              `product (or Premium), run this again.\n${accountPageUrl()}`,
+          })
+          return
+        }
+        const role = await interaction.guild.roles.fetch(nightzCustomerRoleId).catch(() => null)
+        if (!role) {
+          await interaction.editReply({
+            content: 'The configured Customer role no longer exists. Please tell a staff member.',
+          })
+          return
+        }
+        const member = await interaction.guild.members.fetch(interaction.user.id)
+        if (member.roles.cache.has(role.id)) {
+          await interaction.editReply({ content: `You already have the **${role.name}** role. ✅` })
+          return
+        }
+        const granted = await member.roles
+          .add(role, 'Verified Nightz purchase via /verifypurchase')
+          .then(() => true)
+          .catch(() => false)
+        await interaction.editReply({
+          content: granted
+            ? `Verified - you own a Nightz product, so I gave you the **${role.name}** role. ✅`
+            : 'I could not assign the role (I may be missing the Manage Roles permission or my ' +
+              'role is below it). Please tell a staff member.',
+        })
         return
       }
 

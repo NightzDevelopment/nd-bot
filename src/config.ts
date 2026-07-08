@@ -308,6 +308,12 @@ export const nightzGatewayTimeoutMs = Math.max(
   3000,
   parseInt(process.env.NIGHTZ_GATEWAY_TIMEOUT_MS ?? '8000', 10) || 8000,
 )
+/**
+ * Optional Discord role granted to members who have a linked Nightz account with a
+ * purchase (a license or active Premium), via the /verifypurchase command. Leave
+ * unset to disable the Customer-role feature entirely.
+ */
+export const nightzCustomerRoleId = process.env.NIGHTZ_CUSTOMER_ROLE_ID?.trim() || undefined
 /** Snapshot considered “stale” in health UI after this many minutes without a successful refresh. */
 export const storeSnapshotStaleMinutes = Math.max(
   30,
