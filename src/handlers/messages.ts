@@ -104,7 +104,8 @@ function messageReferencesLookupTarget(text: string): boolean {
   const t = text.toLowerCase()
   if (/<#\d+>/.test(text)) return true
   if (/#[a-z0-9][a-z0-9-_]{2,}/.test(t)) return true
-  if (/\b(channel|sneak[- ]?peek|announcement|changelog|what.?s new|any updates?)\b/.test(t)) return true
+  if (/\b(channel|sneak[- ]?peek|announcement|changelog|what.?s new|any updates?)\b/.test(t))
+    return true
   if (
     /\b(my|check my|what.?s my|whats my)\b[\s\S]{0,30}\b(balance|wallet|bank|level|xp|rank|warning|warned|quest|reputation|rep)\b/.test(
       t,
@@ -611,6 +612,7 @@ export function registerMessageHandler(client: Client): void {
         displayPrompt,
         keywordBlob,
         'User message',
+        msg.author.id,
       )
       if (msg.guild) {
         const chExtra = channelPromptExtraByChannelId()[msg.channel.id]
@@ -714,11 +716,17 @@ export function registerMessageHandler(client: Client): void {
             const provider = await getAiProviderMode()
             if (provider === 'gemini' || provider === 'auto') {
               const image = imageAtt ? await fetchAttachmentAsBase64(imageAtt) : undefined
-              reply = await runUniversalAgentLoop(model.systemInstruction, prior, augmented, image, {
-                userId: msg.author.id,
-                ...(msg.guild?.id ? { guildId: msg.guild.id } : {}),
-                ...(msg.member ? { member: msg.member } : {}),
-              })
+              reply = await runUniversalAgentLoop(
+                model.systemInstruction,
+                prior,
+                augmented,
+                image,
+                {
+                  userId: msg.author.id,
+                  ...(msg.guild?.id ? { guildId: msg.guild.id } : {}),
+                  ...(msg.member ? { member: msg.member } : {}),
+                },
+              )
             } else {
               if (imageAtt) {
                 const image = await fetchAttachmentAsBase64(imageAtt)

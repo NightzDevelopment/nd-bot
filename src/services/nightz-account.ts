@@ -118,6 +118,15 @@ function isSnowflake(id: string): boolean {
   return /^\d{5,32}$/.test(id)
 }
 
+// Does a message look account-related? Used to gate the (networked) account
+// context lookup so casual chatter never triggers a gateway call - only messages
+// about keys/licenses/orders/premium/etc. pull the asker's account facts.
+const ACCOUNT_INTENT_RE =
+  /\b(my\s+(account|key|license|licence|order|sub|purchase|server)|account|licen[sc]e|license\s*key|order|purchase|receipt|invoice|subscription|premium|expir\w*|renew\w*|refund|invalid|activat\w*|server\s*ip|ip\s*(bind|bound|slot)|entitl\w*|download|owned?)\b/i
+export function looksAccountRelated(text: string): boolean {
+  return ACCOUNT_INTENT_RE.test(text || '')
+}
+
 // ---- typed lookups ----------------------------------------------------------
 
 export async function getAccountSummary(
@@ -313,4 +322,46 @@ export async function buildLookupBody(discordId: string, targetTag: string): Pro
 
   lines.push('', `Full account: ${accountPageUrl()}`)
   return lines.join('\n').slice(0, 3900)
+}
+
+/**
+ * Compact, model-facing block of the ASKING member's own account facts, for the
+ * AI to ground support answers in reality ("your ND Scenes license expired on
+ * ...", "your key is bound to IP ..."). Pulled only for the person asking, so it
+ * is safe to feed to the model answering them.
+ *
+ * Returns '' when the gateway is off, the member is not linked, or on any error,
+ * so the AI simply answers without it (never blocks a reply). No license keys and
+ * only a masked email are ever included.
+ */
+export async function buildAccountContext(discordId: string): Promise<string> {
+  if (!nightzGatewayEnabled || !isSnowflake(discordId)) return ''
+  const [summary, licenses] = await Promise.all([
+    getAccountSummary(discordId),
+    getLicenses(discordId),
+  ])
+  if (summary == null || !summary.linked || !summary.account) return ''
+
+  const a = summary.account
+  const lines: string[] = []
+  lines.push(
+    'NIGHTZ ACCOUNT CONTEXT (facts about the person asking - use them to answer accurately; ' +
+      "never reveal another user's data, and do not print license keys):",
+  )
+  lines.push(`- Linked website account: yes${a.username ? ` (@${a.username})` : ''}`)
+  lines.push(
+    `- Premium: ${a.is_premium ? `active${a.premium_plan ? ` (${a.premium_plan})` : ''}` : 'none'}`,
+  )
+  lines.push(`- Licenses owned: ${a.license_count} · Orders: ${a.order_count}`)
+  const list = licenses?.licenses ?? []
+  if (list.length) {
+    lines.push('- License details:')
+    for (const l of list.slice(0, 12)) {
+      const name = l.product_name ?? l.product_slug ?? 'product'
+      const expiry = l.expires_at ? `expires ${dateOnly(l.expires_at)}` : 'no expiry'
+      const ip = l.ips.length ? `bound IP ${l.ips.map((i) => i.ip).join(', ')}` : 'no server IP set'
+      lines.push(`    - ${name}: ${l.status}, ${expiry}, ${ip}`)
+    }
+  }
+  return lines.join('\n')
 }
