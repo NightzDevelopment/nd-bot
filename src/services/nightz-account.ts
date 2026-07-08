@@ -241,3 +241,76 @@ export async function describeEntitlement(discordId: string, slug: string): Prom
       return `You do not currently own **${productName}**.`
   }
 }
+
+function money(cents: number, currency: string): string {
+  const amount = (Math.max(0, Number(cents) || 0) / 100).toFixed(2)
+  return currency === 'USD' ? `$${amount}` : `${amount} ${currency}`
+}
+
+function orderLine(o: GatewayOrder): string {
+  return `- ${o.uuid.slice(0, 8)} · ${o.status} · ${money(o.total_cents, o.currency)} · ${dateOnly(o.created_at)}`
+}
+
+/**
+ * Staff-facing account lookup for `/lookup @user`. Pulls the target member's
+ * summary + licenses + recent orders in parallel and formats a support view.
+ * Ephemeral-only (the command replies ephemerally), and even so, license KEYS
+ * are never printed - staff get status/expiry/bound IPs, which is what support
+ * needs; the full key lives on the website only. Never throws: gateway
+ * off/unreachable and unlinked members resolve to a clear line.
+ *
+ * `targetTag` is the Discord tag of the looked-up user, purely for the header.
+ */
+export async function buildLookupBody(discordId: string, targetTag: string): Promise<string> {
+  if (!nightzGatewayEnabled) {
+    return 'Account lookups are not enabled (NIGHTZ_GATEWAY_SECRET is unset on the bot).'
+  }
+
+  const [summary, licenses, orders] = await Promise.all([
+    getAccountSummary(discordId),
+    getLicenses(discordId),
+    getOrders(discordId),
+  ])
+
+  if (summary == null) {
+    return `Could not reach the account service just now. Try again shortly, or check ${accountPageUrl()}.`
+  }
+  if (!summary.linked || !summary.account) {
+    return `**${targetTag}** has no linked Nightz account (they have not signed in on the website with this Discord).`
+  }
+
+  const a = summary.account
+  const lines: string[] = []
+  lines.push(`**Nightz account for ${targetTag}**`)
+
+  const bits: string[] = []
+  if (a.username) bits.push(`@${a.username}`)
+  bits.push(`role: ${a.is_management ? 'management' : a.role}`)
+  bits.push(
+    a.is_premium ? `Premium: active${a.premium_plan ? ` (${a.premium_plan})` : ''}` : 'Premium: no',
+  )
+  if (a.email_masked) bits.push(a.email_masked)
+  if (!a.is_active) bits.push('⚠️ deactivated')
+  lines.push(bits.join(' · '))
+  lines.push(
+    `${a.license_count} license(s) · ${a.order_count} order(s) · member since ${dateOnly(a.member_since)}`,
+  )
+
+  const licList = licenses?.licenses ?? []
+  if (licList.length) {
+    lines.push('', '**Licenses**')
+    for (const l of licList.slice(0, 15)) lines.push(licenseLine(l))
+    if (licList.length > 15) lines.push(`- ...and ${licList.length - 15} more`)
+  } else {
+    lines.push('', '_No licenses._')
+  }
+
+  const ordList = orders?.orders ?? []
+  if (ordList.length) {
+    lines.push('', '**Recent orders**')
+    for (const o of ordList.slice(0, 10)) lines.push(orderLine(o))
+  }
+
+  lines.push('', `Full account: ${accountPageUrl()}`)
+  return lines.join('\n').slice(0, 3900)
+}

@@ -57,6 +57,10 @@ export const slashCommands = [
     .setName('myaccount')
     .setDescription('Your linked Nightz account: licenses, orders and Premium status'),
   new SlashCommandBuilder()
+    .setName('lookup')
+    .setDescription('Staff: look up a member Nightz account (licenses, orders, Premium)')
+    .addUserOption((o) => o.setName('user').setDescription('Member to look up').setRequired(true)),
+  new SlashCommandBuilder()
     .setName('ticket')
     .setDescription('Where to open a Nightz support ticket (panel + queue info)'),
   new SlashCommandBuilder()

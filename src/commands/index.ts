@@ -83,7 +83,7 @@ import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.
 import { clearChannel } from '../services/memory.ts'
 import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 import { addWarning } from '../services/moderation.ts'
-import { buildMyAccountBody } from '../services/nightz-account.ts'
+import { buildLookupBody, buildMyAccountBody } from '../services/nightz-account.ts'
 import { handlePollsSlash } from '../services/polls-slash.ts'
 import { containsProfanity } from '../services/profanity.ts'
 import {
@@ -730,6 +730,26 @@ export function registerInteractionHandler(client: Client): void {
         // the member has not linked their Discord.
         await interaction.deferReply({ flags: MessageFlags.Ephemeral })
         const body = await buildMyAccountBody(interaction.user.id)
+        await interaction.editReply({ content: body })
+        return
+      }
+
+      if (commandName === 'lookup') {
+        // Staff-only: shows another member's account, so it is gated to guild
+        // mods and always replies ephemerally. buildLookupBody never throws and
+        // never prints license keys (status/expiry/IP only).
+        if (!interaction.guild || !interaction.member) {
+          await interaction.reply({ content: 'Use in a server.', flags: MessageFlags.Ephemeral })
+          return
+        }
+        const m = await interaction.guild.members.fetch(interaction.user.id)
+        if (!isGuildMod(m)) {
+          await interaction.reply({ content: 'No permission.', flags: MessageFlags.Ephemeral })
+          return
+        }
+        const target = options.getUser('user', true)
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+        const body = await buildLookupBody(target.id, target.tag)
         await interaction.editReply({ content: body })
         return
       }
