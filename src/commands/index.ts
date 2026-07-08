@@ -1510,7 +1510,12 @@ export function registerInteractionHandler(client: Client): void {
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral })
 
-        const prompt = await buildAugmentedUserContentAsync(question, question, 'Question')
+        const prompt = await buildAugmentedUserContentAsync(
+          question,
+          question,
+          'Question',
+          interaction.user.id,
+        )
 
         const model = interaction.channel?.type === ChannelType.DM ? modelDm : modelGuild
         const text = await generateOnce(model, prompt)

@@ -4,6 +4,7 @@
 import { storePageSnapshotEnabled } from '../config.ts'
 import { buildRelevantContext } from './codebase.ts'
 import { getFaqText } from './faq.ts'
+import { buildAccountContext, looksAccountRelated } from './nightz-account.ts'
 import { buildProductDocsContext } from './product-docs.ts'
 import { buildStorePageContext } from './store-snapshot.ts'
 import { buildHybridVectorContextAsync } from './universal-nd-expert.ts'
@@ -19,13 +20,22 @@ export async function buildAugmentedUserContentAsync(
   displayPrompt: string,
   keywordSource: string,
   promptLabel: 'User message' | 'Question' = 'User message',
+  askerDiscordId?: string,
 ): Promise<string> {
   const faq = getFaqText()
   const store = buildStorePageContext()
   const vector = await buildHybridVectorContextAsync(keywordSource)
   const products = buildProductDocsContext(keywordSource)
   const code = buildRelevantContext(keywordSource)
+  // The asker's own account facts, but only when the message is account-related
+  // (keeps the gateway out of the path for casual chat) and a Discord id was
+  // passed. Empty when the gateway is off or the member is not linked.
+  let account = ''
+  if (askerDiscordId && looksAccountRelated(`${displayPrompt}\n${keywordSource}`)) {
+    account = await buildAccountContext(askerDiscordId)
+  }
   const parts: string[] = []
+  if (account) parts.push(account)
   if (faq) parts.push(faq)
   if (store) {
     parts.push(store)

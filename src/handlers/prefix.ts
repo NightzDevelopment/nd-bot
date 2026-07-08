@@ -26,6 +26,7 @@ import {
   translateHourlyMax,
   WELCOME_TICKET_CHANNEL_ID,
 } from '../config.ts'
+import { handleAdminEconomyCommand } from '../services/admin-economy.ts'
 import { setAfk } from '../services/afk-store.ts'
 import {
   type AiProviderMode,
@@ -36,6 +37,7 @@ import { getEntriesLastMs } from '../services/analytics-store.ts'
 import { checkClaudeAvailability } from '../services/claude-client.ts'
 import { buildAugmentedUserContentAsync } from '../services/context-bundle.ts'
 import { searchFaq } from '../services/faq.ts'
+import { handleFunCommand } from '../services/fun-commands.ts'
 import {
   checkOpenAiAvailability,
   generateOnce,
@@ -43,6 +45,7 @@ import {
   getPublicAiErrorMessage,
 } from '../services/gemini.ts'
 import { buildHealthSummary } from '../services/health.ts'
+import { handleLeakDomainCommand } from '../services/leak-domains.ts'
 import { buildLeaderboardEmbed, buildRankEmbed } from '../services/levels.ts'
 import { reportUserReport } from '../services/logging.ts'
 import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.ts'
@@ -61,10 +64,13 @@ import {
 import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 import { containsProfanity } from '../services/profanity.ts'
 import {
-  applyNameQuarantine,
   AVATAR_SCAN_CAP,
+  applyNameQuarantine,
   collectProfileFlags,
 } from '../services/profile-scan.ts'
+import { handleQuarantineTicketPanelCommand } from '../services/quarantine-tickets.ts'
+import { handleRoleSettingsCommand } from '../services/role-settings.ts'
+import { handleBlacklistCommand, handleReportUserCommand } from '../services/safeguard.ts'
 import { formatProductLookupReply } from '../services/store-catalog.ts'
 import {
   buildStoreCommandBody,
@@ -91,12 +97,6 @@ import { buildHelpEmbed } from '../utils/help-text.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { takeReportSlot } from '../utils/report-cooldown.ts'
 import { formatSupportLinksMarkdown } from '../utils/support-links.ts'
-import { handleAdminEconomyCommand } from '../services/admin-economy.ts'
-import { handleFunCommand } from '../services/fun-commands.ts'
-import { handleLeakDomainCommand } from '../services/leak-domains.ts'
-import { handleRoleSettingsCommand } from '../services/role-settings.ts'
-import { handleQuarantineTicketPanelCommand } from '../services/quarantine-tickets.ts'
-import { handleBlacklistCommand, handleReportUserCommand } from '../services/safeguard.ts'
 import { handleEconomyPrefix } from './prefix-economy.ts'
 import { handleExtraPrefix } from './prefix-extra.ts'
 
@@ -464,7 +464,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
 
     if ('sendTyping' in msg.channel) await msg.channel.sendTyping()
 
-    const prompt = await buildAugmentedUserContentAsync(args, args, 'Question')
+    const prompt = await buildAugmentedUserContentAsync(args, args, 'Question', msg.author.id)
 
     const model = msg.channel.type === ChannelType.DM ? modelDm : modelGuild
 
