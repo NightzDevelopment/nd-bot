@@ -324,6 +324,36 @@ export async function buildLookupBody(discordId: string, targetTag: string): Pro
   return lines.join('\n').slice(0, 3900)
 }
 
+export type CustomerCheck = {
+  linked: boolean
+  qualifies: boolean
+  reason: 'gateway_off' | 'unreachable' | 'not_linked' | 'no_purchase' | 'ok'
+  account?: GatewayAccount
+}
+
+/**
+ * Does this member qualify for the "Customer" role? True when they have a linked
+ * website account AND own something (a license or active Premium). Used by
+ * /verifypurchase to self-serve the role. Never throws.
+ */
+export async function qualifiesAsCustomer(discordId: string): Promise<CustomerCheck> {
+  if (!nightzGatewayEnabled) return { linked: false, qualifies: false, reason: 'gateway_off' }
+  if (!isSnowflake(discordId)) return { linked: false, qualifies: false, reason: 'not_linked' }
+  const summary = await getAccountSummary(discordId)
+  if (summary == null) return { linked: false, qualifies: false, reason: 'unreachable' }
+  if (!summary.linked || !summary.account) {
+    return { linked: false, qualifies: false, reason: 'not_linked' }
+  }
+  const a = summary.account
+  const owns = a.license_count > 0 || a.is_premium
+  return {
+    linked: true,
+    qualifies: owns,
+    reason: owns ? 'ok' : 'no_purchase',
+    account: a,
+  }
+}
+
 /**
  * Compact, model-facing block of the ASKING member's own account facts, for the
  * AI to ground support answers in reality ("your ND Scenes license expired on
