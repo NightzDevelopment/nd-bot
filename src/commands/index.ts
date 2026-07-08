@@ -23,11 +23,11 @@ import {
   openaiFallbackModels,
   openaiModel,
   productAliasUrls,
+  quarantineNameExemptUserIds,
   reportCooldownMs,
   reportMaxBodyLength,
   SYSTEM_PROMPT_DM,
   SYSTEM_PROMPT_GUILD,
-  quarantineNameExemptUserIds,
   safetyExtraMarkdown,
   scamCheckExtraTrustedHosts,
   slashCommandsGuildId,
@@ -36,11 +36,6 @@ import {
 } from '../config.ts'
 import { consumeTranslateSlot } from '../handlers/prefix.ts'
 import { handleAfkSlash } from '../services/afk.ts'
-import {
-  applyNameQuarantine,
-  AVATAR_SCAN_CAP,
-  collectProfileFlags,
-} from '../services/profile-scan.ts'
 import {
   type AiProviderMode,
   getAiProviderState,
@@ -88,8 +83,14 @@ import { getMacroBody, listMacroKeys, setMacro } from '../services/macros-store.
 import { clearChannel } from '../services/memory.ts'
 import { addCase, listCasesForGuild } from '../services/mod-cases-store.ts'
 import { addWarning } from '../services/moderation.ts'
+import { buildMyAccountBody } from '../services/nightz-account.ts'
 import { handlePollsSlash } from '../services/polls-slash.ts'
 import { containsProfanity } from '../services/profanity.ts'
+import {
+  AVATAR_SCAN_CAP,
+  applyNameQuarantine,
+  collectProfileFlags,
+} from '../services/profile-scan.ts'
 import { handleShopSlash } from '../services/shop.ts'
 import { formatProductLookupReply } from '../services/store-catalog.ts'
 import {
@@ -719,6 +720,17 @@ export function registerInteractionHandler(client: Client): void {
           embeds: [ndEmbed().setTitle('Support links').setDescription(body)],
           flags: MessageFlags.Ephemeral,
         })
+        return
+      }
+
+      if (commandName === 'myaccount') {
+        // Ephemeral so a member's account details are only visible to them. The
+        // lookup hits the website gateway (network), so defer first. buildMyAccountBody
+        // never throws and degrades to a friendly hint when the gateway is off or
+        // the member has not linked their Discord.
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral })
+        const body = await buildMyAccountBody(interaction.user.id)
+        await interaction.editReply({ content: body })
         return
       }
 

@@ -1,0 +1,243 @@
+/**
+ * Nightz website account bridge.
+ *
+ * A thin, read-only client for the website's authenticated bot gateway
+ * (/api/internal/bot). It turns a member's Discord id into real account facts -
+ * linked account, licenses (status, expiry, bound IPs), recent orders, product
+ * entitlement, Premium status - so the bot can answer "do I own X", "when does my
+ * license expire", "what's my order status" in Discord instead of guessing.
+ *
+ * Design mirrors store-catalog.ts: built on global fetch, hard timeout, no SDK,
+ * and it NEVER throws to the caller. Any failure (gateway off, network, bad
+ * secret, unlinked member) resolves to a structured "unavailable"/"not linked"
+ * result the command layer can render as a friendly hint.
+ *
+ * The secret (NIGHTZ_GATEWAY_SECRET) must match the website's BOT_GATEWAY_SECRET.
+ */
+import {
+  nightzGatewayBase,
+  nightzGatewayEnabled,
+  nightzGatewaySecret,
+  nightzGatewayTimeoutMs,
+  storePageUrl,
+} from '../config.ts'
+
+export type GatewayLicenseIp = {
+  ip: string
+  hostname: string | null
+  is_active: boolean
+  last_seen_at: string | null
+}
+
+export type GatewayLicense = {
+  uuid: string
+  license_key: string
+  product_name: string | null
+  product_slug: string | null
+  status: string
+  max_activations: number
+  activation_count: number
+  issued_at: string | null
+  expires_at: string | null
+  ips: GatewayLicenseIp[]
+}
+
+export type GatewayOrder = {
+  uuid: string
+  status: string
+  total_cents: number
+  currency: string
+  created_at: string | null
+}
+
+export type GatewayAccount = {
+  uuid: string
+  username: string | null
+  display_name: string | null
+  email_masked: string | null
+  role: string
+  is_management: boolean
+  is_active: boolean
+  is_premium: boolean
+  premium_since: string | null
+  premium_plan: string | null
+  license_count: number
+  order_count: number
+  member_since: string | null
+}
+
+export type EntitlementResult = {
+  linked: boolean
+  owns: boolean
+  reason: 'not_linked' | 'unknown_product' | 'license' | 'premium' | 'not_owned'
+  product?: { name: string; slug: string; premium_included: boolean }
+  license?: { uuid: string; status: string; expires_at: string | null }
+}
+
+// ---- low-level fetch --------------------------------------------------------
+
+/** The website /account page, for the "link your Discord" hint. */
+export function accountPageUrl(): string {
+  try {
+    return `${new URL(storePageUrl).origin}/account`
+  } catch {
+    return 'https://shop.nightz.dev/account'
+  }
+}
+
+async function gatewayGet<T>(path: string): Promise<T | null> {
+  if (!nightzGatewayEnabled) return null
+  const ac = new AbortController()
+  const to = setTimeout(() => ac.abort(), nightzGatewayTimeoutMs)
+  try {
+    const res = await fetch(`${nightzGatewayBase}${path}`, {
+      signal: ac.signal,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${nightzGatewaySecret}`,
+        'User-Agent': 'ND-Discord-Bot/1.0',
+      },
+      redirect: 'follow',
+    })
+    if (!res.ok) {
+      console.warn(`[nightz-account] ${path} -> HTTP ${res.status}`)
+      return null
+    }
+    const body = (await res.json()) as { data?: T }
+    return (body?.data ?? null) as T | null
+  } catch (e) {
+    console.warn('[nightz-account] fetch failed:', String((e as Error)?.message ?? e))
+    return null
+  } finally {
+    clearTimeout(to)
+  }
+}
+
+// Snowflakes only; refuse anything else before it hits the gateway.
+function isSnowflake(id: string): boolean {
+  return /^\d{5,32}$/.test(id)
+}
+
+// ---- typed lookups ----------------------------------------------------------
+
+export async function getAccountSummary(
+  discordId: string,
+): Promise<{ linked: boolean; account?: GatewayAccount } | null> {
+  if (!isSnowflake(discordId)) return { linked: false }
+  return gatewayGet(`/user/${discordId}`)
+}
+
+export async function getLicenses(
+  discordId: string,
+): Promise<{ linked: boolean; licenses: GatewayLicense[] } | null> {
+  if (!isSnowflake(discordId)) return { linked: false, licenses: [] }
+  return gatewayGet(`/user/${discordId}/licenses`)
+}
+
+export async function getOrders(
+  discordId: string,
+): Promise<{ linked: boolean; orders: GatewayOrder[] } | null> {
+  if (!isSnowflake(discordId)) return { linked: false, orders: [] }
+  return gatewayGet(`/user/${discordId}/orders`)
+}
+
+export async function getEntitlement(
+  discordId: string,
+  slug: string,
+): Promise<EntitlementResult | null> {
+  if (!isSnowflake(discordId)) return { linked: false, owns: false, reason: 'not_linked' }
+  const clean = encodeURIComponent(slug.trim().toLowerCase())
+  return gatewayGet(`/user/${discordId}/entitlement/${clean}`)
+}
+
+// ---- presentation -----------------------------------------------------------
+
+function dateOnly(iso: string | null): string {
+  return iso ? iso.slice(0, 10) : '-'
+}
+
+function licenseLine(l: GatewayLicense): string {
+  const name = l.product_name ?? l.product_slug ?? 'Product'
+  const expiry = l.expires_at ? `expires ${dateOnly(l.expires_at)}` : 'no expiry'
+  const ips = l.ips.length ? l.ips.map((i) => i.ip).join(', ') : 'no server IP set'
+  return `- **${name}** · ${l.status} · ${expiry}\n  IP: ${ips}`
+}
+
+/**
+ * Markdown body for an ephemeral `/myaccount` reply. Pulls the summary + licenses
+ * in parallel and degrades gracefully:
+ *   - gateway disabled/unreachable -> a "check the website" hint (never an error)
+ *   - member not linked -> a "sign in and link your Discord" hint
+ * License keys are intentionally NOT printed here - `/myaccount` runs in a channel
+ * even when ephemeral, so keys stay on the website account page only.
+ */
+export async function buildMyAccountBody(discordId: string): Promise<string> {
+  if (!nightzGatewayEnabled) {
+    return (
+      'Account lookups are not enabled right now. ' +
+      `You can view your licenses, orders and Premium status on the website: ${accountPageUrl()}`
+    )
+  }
+
+  const [summary, licenses] = await Promise.all([
+    getAccountSummary(discordId),
+    getLicenses(discordId),
+  ])
+
+  if (summary == null) {
+    return (
+      'I could not reach the account service just now. ' +
+      `Please try again shortly, or check ${accountPageUrl()}.`
+    )
+  }
+
+  if (!summary.linked || !summary.account) {
+    return (
+      '**No linked Nightz account found.**\n' +
+      `Sign in with Discord on the website to link this account, then run this again:\n${accountPageUrl()}`
+    )
+  }
+
+  const a = summary.account
+  const lines: string[] = []
+  lines.push(`**Your Nightz account**${a.display_name ? ` · ${a.display_name}` : ''}`)
+  const bits: string[] = []
+  bits.push(
+    a.is_premium ? `Premium: active${a.premium_plan ? ` (${a.premium_plan})` : ''}` : 'Premium: no',
+  )
+  bits.push(`${a.license_count} license(s)`)
+  bits.push(`${a.order_count} order(s)`)
+  if (a.email_masked) bits.push(a.email_masked)
+  lines.push(bits.join(' · '))
+
+  const list = licenses?.licenses ?? []
+  if (list.length) {
+    lines.push('', '**Licenses**')
+    for (const l of list.slice(0, 10)) lines.push(licenseLine(l))
+    if (list.length > 10) lines.push(`- ...and ${list.length - 10} more`)
+  } else if (summary.linked) {
+    lines.push('', '_No licenses on this account yet._')
+  }
+
+  lines.push('', `Manage everything (keys, downloads, receipts): ${accountPageUrl()}`)
+  return lines.join('\n').slice(0, 3900)
+}
+
+/** One-line entitlement answer for "do I own X" style prompts. */
+export async function describeEntitlement(discordId: string, slug: string): Promise<string> {
+  const r = await getEntitlement(discordId, slug)
+  if (r == null) return 'I could not check that right now. Please try again shortly.'
+  const productName = r.product?.name ?? slug
+  switch (r.reason) {
+    case 'not_linked':
+      return `Link your Discord on the website first, then I can check: ${accountPageUrl()}`
+    case 'unknown_product':
+      return `I could not find a product matching "${slug}".`
+    case 'license':
+      return `Yes - you own **${productName}** (license ${r.license?.status ?? 'active'}).`
+    case 'premium':
+      return `Yes - **${productName}** is included with your active Premium membership.`
+    default:
+      return `You do not currently own **${productName}**.`
+  }
+}

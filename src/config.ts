@@ -277,6 +277,37 @@ export const storeLookupMaxResults = Math.min(
   15,
   Math.max(1, parseInt(process.env.STORE_LOOKUP_MAX_RESULTS ?? '5', 10) || 5),
 )
+
+/**
+ * Nightz website "bot gateway" - the authenticated internal read API that lets
+ * the bot answer account questions (licenses, orders, entitlements, Premium)
+ * with real website data, keyed on a member's Discord id.
+ *
+ * NIGHTZ_GATEWAY_SECRET must exactly match BOT_GATEWAY_SECRET on the website. It
+ * is a secret (grants read access to per-account data), so it lives only in the
+ * bot's env. When it is unset the /myaccount command and any gateway lookups are
+ * disabled and degrade to a "link your account" hint - the bot runs unchanged.
+ *
+ * The base defaults to the origin of STORE_API_BASE + /api/internal/bot, so a
+ * single STORE_API_BASE usually configures both the public catalog and the
+ * gateway; override NIGHTZ_GATEWAY_BASE only when they live on different hosts.
+ */
+function deriveGatewayBase(): string {
+  const explicit = process.env.NIGHTZ_GATEWAY_BASE?.trim().replace(/\/+$/, '')
+  if (explicit) return explicit
+  try {
+    return `${new URL(storeApiBase).origin}/api/internal/bot`
+  } catch {
+    return 'https://shop.nightz.dev/api/internal/bot'
+  }
+}
+export const nightzGatewayBase = deriveGatewayBase()
+export const nightzGatewaySecret = process.env.NIGHTZ_GATEWAY_SECRET?.trim() || ''
+export const nightzGatewayEnabled = nightzGatewaySecret.length > 0
+export const nightzGatewayTimeoutMs = Math.max(
+  3000,
+  parseInt(process.env.NIGHTZ_GATEWAY_TIMEOUT_MS ?? '8000', 10) || 8000,
+)
 /** Snapshot considered “stale” in health UI after this many minutes without a successful refresh. */
 export const storeSnapshotStaleMinutes = Math.max(
   30,
@@ -579,9 +610,8 @@ export const aiAutomodBanVerdicts = parseVerdictSet(
 /** Master toggle for the blacklist join-screening and reports. */
 export const safeguardEnabled = !isEnvOff(process.env.SAFEGUARD_ENABLED ?? '1')
 /** What to do when a blacklisted user joins: ban | quarantine | alert. */
-export const safeguardJoinAction = (
-  process.env.SAFEGUARD_JOIN_ACTION?.trim().toLowerCase() || 'quarantine'
-) as 'ban' | 'quarantine' | 'alert'
+export const safeguardJoinAction = (process.env.SAFEGUARD_JOIN_ACTION?.trim().toLowerCase() ||
+  'quarantine') as 'ban' | 'quarantine' | 'alert'
 /** Channel for safeguard alerts + the user-report review queue. Defaults to STAFF_LOG. */
 export const safeguardChannelId =
   process.env.SAFEGUARD_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID || undefined
