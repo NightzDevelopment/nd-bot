@@ -241,7 +241,9 @@ export function registerInviteTracker(client: Client): void {
       const inviter = d.joinedBy[member.id] ?? null
       let newTotal: number | null = null
       if (inviter) {
-        newTotal = Math.max(0, (d.inviters[inviter] ?? 0) - 1)
+        // Leaves subtract past zero: a net-negative score means more of this
+        // inviter's joins have left than stayed.
+        newTotal = (d.inviters[inviter] ?? 0) - 1
         d.inviters[inviter] = newTotal
         delete d.joinedBy[member.id]
         await save()
