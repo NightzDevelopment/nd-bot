@@ -675,6 +675,14 @@ export function registerMessageHandler(client: Client): void {
       const toneDirective = await personalityToneDirective(!!isInTicket)
       augmented += `\n\n[ADMINISTRATIVE DIRECTIVES]\n1. Use bracketed footnotes like [1], [2] to cite information from the provided vector context when referencing facts, docs, or code. Do NOT make up any citations.\n2. ${toneDirective}\n3. ZERO EMOJI MANDATE: Under no circumstances should any emojis or visual glyphs exist in your response. Strictly use text only.`
 
+      // Also bake the tone into the SYSTEM instruction for this turn. The base
+      // system prompt says "stay professional in public channels", which wins over
+      // a user-content directive, so funny/auto would not take effect without this.
+      const toneModel = {
+        systemInstruction: `${model.systemInstruction}\n\n[ACTIVE TONE]\n${toneDirective}`,
+        modelIds: model.modelIds,
+      }
+
       if (ch.type !== ChannelType.DM) {
         touchActiveWindow(msg.author.id, msg.channel.id)
       }
@@ -720,7 +728,7 @@ export function registerMessageHandler(client: Client): void {
             if (provider === 'gemini' || provider === 'auto') {
               const image = imageAtt ? await fetchAttachmentAsBase64(imageAtt) : undefined
               reply = await runUniversalAgentLoop(
-                model.systemInstruction,
+                toneModel.systemInstruction,
                 prior,
                 augmented,
                 image,
@@ -733,9 +741,9 @@ export function registerMessageHandler(client: Client): void {
             } else {
               if (imageAtt) {
                 const image = await fetchAttachmentAsBase64(imageAtt)
-                reply = await chatReplyWithImage(model, prior, augmented, image)
+                reply = await chatReplyWithImage(toneModel, prior, augmented, image)
               } else {
-                reply = await chatReply(model, prior, augmented)
+                reply = await chatReply(toneModel, prior, augmented)
               }
             }
           } finally {
