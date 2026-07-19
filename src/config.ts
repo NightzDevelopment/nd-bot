@@ -629,6 +629,26 @@ export const safeguardJoinAction = (process.env.SAFEGUARD_JOIN_ACTION?.trim().to
 export const safeguardChannelId =
   process.env.SAFEGUARD_CHANNEL_ID?.trim() || STAFF_LOG_CHANNEL_ID || undefined
 
+// ---- Anti-nuke: stop a rogue or compromised admin ----
+/** Off by default: enable only after whitelisting trusted admins and putting the bot's role near the top. */
+export const antiNukeEnabled = !isEnvOff(process.env.ANTINUKE_ENABLED ?? '0')
+/** User IDs always exempt (trusted admins who may legitimately do bulk actions). Owner is always exempt. */
+export const antiNukeWhitelistIds = parseIdSet(process.env.ANTINUKE_WHITELIST_IDS)
+/** What to do to a detected nuker: strip (remove their roles) | quarantine | ban. */
+export const antiNukeAction = (
+  process.env.ANTINUKE_ACTION?.trim().toLowerCase() || 'strip'
+) as 'strip' | 'quarantine' | 'ban'
+/** Rolling window for counting one actor's dangerous actions. */
+export const antiNukeWindowMs = Math.max(
+  3000,
+  parseInt(process.env.ANTINUKE_WINDOW_MS ?? '10000', 10) || 10000,
+)
+/** Dangerous actions of one type by one actor within the window before acting. */
+export const antiNukeThreshold = Math.max(
+  2,
+  parseInt(process.env.ANTINUKE_THRESHOLD ?? '4', 10) || 4,
+)
+
 /** Optional multiline rules appended to the AI AutoMod classifier prompt */
 export const aiAutomodServerRules = process.env.AI_AUTOMOD_SERVER_RULES?.trim() || ''
 
