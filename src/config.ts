@@ -328,6 +328,12 @@ export const nightzGatewayTimeoutMs = Math.max(
  * unset to disable the Customer-role feature entirely.
  */
 export const nightzCustomerRoleId = process.env.NIGHTZ_CUSTOMER_ROLE_ID?.trim() || undefined
+
+/** Channel where nd!vouch posts customer reviews. Vouch command is off when unset. */
+export const vouchChannelId = process.env.VOUCH_CHANNEL_ID?.trim() || undefined
+/** Require the Customer role (nightzCustomerRoleId) to vouch. On by default. */
+export const vouchRequireCustomer = !isEnvOff(process.env.VOUCH_REQUIRE_CUSTOMER ?? '1')
+
 /** Snapshot considered “stale” in health UI after this many minutes without a successful refresh. */
 export const storeSnapshotStaleMinutes = Math.max(
   30,
