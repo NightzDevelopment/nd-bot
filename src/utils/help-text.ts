@@ -59,7 +59,7 @@ export function buildHelpEmbed(): EmbedBuilder {
         name: 'Invites',
         value:
           '**Prefix:** `nd!invites [@user]` · `nd!invitelb` (leaderboard). Reward roles at set milestones.\n' +
-          '**Staff:** `nd!invitelb on|off|status` toggles tracking live (needs Manage Server).',
+          '**Staff:** `nd!invitelb on|off|status` toggles tracking live · `nd!invitelb log [#channel|off]` sets the join/leave log (needs Manage Server).',
         inline: false,
       },
       {

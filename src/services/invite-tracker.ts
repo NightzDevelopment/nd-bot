@@ -1,14 +1,19 @@
 /**
- * Invite tracking + rewards.
+ * Invite tracking + rewards + live invite logging.
  *
  * Caches each guild's invite uses, then on member join diffs the counts to find
  * which invite was used and credits the inviter. Milestone roles are granted at
  * counts configured in INVITE_REWARD_ROLES. Fake-invite protection: a credit is
  * reversed if the invited member later leaves.
  *
- * Requires the Manage Server permission (to read invites) and the Server Invites
- * gateway intent. Off by default (INVITE_TRACKING_ENABLED). Commands: nd!invites
- * [@user], nd!invitelb.
+ * Live logging posts an embed to the configured log channel for every join
+ * (who invited whom, account age, invite code), leave (inviter credit reversed,
+ * how long they stayed), and invite create/delete.
+ *
+ * Uses the Server Invites gateway intent (always on) and needs the bot's Manage
+ * Server permission to read invites. Gated on a runtime flag (nd!invitelb on|off)
+ * that defaults to INVITE_TRACKING_ENABLED. Commands: nd!invites [@user],
+ * nd!invitelb, nd!invitelb log [#channel|off].
  */
 import {
   type Client,
@@ -32,6 +37,8 @@ interface InviteData {
   joinedBy: Record<string, string>
   /** Runtime on/off toggle (nd!invitelb on|off). Falls back to the env default when unset. */
   enabled?: boolean
+  /** Runtime log channel (nd!invitelb log). Falls back to INVITE_LOG_CHANNEL_ID when unset. */
+  logChannelId?: string
 }
 let data: InviteData | null = null
 
@@ -53,6 +60,12 @@ async function setEnabled(on: boolean): Promise<void> {
   d.enabled = on
   await save()
 }
+async function setLogChannel(id: string | null): Promise<void> {
+  const d = await load()
+  if (id) d.logChannelId = id
+  else delete d.logChannelId
+  await save()
+}
 
 // guildId -> (inviteCode -> uses)
 const cache = new Map<string, Map<string, number>>()
@@ -69,6 +82,86 @@ async function snapshotGuild(guild: Guild): Promise<Map<string, number>> {
   return m
 }
 
+// ---- logging --------------------------------------------------------------
+
+async function resolveLogChannel(guild: Guild) {
+  const d = await load()
+  const id = d.logChannelId ?? inviteLogChannelId
+  if (!id) return null
+  const ch = await guild.channels.fetch(id).catch(() => null)
+  if (!ch?.isTextBased() || !('send' in ch)) return null
+  return ch
+}
+
+async function sendLog(guild: Guild, embed: ReturnType<typeof ndEmbed>): Promise<void> {
+  const ch = await resolveLogChannel(guild)
+  if (ch) await ch.send({ embeds: [embed] }).catch(() => undefined)
+}
+
+function humanDuration(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  const d = Math.floor(s / 86_400)
+  const h = Math.floor((s % 86_400) / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (d) return `${d}d ${h}h`
+  if (h) return `${h}h ${m}m`
+  if (m) return `${m}m`
+  return `${s}s`
+}
+
+async function logJoin(
+  guild: Guild,
+  member: GuildMember,
+  inviterId: string | null,
+  count: number,
+  code: string | null,
+): Promise<void> {
+  const embed = ndEmbed()
+    .setColor(0x2ecc71)
+    .setTitle('Member joined')
+    .setThumbnail(member.user.displayAvatarURL({ size: 64 }))
+    .setDescription(`<@${member.id}> (${member.user.tag})`)
+    .addFields(
+      {
+        name: 'Invited by',
+        value: inviterId ? `<@${inviterId}> (**${count}** total)` : 'Unknown',
+        inline: true,
+      },
+      {
+        name: 'Account age',
+        value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`,
+        inline: true,
+      },
+    )
+  if (code) embed.addFields({ name: 'Invite', value: `\`${code}\``, inline: true })
+  await sendLog(guild, embed)
+}
+
+async function logLeave(
+  member: GuildMember | PartialGuildMember,
+  inviterId: string | null,
+  newTotal: number | null,
+): Promise<void> {
+  const tag = member.user ? ` (${member.user.tag})` : ''
+  const embed = ndEmbed()
+    .setColor(0xe74c3c)
+    .setTitle('Member left')
+    .setDescription(`<@${member.id}>${tag}`)
+  if (member.joinedTimestamp) {
+    embed.addFields({ name: 'Stayed', value: humanDuration(Date.now() - member.joinedTimestamp), inline: true })
+  }
+  if (inviterId) {
+    embed.addFields({
+      name: 'Was invited by',
+      value: `<@${inviterId}> (now **${newTotal ?? 0}**)`,
+      inline: true,
+    })
+  }
+  await sendLog(member.guild, embed)
+}
+
+// ---- registration ---------------------------------------------------------
+
 export function registerInviteTracker(client: Client): void {
   // Listeners always attach; each no-ops unless tracking is enabled at runtime.
   client.once(Events.ClientReady, async () => {
@@ -76,14 +169,30 @@ export function registerInviteTracker(client: Client): void {
     for (const guild of client.guilds.cache.values()) await snapshotGuild(guild)
   })
 
-  client.on(Events.InviteCreate, (inv) => {
-    if (!inv.guild) return
-    const m = cache.get(inv.guild.id) ?? new Map<string, number>()
+  client.on(Events.InviteCreate, async (inv) => {
+    const guildId = inv.guild?.id
+    if (!guildId) return
+    const m = cache.get(guildId) ?? new Map<string, number>()
     m.set(inv.code, inv.uses ?? 0)
-    cache.set(inv.guild.id, m)
+    cache.set(guildId, m)
+    if (!(await isEnabled())) return
+    const guild = client.guilds.cache.get(guildId)
+    if (!guild) return
+    const parts = [`Code \`${inv.code}\``]
+    if (inv.inviter) parts.push(`by <@${inv.inviter.id}>`)
+    if (inv.maxUses) parts.push(`max uses ${inv.maxUses}`)
+    if (inv.expiresTimestamp) parts.push(`expires <t:${Math.floor(inv.expiresTimestamp / 1000)}:R>`)
+    await sendLog(guild, ndEmbed().setColor(0x3498db).setTitle('Invite created').setDescription(parts.join(' · ')))
   })
-  client.on(Events.InviteDelete, (inv) => {
-    if (inv.guild) cache.get(inv.guild.id)?.delete(inv.code)
+
+  client.on(Events.InviteDelete, async (inv) => {
+    const guildId = inv.guild?.id
+    if (!guildId) return
+    cache.get(guildId)?.delete(inv.code)
+    if (!(await isEnabled())) return
+    const guild = client.guilds.cache.get(guildId)
+    if (!guild) return
+    await sendLog(guild, ndEmbed().setColor(0x95a5a6).setTitle('Invite deleted').setDescription(`Code \`${inv.code}\``))
   })
 
   client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
@@ -92,11 +201,13 @@ export function registerInviteTracker(client: Client): void {
       const guild = member.guild
       const before = cache.get(guild.id) ?? new Map<string, number>()
       let inviterId: string | null = null
+      let usedCode: string | null = null
       try {
         const current = await guild.invites.fetch()
         for (const inv of current.values()) {
           if ((inv.uses ?? 0) > (before.get(inv.code) ?? 0)) {
             inviterId = inv.inviterId ?? inv.inviter?.id ?? null
+            usedCode = inv.code
             break
           }
         }
@@ -114,9 +225,9 @@ export function registerInviteTracker(client: Client): void {
         d.joinedBy[member.id] = inviterId
         await save()
         await maybeReward(guild, inviterId, total)
-        await logJoin(guild, member, inviterId, total)
+        await logJoin(guild, member, inviterId, total, usedCode)
       } else {
-        await logJoin(guild, member, null, 0)
+        await logJoin(guild, member, null, 0, usedCode)
       }
     } catch (e) {
       console.error('[invites] join', e)
@@ -127,14 +238,17 @@ export function registerInviteTracker(client: Client): void {
     try {
       if (!(await isEnabled())) return
       const d = await load()
-      const inviter = d.joinedBy[member.id]
+      const inviter = d.joinedBy[member.id] ?? null
+      let newTotal: number | null = null
       if (inviter) {
-        d.inviters[inviter] = Math.max(0, (d.inviters[inviter] ?? 0) - 1)
+        newTotal = Math.max(0, (d.inviters[inviter] ?? 0) - 1)
+        d.inviters[inviter] = newTotal
         delete d.joinedBy[member.id]
         await save()
       }
-    } catch {
-      // ignore
+      await logLeave(member, inviter, newTotal)
+    } catch (e) {
+      console.error('[invites] leave', e)
     }
   })
 }
@@ -151,20 +265,7 @@ async function maybeReward(guild: Guild, inviterId: string, count: number): Prom
   }
 }
 
-async function logJoin(
-  guild: Guild,
-  member: GuildMember,
-  inviterId: string | null,
-  count: number,
-): Promise<void> {
-  if (!inviteLogChannelId) return
-  const ch = await guild.channels.fetch(inviteLogChannelId).catch(() => null)
-  if (!ch?.isTextBased() || !('send' in ch)) return
-  const desc = inviterId
-    ? `${member} was invited by <@${inviterId}> (now **${count}** invite${count === 1 ? '' : 's'})`
-    : `${member} joined (inviter unknown)`
-  await ch.send({ embeds: [ndEmbed().setDescription(desc)] }).catch(() => undefined)
-}
+// ---- commands -------------------------------------------------------------
 
 export async function handleInviteCommand(msg: Message, cmd: string, args: string): Promise<boolean> {
   if (cmd !== 'invites' && cmd !== 'invitelb' && cmd !== 'inviteleaderboard') return false
@@ -172,30 +273,62 @@ export async function handleInviteCommand(msg: Message, cmd: string, args: strin
     await msg.reply('Use this in a server.')
     return true
   }
+  const guild = msg.guild
+  const parts = args.trim().split(/\s+/).filter(Boolean)
+  const sub = (parts[0] ?? '').toLowerCase()
 
-  // Staff toggle: nd!invitelb on|off|status (also enable|disable).
-  const action = args.trim().toLowerCase()
-  if (['on', 'off', 'enable', 'disable', 'status'].includes(action)) {
-    const member = msg.member ?? (await msg.guild.members.fetch(msg.author.id).catch(() => null))
+  // Staff: set/clear the live log channel.
+  if (sub === 'log') {
+    const member = msg.member ?? (await guild.members.fetch(msg.author.id).catch(() => null))
     if (!isGuildMod(member)) {
       await msg.reply('Staff only.')
       return true
     }
-    if (action === 'status') {
-      await msg.reply(`Invite tracking is **${(await isEnabled()) ? 'on' : 'off'}**.`)
+    const arg = (parts[1] ?? '').toLowerCase()
+    if (arg === 'off' || arg === 'none' || arg === 'clear') {
+      await setLogChannel(null)
+      await msg.reply('Invite logging channel cleared.')
       return true
     }
-    const on = action === 'on' || action === 'enable'
+    const mentioned = msg.mentions.channels.first()
+    const byId = parts[1] ? guild.channels.cache.get(parts[1].replace(/\D/g, '')) : undefined
+    const target = mentioned ?? byId ?? msg.channel
+    if (!target || !('id' in target) || !target.isTextBased()) {
+      await msg.reply('Usage: `nd!invitelb log [#channel]` (or `nd!invitelb log off`)')
+      return true
+    }
+    await setLogChannel(target.id)
+    await msg.reply(`Invite events will now be logged to <#${target.id}>.`)
+    return true
+  }
+
+  // Staff toggle: nd!invitelb on|off|status (also enable|disable).
+  if (['on', 'off', 'enable', 'disable', 'status'].includes(sub)) {
+    const member = msg.member ?? (await guild.members.fetch(msg.author.id).catch(() => null))
+    if (!isGuildMod(member)) {
+      await msg.reply('Staff only.')
+      return true
+    }
+    if (sub === 'status') {
+      const d = await load()
+      const logId = d.logChannelId ?? inviteLogChannelId
+      await msg.reply(
+        `Invite tracking is **${(await isEnabled()) ? 'on' : 'off'}**. ` +
+          (logId ? `Logging to <#${logId}>.` : 'No log channel set (use `nd!invitelb log #channel`).'),
+      )
+      return true
+    }
+    const on = sub === 'on' || sub === 'enable'
     await setEnabled(on)
     if (!on) {
       await msg.reply('Invite tracking is now **off**.')
       return true
     }
-    await snapshotGuild(msg.guild) // seed the cache now so the next join is credited
-    const canRead = msg.guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false
+    await snapshotGuild(guild) // seed the cache now so the next join is credited
+    const canRead = guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false
     await msg.reply(
       canRead
-        ? 'Invite tracking is now **on**. I will credit inviters when members join.'
+        ? 'Invite tracking is now **on**. I will credit inviters and log joins/leaves.'
         : 'Invite tracking is now **on**, but I am missing the **Manage Server** permission, so I cannot read invites. Grant it and joins will be credited.',
     )
     return true
