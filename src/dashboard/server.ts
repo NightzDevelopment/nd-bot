@@ -2805,6 +2805,52 @@ Triage the root cause, identify the buggy files in the workspace, and provide th
             return json({ ok: true, message: 'Refresh triggered' })
           }
 
+          // ===== POLICIES ENDPOINTS =====
+          if (req.method === 'GET' && pathname === '/api/policies') {
+            try {
+              const { getAllSections, POLICY_ORDER } = await import('../services/policies.ts')
+              const sections = await getAllSections()
+              return json({ ok: true, order: POLICY_ORDER, sections })
+            } catch (e) {
+              return json({ ok: false, error: String(e) }, { status: 500 })
+            }
+          }
+          if (req.method === 'PUT' && pathname === '/api/policies') {
+            if (readonly) return json({ error: 'read-only' }, { status: 403 })
+            const body = await readBoundedJson(req, 32 * 1024)
+            if (!body.ok) return json({ error: body.error }, { status: body.status })
+            const d = body.data as { key?: string; title?: string; body?: string }
+            const { updateSection, POLICY_ORDER } = await import('../services/policies.ts')
+            const key = String(d?.key ?? '')
+            if (!(POLICY_ORDER as string[]).includes(key)) {
+              return json({ error: 'invalid key' }, { status: 400 })
+            }
+            const section = await updateSection(key as never, {
+              ...(typeof d?.title === 'string' ? { title: d.title } : {}),
+              ...(typeof d?.body === 'string' ? { body: d.body } : {}),
+            })
+            const jwtUser = await checkJwtAuth(req)
+            void logAudit(
+              jwtUser?.sub ?? 'dashboard',
+              jwtUser?.email ?? 'dashboard',
+              'policy_updated',
+              `policy:${key}`,
+              {},
+              ip,
+              req.headers.get('user-agent') || 'unknown',
+            )
+            return json({ ok: true, data: section })
+          }
+          if (req.method === 'POST' && pathname === '/api/policies/publish') {
+            if (readonly) return json({ error: 'read-only' }, { status: 403 })
+            const { refreshPublished } = await import('../services/policies.ts')
+            const { getDiscordClient } = await import('./runtime-state.ts')
+            const client = getDiscordClient<import('discord.js').Client>()
+            if (!client) return json({ error: 'Discord not connected' }, { status: 503 })
+            const updated = await refreshPublished(client)
+            return json({ ok: true, updated })
+          }
+
           // ===== SUGGESTIONS ENDPOINTS =====
           if (req.method === 'GET' && pathname === '/api/suggestions') {
             try {

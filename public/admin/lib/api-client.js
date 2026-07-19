@@ -318,6 +318,17 @@ class ApiClient {
     return this.post('/api/counters/refresh', {})
   }
 
+  // Policies
+  async getPolicies() {
+    return this.get('/api/policies')
+  }
+  async updatePolicy(key, patch) {
+    return this.put('/api/policies', { key, ...patch })
+  }
+  async publishPolicies() {
+    return this.post('/api/policies/publish', {})
+  }
+
   // Suggestions
   async getSuggestions(status = 'all') {
     return this.get(`/api/suggestions?status=${status}`)

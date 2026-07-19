@@ -10,6 +10,7 @@ const PAGES = {
   moderation: { title: 'Enforcement', selector: '#page-moderation' },
   commands: { title: 'Commands', selector: '#page-commands' },
   tickets: { title: 'Tickets', selector: '#page-tickets' },
+  policies: { title: 'Rules & Policies', selector: '#page-policies' },
   levels: { title: 'Levels', selector: '#page-levels' },
   economy: { title: 'Economy', selector: '#page-economy' },
   shop: { title: 'Shop', selector: '#page-shop' },
@@ -219,6 +220,9 @@ async function loadPageLogic(pageName) {
         break
       case 'tickets':
         if (window.initTickets) await window.initTickets()
+        break
+      case 'policies':
+        if (window.initPolicies) await window.initPolicies()
         break
       case 'levels':
         if (window.initLevels) await window.initLevels()

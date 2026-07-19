@@ -40,6 +40,8 @@ export type AuditAction =
   | 'counter_added'
   | 'counter_updated'
   | 'counter_deleted'
+  // Policies
+  | 'policy_updated'
   // Giveaways
   | 'giveaway_created'
   | 'giveaway_ended'
