@@ -83,6 +83,13 @@ export function buildHelpEmbed(): EmbedBuilder {
         inline: false,
       },
       {
+        name: 'Rules and policies',
+        value:
+          '**Prefix:** `nd!rules` · `nd!tos` (`nd!terms`) · `nd!ippolicy` (`nd!resale`) · `nd!info` (`nd!websites`)\n' +
+          '**Staff:** `nd!policies list` · `nd!rules publish [#channel]` · `nd!rules refresh` (edit the text in the dashboard Policies tab)',
+        inline: false,
+      },
+      {
         name: 'Safety and trust',
         value:
           '**Prefix:** `nd!safety` · `nd!scamtips` · `nd!privacy` · `nd!report` · `nd!reportuser @user <reason>` · `nd!automodpublic` · `nd!scamcheck` · `nd!tldr`\n' +
