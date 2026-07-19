@@ -50,7 +50,7 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'Fun',
         value:
-          '**Prefix:** `nd!dad-joke` · `nd!truth` · `nd!dare` · `nd!tod` · `nd!nhie` · `nd!cat` · `nd!dog` · `nd!roast [@user]` · `nd!personality <auto|funny|helpful>` (staff)',
+          '**Prefix:** `nd!dad-joke` · `nd!truth` · `nd!dare` · `nd!tod` · `nd!nhie` · `nd!cat` · `nd!dog` · `nd!roast [@user]` · `nd!personality <auto|funny|savage|chill|hype|ogdev|helpful>` (staff)',
         inline: false,
       },
       {

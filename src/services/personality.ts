@@ -20,8 +20,23 @@ import { generateOnce, getModel } from './gemini.ts'
 import { ndEmbed } from '../utils/embed.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 
-export type PersonalityMode = 'auto' | 'funny' | 'helpful'
-const MODES: readonly PersonalityMode[] = ['auto', 'funny', 'helpful']
+export type PersonalityMode =
+  | 'auto'
+  | 'funny'
+  | 'helpful'
+  | 'chill'
+  | 'hype'
+  | 'savage'
+  | 'ogdev'
+const MODES: readonly PersonalityMode[] = [
+  'auto',
+  'funny',
+  'helpful',
+  'chill',
+  'hype',
+  'savage',
+  'ogdev',
+]
 
 const FILE = 'personality.json'
 let cache: { mode: PersonalityMode } | null = null
@@ -86,13 +101,57 @@ const AUTO =
   'helpful and clear (a little wit is fine, but the answer comes first). Never start on someone ' +
   `who was not bantering. ${ESCALATE} ${CLEAN_LIMITS}`
 
+const CHILL =
+  `${OVERRIDE}` +
+  'You have a laid-back, easygoing personality. Talk like a chill friend: casual and relaxed, a ' +
+  'bit of slang is fine (no worries, I got you, all good). Keep it warm and unbothered, never ' +
+  'stiff or corporate. Still answer real questions clearly and help out, just in a relaxed way. ' +
+  `${CLEAN_LIMITS}`
+
+const HYPE =
+  `${OVERRIDE}` +
+  'You are a high-energy hype-man. Be enthusiastic and pumped up: gas people up, celebrate their ' +
+  'wins, and get genuinely excited about Nightz Development drops, updates, and the community. ' +
+  'Bring energy and momentum (lets go, thats huge, big W) without spamming caps or going ' +
+  'overboard. Still answer real questions clearly, just with excitement. Do not overhype or claim ' +
+  `things that are not true. ${CLEAN_LIMITS}`
+
+const SAVAGE =
+  `${OVERRIDE}` +
+  'You are in full savage mode: maximum heat by default. Every reply drips with sharp, cocky, ' +
+  'cutting wit. Roast hard and fast, never soften, never play nice, never hedge. Assume banter ' +
+  'and hand out brutal, funny comebacks. When they ask a real question you still answer it, but ' +
+  `with a jab attached. ${ESCALATE} ${CLEAN_LIMITS}`
+
+const OGDEV =
+  `${OVERRIDE}` +
+  'You are a seasoned veteran FiveM developer: blunt, a little gruff, and deeply knowledgeable. ' +
+  'Talk like an OG who has shipped a hundred scripts: direct, no hand-holding, occasional dry ' +
+  'wit, and real technical substance about Lua, ESX and QBCore, resource optimization, server ' +
+  'artifacts, and common FiveM mistakes. Do not sugarcoat: if someone is doing it wrong, tell ' +
+  'them straight. Still be genuinely helpful and accurate; never invent APIs, exports, or facts. ' +
+  `${CLEAN_LIMITS}`
+
 /** Tone directive injected into the AI turn. Tickets/support are always professional. */
 export async function personalityToneDirective(isInTicket: boolean): Promise<string> {
   if (isInTicket) return PROFESSIONAL
   const mode = await getPersonalityMode()
-  if (mode === 'funny') return FUNNY
-  if (mode === 'auto') return AUTO
-  return PROFESSIONAL
+  switch (mode) {
+    case 'funny':
+      return FUNNY
+    case 'auto':
+      return AUTO
+    case 'chill':
+      return CHILL
+    case 'hype':
+      return HYPE
+    case 'savage':
+      return SAVAGE
+    case 'ogdev':
+      return OGDEV
+    default:
+      return PROFESSIONAL
+  }
 }
 
 export async function handlePersonalityCommand(
@@ -110,10 +169,14 @@ export async function handlePersonalityCommand(
           .setTitle('Bot personality')
           .setDescription(
             `Current mode: **${mode}**\n\n` +
-              '`auto` reads the room (funny when bantering, helpful for real questions).\n' +
-              '`funny` leans witty and sassy.\n' +
+              '`auto` reads the room (clapback when bantering, helpful for real questions).\n' +
+              '`funny` witty and sassy, quick to clap back.\n' +
+              '`savage` max heat, roasts by default.\n' +
+              '`chill` laid-back, casual homie vibe.\n' +
+              '`hype` high-energy hype-man.\n' +
+              '`ogdev` blunt veteran FiveM dev, real technical wisdom.\n' +
               '`helpful` stays professional.\n\n' +
-              'Staff set it with `nd!personality <auto|funny|helpful>`. Tickets are always professional.',
+              'Staff set it with `nd!personality <auto|funny|savage|chill|hype|ogdev|helpful>`. Tickets are always professional.',
           ),
       ],
     })
@@ -125,7 +188,7 @@ export async function handlePersonalityCommand(
     return true
   }
   if (!MODES.includes(arg as PersonalityMode)) {
-    await msg.reply('Usage: `nd!personality <auto|funny|helpful>`')
+    await msg.reply('Usage: `nd!personality <auto|funny|savage|chill|hype|ogdev|helpful>`')
     return true
   }
   await setPersonalityMode(arg as PersonalityMode)
