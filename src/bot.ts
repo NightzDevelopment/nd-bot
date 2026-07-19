@@ -14,6 +14,7 @@ import {
   enableDmSupport,
   guildAiTicketCategoryIds,
   guildChannelIds,
+  inviteTrackingEnabled,
   MODEL_ID,
   persistentMemoryEnabled,
   profileScanCustomStatus,
@@ -37,6 +38,7 @@ import { registerReactionRoles } from './handlers/roles-reaction.ts'
 import { registerAntiNuke } from './services/anti-nuke.ts'
 import { initBlacklist } from './services/blacklist-store.ts'
 import { registerChannelUtilities } from './services/sticky-threads.ts'
+import { registerInviteTracker } from './services/invite-tracker.ts'
 import { startStoreUpdatesLoop } from './services/store-updates.ts'
 import { registerAutoRole } from './services/role-settings.ts'
 import { registerSafeguard } from './services/safeguard.ts'
@@ -95,6 +97,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessageReactions,
+    ...(inviteTrackingEnabled ? [GatewayIntentBits.GuildInvites] : []),
     ...(profileScanEnabled && profileScanCustomStatus ? [GatewayIntentBits.GuildPresences] : []),
   ],
   partials: [Partials.Channel, Partials.Message, Partials.User, Partials.Reaction],
@@ -115,6 +118,7 @@ registerAntiNuke(client)
 void initBlacklist()
 startStoreUpdatesLoop(client)
 registerChannelUtilities(client)
+registerInviteTracker(client)
 registerTempVc(client)
 registerAiFeedbackHandler(client)
 registerPollMonitor(client)

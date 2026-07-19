@@ -22,7 +22,7 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'Moderation (staff)',
         value:
-          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode` · `nd!scan_names [apply] [avatars]` · `nd!mass-role <add|remove|status|cancel>` · `nd!add-money` · `nd!remove-money` · `nd!add-money-role` · `nd!remove-money-role` · `nd!reset-money` · `nd!leakdomain <add|remove|list>` · `nd!blacklist <add|remove|check|list>` · `nd!qticketpanel`\n' +
+          '**Prefix:** `nd!summarize` (reply to a message) · `nd!digest` · `nd!warn` · `nd!warnings` · `nd!clearwarns` · `nd!timeout` · `nd!kick` · `nd!ban` · `nd!purge` · `nd!lockdown` · `nd!unlock` · `nd!modautomod` · `nd!model <auto|gemini|openai>` · `nd!macro` · `nd!case` · `nd!slowmode` · `nd!scan_names [apply] [avatars]` · `nd!mass-role <add|remove|status|cancel>` · `nd!add-money` · `nd!remove-money` · `nd!add-money-role` · `nd!remove-money-role` · `nd!reset-money` · `nd!leakdomain <add|remove|list>` · `nd!blacklist <add|remove|check|list>` · `nd!qticketpanel` · `nd!sticky <set|clear>` · `nd!autothread <on|off>`\n' +
           '**Slash:** `/warn` · `/purge` · `/mod_automod` · `/ai_model` · `/macro` · `/case` · `/slowmode` · `/scan_names` · `/counters` (ServerStats-style stat channel names: add · remove · list · refresh)',
         inline: false,
       },
@@ -45,6 +45,19 @@ export function buildHelpEmbed(): EmbedBuilder {
         value:
           '**Self-assign:** `nd!roles` (list) · `nd!iam <role>` · `nd!iamnot <role>`\n' +
           '**Staff:** `nd!self-role <add|remove|list>` · `nd!auto-role <add|remove|list>` · `nd!rolereact`',
+        inline: false,
+      },
+      {
+        name: 'Economy and shop',
+        value:
+          '**Earn/spend:** `nd!balance` · `nd!daily` · `nd!work` · `nd!pay` · `nd!gamble` · `nd!top`\n' +
+          '**Role shop:** `nd!roleshop` (alias `nd!colorshop`) · `nd!buyrole <name>` · staff: `nd!roleshop add @role <price>` / `remove @role`\n' +
+          '**Vouch:** `nd!vouch [1-5] <review>` (verified customers)',
+        inline: false,
+      },
+      {
+        name: 'Invites',
+        value: '**Prefix:** `nd!invites [@user]` · `nd!invitelb` (leaderboard). Reward roles at set milestones.',
         inline: false,
       },
       {

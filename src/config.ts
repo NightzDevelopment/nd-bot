@@ -662,6 +662,29 @@ export const antiNukeThreshold = Math.max(
   parseInt(process.env.ANTINUKE_THRESHOLD ?? '4', 10) || 4,
 )
 
+// ---- Invite tracking + rewards ----
+/** Off by default: needs the Manage Server permission (to read invites) + the Server Invites intent. */
+export const inviteTrackingEnabled = !isEnvOff(process.env.INVITE_TRACKING_ENABLED ?? '0')
+/** Optional channel to log who invited whom. */
+export const inviteLogChannelId = process.env.INVITE_LOG_CHANNEL_ID?.trim() || undefined
+/** JSON map of invite-count milestone -> role id, e.g. {"5":"123","10":"456","25":"789"}. */
+function parseInviteRewards(): Record<number, string> {
+  const raw = process.env.INVITE_REWARD_ROLES?.trim()
+  if (!raw) return {}
+  try {
+    const obj = JSON.parse(raw) as Record<string, unknown>
+    const out: Record<number, string> = {}
+    for (const [k, v] of Object.entries(obj)) {
+      const n = Number.parseInt(k, 10)
+      if (Number.isFinite(n) && typeof v === 'string' && v.trim()) out[n] = v.trim()
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+export const inviteRewardRoles = parseInviteRewards()
+
 /** Optional multiline rules appended to the AI AutoMod classifier prompt */
 export const aiAutomodServerRules = process.env.AI_AUTOMOD_SERVER_RULES?.trim() || ''
 

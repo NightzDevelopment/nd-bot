@@ -73,6 +73,7 @@ import { handleQuarantineTicketPanelCommand } from '../services/quarantine-ticke
 import { handleRoleSettingsCommand } from '../services/role-settings.ts'
 import { handleRoleShopCommand } from '../services/role-shop.ts'
 import { handleVouchCommand } from '../services/vouch.ts'
+import { handleInviteCommand } from '../services/invite-tracker.ts'
 import { handleBlacklistCommand, handleReportUserCommand } from '../services/safeguard.ts'
 import { handleAutoThreadCommand, handleStickyCommand } from '../services/sticky-threads.ts'
 import { formatProductLookupReply } from '../services/store-catalog.ts'
@@ -179,6 +180,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (await handleAutoThreadCommand(msg, cmd, args)) return
   if (await handleRoleShopCommand(msg, cmd, args)) return
   if (await handleVouchCommand(msg, cmd, args)) return
+  if (await handleInviteCommand(msg, cmd, args)) return
   if (await handlePersonalityCommand(msg, cmd, args)) return
   if (await handleRoastCommand(msg, cmd, args)) return
 
