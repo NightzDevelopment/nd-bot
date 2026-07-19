@@ -124,6 +124,14 @@ async function punish(
   await alert(guild, embed)
 }
 
+/** Exempt if the actor's user id is whitelisted, or they hold a whitelisted role. */
+async function isExempt(guild: Guild, executorId: string): Promise<boolean> {
+  if (antiNukeWhitelistIds.has(executorId)) return true
+  if (antiNukeWhitelistIds.size === 0) return false
+  const member = await guild.members.fetch(executorId).catch(() => null)
+  return !!member && member.roles.cache.some((r) => antiNukeWhitelistIds.has(r.id))
+}
+
 export function registerAntiNuke(client: Client): void {
   if (!antiNukeEnabled) return
   client.on(
@@ -136,7 +144,7 @@ export function registerAntiNuke(client: Client): void {
         if (!executorId) return
         if (executorId === client.user?.id) return
         if (executorId === guild.ownerId) return
-        if (antiNukeWhitelistIds.has(executorId)) return
+        if (await isExempt(guild, executorId)) return
 
         const count = record(executorId, entry.action as number, Date.now())
         if (count >= antiNukeThreshold) {

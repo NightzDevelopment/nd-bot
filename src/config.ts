@@ -632,7 +632,7 @@ export const safeguardChannelId =
 // ---- Anti-nuke: stop a rogue or compromised admin ----
 /** Off by default: enable only after whitelisting trusted admins and putting the bot's role near the top. */
 export const antiNukeEnabled = !isEnvOff(process.env.ANTINUKE_ENABLED ?? '0')
-/** User IDs always exempt (trusted admins who may legitimately do bulk actions). Owner is always exempt. */
+/** User IDs OR role IDs always exempt (trusted admins/roles). The owner is always exempt. */
 export const antiNukeWhitelistIds = parseIdSet(process.env.ANTINUKE_WHITELIST_IDS)
 /** What to do to a detected nuker: strip (remove their roles) | quarantine | ban. */
 export const antiNukeAction = (
