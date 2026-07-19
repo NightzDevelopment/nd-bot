@@ -97,6 +97,7 @@ import { buildHelpEmbed } from '../utils/help-text.ts'
 import { isGuildMod } from '../utils/permissions.ts'
 import { takeReportSlot } from '../utils/report-cooldown.ts'
 import { formatSupportLinksMarkdown } from '../utils/support-links.ts'
+import { handlePersonalityCommand, handleRoastCommand } from '../services/personality.ts'
 import { handleEconomyPrefix } from './prefix-economy.ts'
 import { handleExtraPrefix } from './prefix-extra.ts'
 
@@ -169,6 +170,8 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (await handleBlacklistCommand(msg, cmd, args)) return
   if (await handleReportUserCommand(msg, cmd, args)) return
   if (await handleQuarantineTicketPanelCommand(msg, cmd, args)) return
+  if (await handlePersonalityCommand(msg, cmd, args)) return
+  if (await handleRoastCommand(msg, cmd, args)) return
 
   if (cmd === 'help') {
     await msg.reply({ embeds: [buildHelpEmbed()] })

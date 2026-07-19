@@ -1030,6 +1030,9 @@ export const verifyUnverifiedRoleId = process.env.VERIFY_UNVERIFIED_ROLE_ID?.tri
 export const quarantineRoleSwapEnabled = !isEnvOff(process.env.QUARANTINE_ROLESWAP_ENABLED ?? '1')
 export const quarantineRoleId = process.env.QUARANTINE_ROLE_ID?.trim() || undefined
 export const quarantineToggleRoleId = process.env.QUARANTINE_TOGGLE_ROLE_ID?.trim() || undefined
+/** Default AI personality/tone until staff change it with nd!personality: auto | funny | helpful. */
+export const personalityMode = process.env.PERSONALITY_MODE?.trim().toLowerCase() || 'auto'
+
 /**
  * Full lockdown: on quarantine, remove ALL of the member's roles (saving them),
  * and restore them when the quarantine role is removed. Overrides the single

@@ -24,6 +24,7 @@ import { getAiProviderMode, setAiProviderMode } from '../services/ai-provider.ts
 import { logEvent as logAnalyticsEvent } from '../services/analytics.ts'
 import { recordSupportExchange } from '../services/analytics-store.ts'
 import { buildAugmentedUserContentAsync } from '../services/context-bundle.ts'
+import { personalityToneDirective } from '../services/personality.ts'
 import { executeCommand, getCommand } from '../services/custom-commands.ts'
 import {
   chatReply,
@@ -669,8 +670,10 @@ export function registerMessageHandler(client: Client): void {
         }
       }
 
-      // Append strict citation guidelines, Nightz Development brand rules, and emoji ban
-      augmented += `\n\n[ADMINISTRATIVE DIRECTIVES]\n1. Use bracketed footnotes like [1], [2] to cite information from the provided vector context when referencing facts, docs, or code. Do NOT make up any citations.\n2. Maintain a strict professional corporate brand, representing Nightz Development (ND) administration. This is proprietary ND property.\n3. ZERO EMOJI MANDATE: Under no circumstances should any emojis or visual glyphs exist in your response. Strictly use text only.`
+      // Append citation guidelines, personality-aware tone, and the emoji ban.
+      // Tone (item 2) switches with nd!personality; tickets are always professional.
+      const toneDirective = await personalityToneDirective(!!isInTicket)
+      augmented += `\n\n[ADMINISTRATIVE DIRECTIVES]\n1. Use bracketed footnotes like [1], [2] to cite information from the provided vector context when referencing facts, docs, or code. Do NOT make up any citations.\n2. ${toneDirective}\n3. ZERO EMOJI MANDATE: Under no circumstances should any emojis or visual glyphs exist in your response. Strictly use text only.`
 
       if (ch.type !== ChannelType.DM) {
         touchActiveWindow(msg.author.id, msg.channel.id)
