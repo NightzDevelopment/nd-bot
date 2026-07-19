@@ -17,10 +17,12 @@ import {
   type GuildMember,
   type Message,
   type PartialGuildMember,
+  PermissionFlagsBits,
 } from 'discord.js'
 import { inviteLogChannelId, inviteRewardRoles, inviteTrackingEnabled } from '../config.ts'
 import { readJson, writeJson } from './data-store.ts'
 import { ndEmbed } from '../utils/embed.ts'
+import { isGuildMod } from '../utils/permissions.ts'
 
 const FILE = 'invites.json'
 interface InviteData {
@@ -28,6 +30,8 @@ interface InviteData {
   inviters: Record<string, number>
   /** joinedMemberId -> inviterId, so a leave can reverse the credit */
   joinedBy: Record<string, string>
+  /** Runtime on/off toggle (nd!invitelb on|off). Falls back to the env default when unset. */
+  enabled?: boolean
 }
 let data: InviteData | null = null
 
@@ -37,6 +41,17 @@ async function load(): Promise<InviteData> {
 }
 async function save(): Promise<void> {
   await writeJson(FILE, await load())
+}
+
+/** Whether tracking is active: runtime override if set, otherwise the env default. */
+async function isEnabled(): Promise<boolean> {
+  const d = await load()
+  return typeof d.enabled === 'boolean' ? d.enabled : inviteTrackingEnabled
+}
+async function setEnabled(on: boolean): Promise<void> {
+  const d = await load()
+  d.enabled = on
+  await save()
 }
 
 // guildId -> (inviteCode -> uses)
@@ -55,9 +70,9 @@ async function snapshotGuild(guild: Guild): Promise<Map<string, number>> {
 }
 
 export function registerInviteTracker(client: Client): void {
-  if (!inviteTrackingEnabled) return
-
+  // Listeners always attach; each no-ops unless tracking is enabled at runtime.
   client.once(Events.ClientReady, async () => {
+    if (!(await isEnabled())) return
     for (const guild of client.guilds.cache.values()) await snapshotGuild(guild)
   })
 
@@ -73,6 +88,7 @@ export function registerInviteTracker(client: Client): void {
 
   client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
     try {
+      if (!(await isEnabled())) return
       const guild = member.guild
       const before = cache.get(guild.id) ?? new Map<string, number>()
       let inviterId: string | null = null
@@ -109,6 +125,7 @@ export function registerInviteTracker(client: Client): void {
 
   client.on(Events.GuildMemberRemove, async (member: GuildMember | PartialGuildMember) => {
     try {
+      if (!(await isEnabled())) return
       const d = await load()
       const inviter = d.joinedBy[member.id]
       if (inviter) {
@@ -155,8 +172,37 @@ export async function handleInviteCommand(msg: Message, cmd: string, args: strin
     await msg.reply('Use this in a server.')
     return true
   }
-  if (!inviteTrackingEnabled) {
-    await msg.reply('Invite tracking is off. An admin can enable it with `INVITE_TRACKING_ENABLED=1`.')
+
+  // Staff toggle: nd!invitelb on|off|status (also enable|disable).
+  const action = args.trim().toLowerCase()
+  if (['on', 'off', 'enable', 'disable', 'status'].includes(action)) {
+    const member = msg.member ?? (await msg.guild.members.fetch(msg.author.id).catch(() => null))
+    if (!isGuildMod(member)) {
+      await msg.reply('Staff only.')
+      return true
+    }
+    if (action === 'status') {
+      await msg.reply(`Invite tracking is **${(await isEnabled()) ? 'on' : 'off'}**.`)
+      return true
+    }
+    const on = action === 'on' || action === 'enable'
+    await setEnabled(on)
+    if (!on) {
+      await msg.reply('Invite tracking is now **off**.')
+      return true
+    }
+    await snapshotGuild(msg.guild) // seed the cache now so the next join is credited
+    const canRead = msg.guild.members.me?.permissions.has(PermissionFlagsBits.ManageGuild) ?? false
+    await msg.reply(
+      canRead
+        ? 'Invite tracking is now **on**. I will credit inviters when members join.'
+        : 'Invite tracking is now **on**, but I am missing the **Manage Server** permission, so I cannot read invites. Grant it and joins will be credited.',
+    )
+    return true
+  }
+
+  if (!(await isEnabled())) {
+    await msg.reply('Invite tracking is off. Staff can turn it on with `nd!invitelb on`.')
     return true
   }
   const d = await load()
