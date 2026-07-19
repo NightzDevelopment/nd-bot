@@ -1,6 +1,7 @@
 import type { GenerativeModel, Part } from '@google/generative-ai'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import {
+  aiDisableGemini,
   aiResponseCacheEnabled,
   automodModel,
   claudeEnabled,
@@ -50,6 +51,24 @@ export function getModel(systemInstruction: string): GeminiModelRef {
 function automodModelRef(): GeminiModelRef {
   const ids = [...new Set([automodModel, ...geminiFallbackModels].map((s) => s.trim()).filter(Boolean))]
   return { systemInstruction: '', modelIds: ids }
+}
+
+/** True when Gemini should be skipped for this provider selection. */
+function skipGemini(provider: string): boolean {
+  return aiDisableGemini && (provider === 'gemini' || provider === 'auto')
+}
+
+/** Run Claude, then OpenAI. Used when Gemini is disabled. */
+async function claudeThenOpenAi<T>(claudeFn: () => Promise<T>, openAiFn: () => Promise<T>): Promise<T> {
+  if (claudeEnabled) {
+    try {
+      return await claudeFn()
+    } catch (e) {
+      console.warn('[claude] failed; falling back to OpenAI:', e)
+    }
+  }
+  if (openaiEnabled) return openAiFn()
+  throw new Error('No AI provider available: set CLAUDE_API_KEY or OPENAI_API_KEY')
 }
 
 const NO_CODE_SUFFIX = `
@@ -438,6 +457,12 @@ async function chatReplyImpl(
   latestUserContent: string,
 ): Promise<string> {
   const provider = await getAiProviderMode()
+  if (skipGemini(provider)) {
+    return claudeThenOpenAi(
+      () => claudeChatReply(modelRef.systemInstruction, prior, latestUserContent + NO_CODE_SUFFIX),
+      () => openAiChatReply(modelRef, prior, latestUserContent),
+    )
+  }
   if (provider === 'claude') {
     return claudeChatReply(modelRef.systemInstruction, prior, latestUserContent + NO_CODE_SUFFIX)
   }
@@ -500,6 +525,12 @@ async function chatReplyWithImageImpl(
   image: { mimeType: string; dataBase64: string },
 ): Promise<string> {
   const provider = await getAiProviderMode()
+  if (skipGemini(provider)) {
+    return claudeThenOpenAi(
+      () => claudeChatReplyWithImage(modelRef.systemInstruction, prior, textBlock + NO_CODE_SUFFIX, image),
+      () => openAiChatReplyWithImage(modelRef, prior, textBlock, image),
+    )
+  }
   if (provider === 'claude') {
     return claudeChatReplyWithImage(
       modelRef.systemInstruction,
@@ -564,6 +595,12 @@ export async function generateOnce(modelRef: GeminiModelRef, prompt: string): Pr
 
 async function generateOnceImpl(modelRef: GeminiModelRef, prompt: string): Promise<string> {
   const provider = await getAiProviderMode()
+  if (skipGemini(provider)) {
+    return claudeThenOpenAi(
+      () => claudeGenerate(modelRef.systemInstruction, prompt + NO_CODE_SUFFIX),
+      () => openAiGenerate(modelRef, prompt),
+    )
+  }
   if (provider === 'claude') {
     return claudeGenerate(modelRef.systemInstruction, prompt + NO_CODE_SUFFIX)
   }
@@ -626,6 +663,12 @@ async function generateRawUncached(prompt: string): Promise<string> {
     })
 
   const provider = await getAiProviderMode()
+  if (skipGemini(provider)) {
+    return claudeThenOpenAi(
+      () => claudeGenerate('', prompt),
+      () => openAiGenerate(modelRef, prompt),
+    )
+  }
   if (provider === 'claude') {
     if (!claudeEnabled) {
       throw new Error('AI provider is Claude but CLAUDE_API_KEY is not set.')
@@ -682,6 +725,12 @@ export async function generateRawWithImage(
     })
 
   const provider = await getAiProviderMode()
+  if (skipGemini(provider)) {
+    return claudeThenOpenAi(
+      () => claudeChatReplyWithImage('', [], prompt, image),
+      () => openAiChatReplyWithImage(modelRef, [], prompt, image),
+    )
+  }
   if (provider === 'claude') {
     if (!claudeEnabled) {
       throw new Error('AI provider is Claude but CLAUDE_API_KEY is not set.')

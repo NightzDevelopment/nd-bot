@@ -29,6 +29,13 @@ export const geminiFallbackModels = (
  * keep flags quick and cheap even when GEMINI_MODEL is set to a slower pro model.
  */
 export const automodModel = process.env.AUTOMOD_MODEL?.trim() || 'gemini-3-flash-preview'
+/**
+ * Run on Claude + OpenAI only, never Gemini. When set, the `auto` and `gemini`
+ * provider modes route to Claude then OpenAI (chat, generate, and AutoMod), and
+ * the Gemini-only agentic tool loop is bypassed. Requires CLAUDE_API_KEY
+ * and/or OPENAI_API_KEY. Embedding-based RAG (Gemini only) simply returns empty.
+ */
+export const aiDisableGemini = !isEnvOff(process.env.AI_DISABLE_GEMINI ?? '0')
 /** Optional secondary provider: OpenAI. */
 export const openaiApiKey = process.env.OPENAI_API_KEY?.trim() || undefined
 export const openaiEnabled = Boolean(openaiApiKey)

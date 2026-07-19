@@ -1,6 +1,7 @@
 import { ChannelType, type Client, type Message } from 'discord.js'
 import {
   aiAutomodIncludeChannelSnippet,
+  aiDisableGemini,
   aiReplyDisclaimer,
   aiReplyDisclaimerEnabled,
   allowedDmUsers,
@@ -712,7 +713,9 @@ export function registerMessageHandler(client: Client): void {
           // admin-set provider. Without this a technical ticket routed to Claude
           // answers "I cannot see other channels" and can invent data, which is the
           // opposite of helpful support.
-          if (isInTicket || messageReferencesLookupTarget(rawText)) {
+          // The agentic tool loop is Gemini-only; do not force it when Gemini
+          // is disabled (we run Claude/OpenAI chat instead).
+          if (!aiDisableGemini && (isInTicket || messageReferencesLookupTarget(rawText))) {
             preferredModel = 'gemini'
           }
 
@@ -725,7 +728,7 @@ export function registerMessageHandler(client: Client): void {
 
           try {
             const provider = await getAiProviderMode()
-            if (provider === 'gemini' || provider === 'auto') {
+            if (!aiDisableGemini && (provider === 'gemini' || provider === 'auto')) {
               const image = imageAtt ? await fetchAttachmentAsBase64(imageAtt) : undefined
               reply = await runUniversalAgentLoop(
                 toneModel.systemInstruction,
