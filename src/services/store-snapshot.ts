@@ -45,6 +45,7 @@ export type StoreProduct = {
   premiumIncluded: boolean
   free: boolean
   saleEndsAt: string | null
+  updatedAt: string | null
 }
 
 export type PremiumConfig = {
@@ -102,7 +103,13 @@ function mapProduct(p: Record<string, unknown>): StoreProduct {
     premiumIncluded: p.premium_included === true,
     free: priceCents === 0,
     saleEndsAt: typeof p.sale_ends_at === 'string' ? p.sale_ends_at : null,
+    updatedAt: typeof p.updated_at === 'string' ? p.updated_at : null,
   }
+}
+
+/** Live fetch of the full product catalog (used by the update notifier). */
+export async function fetchStoreProductsLive(): Promise<StoreProduct[]> {
+  return fetchAllProducts()
 }
 
 async function fetchJson(url: string): Promise<unknown> {

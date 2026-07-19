@@ -252,6 +252,13 @@ export const storePageUrl = process.env.STORE_PAGE_URL?.trim() || 'https://shop.
 /** Base of the public store JSON API (products + premium config live under here). */
 export const storeApiBase =
   process.env.STORE_API_BASE?.trim().replace(/\/+$/, '') || 'https://shop.nightz.dev/api/store'
+/** Channel to post product update/new-release notifications. Notifier is off when unset. */
+export const storeUpdatesChannelId = process.env.STORE_UPDATES_CHANNEL_ID?.trim() || undefined
+/** How often to poll the catalog for changes. */
+export const storeUpdatesPollMinutes = Math.max(
+  10,
+  parseInt(process.env.STORE_UPDATES_POLL_MINUTES ?? '30', 10) || 30,
+)
 export const storePageRefreshMinutes = Math.max(
   15,
   parseInt(process.env.STORE_PAGE_REFRESH_MINUTES ?? '60', 10) || 60,

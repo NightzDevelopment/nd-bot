@@ -36,6 +36,7 @@ import { registerTempVc, startGiveawayLoop, startScheduleLoop } from './handlers
 import { registerReactionRoles } from './handlers/roles-reaction.ts'
 import { registerAntiNuke } from './services/anti-nuke.ts'
 import { initBlacklist } from './services/blacklist-store.ts'
+import { startStoreUpdatesLoop } from './services/store-updates.ts'
 import { registerAutoRole } from './services/role-settings.ts'
 import { registerSafeguard } from './services/safeguard.ts'
 import { registerWelcomeHandler } from './handlers/welcome.ts'
@@ -111,6 +112,7 @@ registerAutoRole(client)
 registerSafeguard(client)
 registerAntiNuke(client)
 void initBlacklist()
+startStoreUpdatesLoop(client)
 registerTempVc(client)
 registerAiFeedbackHandler(client)
 registerPollMonitor(client)

@@ -37,6 +37,7 @@ import { getEntriesLastMs } from '../services/analytics-store.ts'
 import { checkClaudeAvailability } from '../services/claude-client.ts'
 import { buildAugmentedUserContentAsync } from '../services/context-bundle.ts'
 import { searchFaq } from '../services/faq.ts'
+import { handleDocsCommand } from '../services/docs-command.ts'
 import { handleFunCommand } from '../services/fun-commands.ts'
 import {
   checkOpenAiAvailability,
@@ -166,6 +167,7 @@ export async function handlePrefixCommand(msg: Message): Promise<void> {
   if (await handleAdminEconomyCommand(msg, cmd, args)) return
   if (await handleRoleSettingsCommand(msg, cmd, args)) return
   if (await handleFunCommand(msg, cmd, args)) return
+  if (await handleDocsCommand(msg, cmd, args)) return
   if (await handleLeakDomainCommand(msg, cmd, args)) return
   if (await handleBlacklistCommand(msg, cmd, args)) return
   if (await handleReportUserCommand(msg, cmd, args)) return

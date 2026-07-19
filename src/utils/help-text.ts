@@ -15,7 +15,7 @@ export function buildHelpEmbed(): EmbedBuilder {
       {
         name: 'General',
         value:
-          '**Prefix:** `nd!help` · `nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en` · `nd!ping` · `nd!status` · `nd!links` · `nd!store` · `nd!search` · `nd!product` · `nd!roll` · `nd!choose`\n' +
+          '**Prefix:** `nd!help` · `nd!faq` · `nd!ask` · `nd!clear` · `nd!translate` / `nd!en` · `nd!ping` · `nd!status` · `nd!links` · `nd!store` · `nd!search` · `nd!product` · `nd!docs [topic]` · `nd!roll` · `nd!choose`\n' +
           '**Slash:** `/help` · `/faq` · `/ask` · `/clear` · `/translate` · `/ping` · `/status` · `/links` · `/store` · `/search` · `/product` · `/roll` · `/choose`',
         inline: false,
       },
